@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -15,6 +16,8 @@ import (
 const (
 	requestTimeout = 30 * time.Second
 )
+
+var requestId = 0
 
 // Client - request client for any REST API
 type Client struct {
@@ -28,6 +31,7 @@ type Client struct {
 type ClientInterface interface {
 	SetAuthToken(string)
 	Send(string, string, map[string]interface{}) (int, map[string]interface{}, error)
+	BuildURI(string, map[string]string) string
 }
 
 //SetAuthToken - set Bearer auth token for all requests
@@ -41,9 +45,11 @@ func (client *Client) Send(method, path string, data map[string]interface{}) (
 	map[string]interface{},
 	error,
 ) {
-	url := fmt.Sprintf("%v/%v", client.address, path)
+	uri := fmt.Sprintf("%v/%v", client.address, path)
+	requestId++
 	requestLog := client.log.WithFields(logrus.Fields{
-		"req": fmt.Sprintf("%v /%v", method, path), //TODO add request id
+		"req":   fmt.Sprintf("%v %v", method, path),
+		"reqId": requestId,
 	})
 	requestLog.Info("Send request")
 
@@ -60,7 +66,7 @@ func (client *Client) Send(method, path string, data map[string]interface{}) (
 		client.log.Infof("Data: %v", data) //TODO use debug
 	}
 
-	req, _ := http.NewRequest(method, url, jsonDataReader)
+	req, _ := http.NewRequest(method, uri, jsonDataReader)
 
 	req.Header.Set("Content-Type", "application/json")
 	if len(client.authToken) != 0 {
@@ -84,13 +90,35 @@ func (client *Client) Send(method, path string, data map[string]interface{}) (
 	requestLog.Infof("Response status code: %v", res.StatusCode)
 
 	jsonRes := make(map[string]interface{})
-	jsonErr := json.Unmarshal(bodyBytes, &jsonRes)
-	if jsonErr != nil {
-		jsonRes["error"] = fmt.Sprintf("Cannot parse json from body: '%v'", string(bodyBytes))
-		return res.StatusCode, jsonRes, err
+
+	if len(bodyBytes) > 0 {
+		jsonErr := json.Unmarshal(bodyBytes, &jsonRes)
+		if jsonErr != nil {
+			jsonRes["error"] = fmt.Sprintf("Cannot parse json from body: '%v'", string(bodyBytes))
+			return res.StatusCode, jsonRes, err
+		}
 	}
 
 	return res.StatusCode, jsonRes, nil
+}
+
+//BuildURI - build request URI using [path?params...] format
+func (client *Client) BuildURI(uri string, params map[string]string) string {
+	paramsStr := ""
+	paramValues := url.Values{}
+
+	for key, val := range params {
+		if len(val) != 0 {
+			paramValues.Set(key, val)
+		}
+	}
+
+	paramsStr = paramValues.Encode()
+	if len(paramsStr) != 0 {
+		uri = fmt.Sprintf("%v?%v", uri, paramsStr)
+	}
+
+	return uri
 }
 
 // ClientArgs - params to create Client instance

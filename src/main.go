@@ -80,14 +80,36 @@ func main() {
 	}
 
 	pools, err := ns.GetPools()
-	if err != nil {
-		log.Error(err)
+	if err != nil && err.(*nexentastor.NefError).Code != "EAUTH" {
+		log.Errorf("CANNOT GET POOLS: %v", err)
 	}
-
-	pools, err = ns.GetPools()
-	if err != nil {
-		log.Error(err)
-	}
-
 	log.Infof("pools: %v", pools)
+
+	filesystems, err := ns.GetFilesystems("")
+	if err != nil {
+		log.Error(err)
+	}
+	log.Infof("filesystems: %v", filesystems)
+
+	err = ns.CreateFilesystem("poolA/lol10")
+	if err != nil {
+		log.Error(err)
+	}
+
+	filesystems, err = ns.GetFilesystems("")
+	if err != nil {
+		log.Error(err)
+	}
+
+	log.Infof("filesystems: %v", filesystems)
+	err = ns.DestroyFilesystem("poolA/lol10")
+	if err != nil {
+		log.Error(err)
+	}
+
+	filesystems, err = ns.GetFilesystems("")
+	if err != nil {
+		log.Error(err)
+	}
+	log.Infof("filesystems: %v", filesystems)
 }

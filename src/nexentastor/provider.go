@@ -3,6 +3,8 @@ package nexentastor
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"net/url"
+	"time"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/rest"
 )
@@ -19,6 +21,9 @@ type Provider struct {
 // ProviderInterface - NexentaStor providev interface
 type ProviderInterface interface {
 	GetPools() ([]string, error)
+	GetFilesystems(pool string) ([]string, error)
+	CreateFilesystem(path string) error
+	DestroyFilesystem(path string) error
 	LogIn() error
 }
 
@@ -35,12 +40,22 @@ func (nsp *Provider) LogIn() error {
 
 	if token, ok := resJSON["token"]; ok {
 		nsp.restClient.SetAuthToken(fmt.Sprint(token))
-		nsp.log.Info("Login token was updated")
+		nsp.log.Info("Login token has been updated")
 		return nil
 	}
 
-	if restErrorMessage, ok := nsp.formatRestErrorMessage(resJSON); ok {
-		return fmt.Errorf("Login request: %v", restErrorMessage)
+	// try to parse error from rest response
+	restError := nsp.parseNefError(resJSON, "Login request")
+	if restError != nil {
+		code := restError.(*NefError).Code
+		if code == "EAUTH" {
+			nsp.log.Errorf(
+				"Login to NexentaStor %v failed (username: '%v'), "+
+					"please make sure to use correct address and password",
+				nsp.address,
+				nsp.username)
+		}
+		return restError
 	}
 
 	return fmt.Errorf("Login request: No token found in response: %v", resJSON)
@@ -48,7 +63,11 @@ func (nsp *Provider) LogIn() error {
 
 // GetPools - get NexentaStor pools
 func (nsp *Provider) GetPools() ([]string, error) {
-	resJSON, err := nsp.doAuthRequest("GET", "storage/pools?fields=poolName,health,status", nil)
+	uri := nsp.restClient.BuildURI("/storage/pools", map[string]string{
+		"fields": "poolName,health,status",
+	})
+
+	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +86,60 @@ func (nsp *Provider) GetPools() ([]string, error) {
 	return pools, nil
 }
 
-func (nsp *Provider) formatRestErrorMessage(resJSON map[string]interface{}) (string, bool) {
+// GetFilesystems - get NexentaStor filesystems
+func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
+	uri := nsp.restClient.BuildURI("/storage/filesystems", map[string]string{
+		"pool":   pool,
+		"fields": "path",
+	})
+
+	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	filesystems := []string{}
+
+	if data, ok := resJSON["data"]; ok {
+		for _, val := range data.([]interface{}) {
+			filesystem := val.(map[string]interface{})
+			filesystems = append(filesystems, fmt.Sprint(filesystem["path"]))
+		}
+	}
+
+	return filesystems, nil
+}
+
+// CreateFilesystem - create filesystem by path
+func (nsp *Provider) CreateFilesystem(path string) error {
+	data := make(map[string]interface{})
+	data["path"] = path
+
+	_, err := nsp.doAuthRequest("POST", "/storage/filesystems", data)
+
+	return err
+}
+
+// DestroyFilesystem - destroy filesystem by path
+func (nsp *Provider) DestroyFilesystem(path string) error {
+	data := make(map[string]interface{})
+	data["path"] = path
+
+	if len(path) == 0 {
+		return fmt.Errorf("Filesystem path is empty")
+	}
+
+	uri := fmt.Sprintf("/storage/filesystems/%v", url.PathEscape(path))
+
+	_, err := nsp.doAuthRequest("DELETE", uri, nil)
+
+	return err
+}
+
+func (nsp *Provider) parseNefError(resJSON map[string]interface{}, prefix string) error {
 	var restErrorMessage string
+	var restErrorCode string
+
 	if name, ok := resJSON["name"]; ok {
 		restErrorMessage = fmt.Sprint(name)
 	}
@@ -76,53 +147,58 @@ func (nsp *Provider) formatRestErrorMessage(resJSON map[string]interface{}) (str
 		restErrorMessage = fmt.Sprintf("%v: %v", restErrorMessage, message)
 	}
 	if code, ok := resJSON["code"]; ok {
-		restErrorMessage = fmt.Sprintf("%v (code: %v)", restErrorMessage, code)
+		restErrorCode = code.(string)
 	}
 
 	if len(restErrorMessage) > 0 {
-		return restErrorMessage, true
+		return &NefError{fmt.Errorf("%v: %v", prefix, restErrorMessage), restErrorCode}
 	}
 
-	return "", false
+	return nil
 }
 
 func (nsp *Provider) doAuthRequest(method, path string, data map[string]interface{}) (
 	map[string]interface{},
 	error,
 ) {
-	isUnautorizedUser := func(statusCode int, code interface{}) bool {
-		return statusCode == 401 && code == "EAUTH"
-	}
-
 	statusCode, resJSON, err := nsp.restClient.Send(method, path, data)
 	if err != nil {
 		return resJSON, err
 	}
 
-	if isUnautorizedUser(statusCode, resJSON["code"]) {
-		// do login call if used is unauthorized in api
+	// log in again if user is not logged in
+	if statusCode == 401 && resJSON["code"] == "EAUTH" {
+		// do login call if used is not authorized in api
 		nsp.log.Infof("Log in as '%v'...", nsp.username)
-		loginErr := nsp.LogIn()
-		if loginErr != nil {
-			return nil, loginErr
+
+		err = nsp.LogIn()
+		if err != nil {
+			return nil, err
 		}
 
+		// send original request again
 		statusCode, resJSON, err = nsp.restClient.Send(method, path, data)
 		if err != nil {
 			return resJSON, err
 		}
 	}
 
-	// check if user is still unathorised and show create a new error
-	if isUnautorizedUser(statusCode, resJSON["code"]) {
-		err = fmt.Errorf(
-			"Login to NexentaStor %v failed (username: '%v'), "+
-				"please make sure to use correct address and password",
-			nsp.address,
-			nsp.username)
-	} else if statusCode != 200 {
-		if restErrorMessage, ok := nsp.formatRestErrorMessage(resJSON); ok {
-			err = fmt.Errorf("request error: %v", restErrorMessage)
+	if statusCode == 202 {
+		// this is an async job
+		var href string
+		href, err = nsp.getAsyncJobHref(resJSON)
+		if err != nil {
+			return resJSON, err
+		}
+
+		err = nsp.waitForAsyncJob(href)
+		if err != nil {
+			nsp.log.Error(err)
+		}
+	} else if statusCode >= 300 {
+		restError := nsp.parseNefError(resJSON, "request error")
+		if restError != nil {
+			err = restError
 		} else {
 			err = fmt.Errorf(
 				"request returned %v code, but response body doesn't contain explanation: %v",
@@ -132,6 +208,66 @@ func (nsp *Provider) doAuthRequest(method, path string, data map[string]interfac
 	}
 
 	return resJSON, err
+}
+
+func (nsp *Provider) getAsyncJobHref(resJSON map[string]interface{}) (string, error) {
+	noFieldError := func(field string) error {
+		return fmt.Errorf(
+			"request return an async job, but links response doesn't contain '%v' field: %v",
+			field,
+			resJSON)
+	}
+
+	if links, ok := resJSON["links"].([]interface{}); ok && len(links) != 0 {
+		link := links[0].(map[string]interface{})
+		if rel, ok := link["rel"]; ok && rel == "monitor" {
+			if val, ok := link["href"]; ok {
+				return val.(string), nil
+			}
+			return "", noFieldError("href")
+		}
+		return "", noFieldError("rel")
+	}
+
+	return "", fmt.Errorf(
+		"request return an async job, but response doesn't contain any links: %v",
+		resJSON)
+}
+
+func (nsp *Provider) waitForAsyncJob(uri string) (err error) {
+	jobLog := nsp.log.WithFields(logrus.Fields{
+		"job": uri,
+	})
+	sleepTime := 3 * time.Second
+	attemptsLimit := 30 //>1.5min
+
+	for attempts := 0; attempts <= attemptsLimit; attempts++ {
+		statusCode, resJSON, err := nsp.restClient.Send("GET", uri, nil)
+		if err != nil { // request failed
+			return err
+		} else if statusCode == 200 || statusCode == 201 { // job is completed
+			return nil
+		} else if statusCode != 202 { // job is failed
+			restError := nsp.parseNefError(resJSON, "Job request error")
+			if restError != nil {
+				err = restError
+			} else {
+				err = fmt.Errorf(
+					"job request returned %v code, but response body doesn't contain explanation: %v",
+					statusCode,
+					resJSON)
+			}
+			jobLog.Error(err)
+			return err
+		}
+
+		jobLog.Info("Waiting for job")
+		time.Sleep(sleepTime)
+	}
+
+	err = fmt.Errorf("Exceeded timeout for job status")
+	jobLog.Error(err)
+	return err
 }
 
 // ProviderArgs - params to create Provider instanse

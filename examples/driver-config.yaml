@@ -1,0 +1,3 @@
+address: https://10.1.1.1:8443,https://10.1.1.2:8443 # NexentaStor REST API endpoint(s)
+username: admin
+password: PaSsWoRd123

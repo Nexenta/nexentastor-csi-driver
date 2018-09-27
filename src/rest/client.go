@@ -13,11 +13,9 @@ import (
 	"time"
 )
 
-const (
-	requestTimeout = 30 * time.Second
-)
+const requestTimeout = 30 * time.Second
 
-var requestId = 0
+var requestID = 0
 
 // Client - request client for any REST API
 type Client struct {
@@ -46,10 +44,10 @@ func (client *Client) Send(method, path string, data map[string]interface{}) (
 	error,
 ) {
 	uri := fmt.Sprintf("%v/%v", client.address, path)
-	requestId++
+	requestID++
 	requestLog := client.log.WithFields(logrus.Fields{
 		"req":   fmt.Sprintf("%v %v", method, path),
-		"reqId": requestId,
+		"reqId": requestID,
 	})
 	requestLog.Info("Send request")
 
@@ -136,7 +134,7 @@ func NewClient(args ClientArgs) (client ClientInterface, err error) {
 	clientLog.Debugf("Create for %v", args.Address)
 
 	tr := &http.Transport{
-		//IdleConnTimeout: 60 * time.Second,
+		IdleConnTimeout: 60 * time.Second,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true, // don't check certivicate, fix this!
 		},

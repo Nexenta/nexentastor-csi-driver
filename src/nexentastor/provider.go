@@ -3,13 +3,16 @@ package nexentastor
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/rest"
 )
 
-// Provider - NexentaStore provider connecter for API
+const checkJobStatusInterval = 3 * time.Second
+const checkJobStatusTimeout = 60 * time.Second
+
+// Provider - NexentaStore API provider
 type Provider struct {
 	address    string
 	username   string
@@ -18,122 +21,16 @@ type Provider struct {
 	log        *logrus.Entry
 }
 
-// ProviderInterface - NexentaStor providev interface
+// ProviderInterface - NexentaStor provider interface
 type ProviderInterface interface {
-	GetPools() ([]string, error)
-	GetFilesystems(pool string) ([]string, error)
-	CreateFilesystem(path string) error
-	DestroyFilesystem(path string) error
 	LogIn() error
-}
-
-// LogIn - log in to NexentaStor API and get auth token
-func (nsp *Provider) LogIn() error {
-	data := make(map[string]interface{})
-	data["username"] = nsp.username
-	data["password"] = nsp.password
-
-	_, resJSON, err := nsp.restClient.Send("POST", "auth/login", data)
-	if err != nil {
-		return err
-	}
-
-	if token, ok := resJSON["token"]; ok {
-		nsp.restClient.SetAuthToken(fmt.Sprint(token))
-		nsp.log.Info("Login token has been updated")
-		return nil
-	}
-
-	// try to parse error from rest response
-	restError := nsp.parseNefError(resJSON, "Login request")
-	if restError != nil {
-		code := restError.(*NefError).Code
-		if code == "EAUTH" {
-			nsp.log.Errorf(
-				"Login to NexentaStor %v failed (username: '%v'), "+
-					"please make sure to use correct address and password",
-				nsp.address,
-				nsp.username)
-		}
-		return restError
-	}
-
-	return fmt.Errorf("Login request: No token found in response: %v", resJSON)
-}
-
-// GetPools - get NexentaStor pools
-func (nsp *Provider) GetPools() ([]string, error) {
-	uri := nsp.restClient.BuildURI("/storage/pools", map[string]string{
-		"fields": "poolName,health,status",
-	})
-
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	pools := []string{}
-
-	if data, ok := resJSON["data"]; ok {
-		for _, val := range data.([]interface{}) {
-			pool := val.(map[string]interface{})
-			pools = append(pools, fmt.Sprint(pool["poolName"]))
-		}
-	} else {
-		nsp.log.Warnf("response doesn't contain 'data' property: %v", resJSON)
-	}
-
-	return pools, nil
-}
-
-// GetFilesystems - get NexentaStor filesystems
-func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
-	uri := nsp.restClient.BuildURI("/storage/filesystems", map[string]string{
-		"pool":   pool,
-		"fields": "path",
-	})
-
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	filesystems := []string{}
-
-	if data, ok := resJSON["data"]; ok {
-		for _, val := range data.([]interface{}) {
-			filesystem := val.(map[string]interface{})
-			filesystems = append(filesystems, fmt.Sprint(filesystem["path"]))
-		}
-	}
-
-	return filesystems, nil
-}
-
-// CreateFilesystem - create filesystem by path
-func (nsp *Provider) CreateFilesystem(path string) error {
-	data := make(map[string]interface{})
-	data["path"] = path
-
-	_, err := nsp.doAuthRequest("POST", "/storage/filesystems", data)
-
-	return err
-}
-
-// DestroyFilesystem - destroy filesystem by path
-func (nsp *Provider) DestroyFilesystem(path string) error {
-	data := make(map[string]interface{})
-	data["path"] = path
-
-	if len(path) == 0 {
-		return fmt.Errorf("Filesystem path is empty")
-	}
-
-	uri := fmt.Sprintf("/storage/filesystems/%v", url.PathEscape(path))
-
-	_, err := nsp.doAuthRequest("DELETE", uri, nil)
-
-	return err
+	GetPools() ([]string, error)
+	GetFilesystems(string) ([]string, error)
+	CreateFilesystem(string) error
+	DestroyFilesystem(string) error
+	CreateNfsShare(string) error
+	DeleteNfsShare(string) error
+	IsJobDone(string) (bool, error)
 }
 
 func (nsp *Provider) parseNefError(resJSON map[string]interface{}, prefix string) error {
@@ -191,7 +88,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data map[string]interfac
 			return resJSON, err
 		}
 
-		err = nsp.waitForAsyncJob(href)
+		err = nsp.waitForAsyncJob(strings.TrimPrefix(href, "/jobStatus/"))
 		if err != nil {
 			nsp.log.Error(err)
 		}
@@ -234,40 +131,40 @@ func (nsp *Provider) getAsyncJobHref(resJSON map[string]interface{}) (string, er
 		resJSON)
 }
 
-func (nsp *Provider) waitForAsyncJob(uri string) (err error) {
+// waitForAsyncJob - keep asking for job status while it's not completed, return an error if timeout exceeded
+func (nsp *Provider) waitForAsyncJob(jobID string) (err error) {
 	jobLog := nsp.log.WithFields(logrus.Fields{
-		"job": uri,
+		"job": jobID,
 	})
-	sleepTime := 3 * time.Second
-	attemptsLimit := 30 //>1.5min
 
-	for attempts := 0; attempts <= attemptsLimit; attempts++ {
-		statusCode, resJSON, err := nsp.restClient.Send("GET", uri, nil)
-		if err != nil { // request failed
-			return err
-		} else if statusCode == 200 || statusCode == 201 { // job is completed
-			return nil
-		} else if statusCode != 202 { // job is failed
-			restError := nsp.parseNefError(resJSON, "Job request error")
-			if restError != nil {
-				err = restError
-			} else {
-				err = fmt.Errorf(
-					"job request returned %v code, but response body doesn't contain explanation: %v",
-					statusCode,
-					resJSON)
+	done := make(chan error)
+	timer := time.NewTimer(0)
+	timeout := time.After(checkJobStatusTimeout)
+
+	go func() {
+		startTime := time.Now()
+		for {
+			select {
+			case <-timer.C:
+				jobDone, err := nsp.IsJobDone(jobID)
+				if err != nil { // request failed
+					done <- err
+					return
+				} else if jobDone { // job is completed
+					done <- nil
+					return
+				}
+				jobLog.Infof("Waiting job for %.0fs...", time.Since(startTime).Seconds())
+				timer = time.NewTimer(checkJobStatusInterval)
+			case <-timeout:
+				timer.Stop()
+				done <- fmt.Errorf("Exceeded timeout for checking job status")
+				return
 			}
-			jobLog.Error(err)
-			return err
 		}
+	}()
 
-		jobLog.Info("Waiting for job")
-		time.Sleep(sleepTime)
-	}
-
-	err = fmt.Errorf("Exceeded timeout for job status")
-	jobLog.Error(err)
-	return err
+	return <-done
 }
 
 // ProviderArgs - params to create Provider instanse

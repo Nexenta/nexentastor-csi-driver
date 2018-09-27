@@ -80,8 +80,12 @@ func main() {
 	}
 
 	pools, err := ns.GetPools()
-	if err != nil && err.(*nexentastor.NefError).Code != "EAUTH" {
-		log.Errorf("CANNOT GET POOLS: %v", err)
+	if err != nil {
+		if nefErr, ok := err.(*nexentastor.NefError); ok {
+			log.Errorf("NEF ERROR CANNOT GET POOLS: %v", nefErr.Code)
+		} else {
+			log.Errorf("CANNOT GET POOLS: %v %t", err, err)
+		}
 	}
 	log.Infof("pools: %v", pools)
 
@@ -91,7 +95,8 @@ func main() {
 	}
 	log.Infof("filesystems: %v", filesystems)
 
-	err = ns.CreateFilesystem("poolA/lol10")
+	filesystemPath := "poolA/lol1"
+	err = ns.CreateFilesystem(filesystemPath)
 	if err != nil {
 		log.Error(err)
 	}
@@ -101,8 +106,22 @@ func main() {
 		log.Error(err)
 	}
 
+	err = ns.CreateNfsShare(filesystemPath)
+	if err != nil {
+		log.Error(err)
+	} else {
+		log.Infof("SHARED: %v", filesystemPath)
+	}
+
+	err = ns.DeleteNfsShare(filesystemPath)
+	if err != nil {
+		log.Error(err)
+	} else {
+		log.Infof("UNSHARED: %v", filesystemPath)
+	}
+
 	log.Infof("filesystems: %v", filesystems)
-	err = ns.DestroyFilesystem("poolA/lol10")
+	err = ns.DestroyFilesystem(filesystemPath)
 	if err != nil {
 		log.Error(err)
 	}

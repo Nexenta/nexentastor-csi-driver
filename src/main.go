@@ -71,8 +71,8 @@ func main() {
 
 	ns, err := nexentastor.NewProvider(nexentastor.ProviderArgs{
 		Address:  *address,
-		Username: fmt.Sprint(*username),
-		Password: fmt.Sprint(*password),
+		Username: *username,
+		Password: *password,
 		Log:      log,
 	})
 	if err != nil {

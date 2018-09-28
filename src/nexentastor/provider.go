@@ -9,8 +9,10 @@ import (
 	"github.com/Nexenta/nexentastor-csi-driver/src/rest"
 )
 
-const checkJobStatusInterval = 3 * time.Second
-const checkJobStatusTimeout = 60 * time.Second
+const (
+	checkJobStatusInterval = 3 * time.Second
+	checkJobStatusTimeout  = 60 * time.Second
+)
 
 // Provider - NexentaStore API provider
 type Provider struct {

@@ -5,5 +5,5 @@ metadata:
 provisioner: nexentastor-csi-driver
 parameters:
   type: nfs                         # [nfs|iscsi] mount type
-  dateset: poolA/datasetA           # parent dataset for creating fs/volumes
-  ip: 10.10.10.10                   # single NexentaStor IP or HA VIP
+  dataset: poolA/datasetA           # parent dataset for creating fs/volumes
+  dataIp: 10.1.1.12                 # single NexentaStor IP or HA VIP

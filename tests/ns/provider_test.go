@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/nexentastor"
+	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
 const (
@@ -80,7 +80,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		log.Logger.SetLevel(logrus.DebugLevel)
 	}
 
-	ns, err := nexentastor.NewProvider(nexentastor.ProviderArgs{
+	nsp, err := ns.NewProvider(ns.ProviderArgs{
 		Address:  c.address,
 		Username: c.username,
 		Password: c.password,
@@ -91,7 +91,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	}
 
 	t.Run("GetPools", func(t *testing.T) {
-		pools, err := ns.GetPools()
+		pools, err := nsp.GetPools()
 		if err != nil {
 			t.Error(err)
 		} else if !arrayContains(pools, c.pool) {
@@ -100,7 +100,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	})
 
 	t.Run("GetFilesystems", func(t *testing.T) {
-		filesystems, err := ns.GetFilesystems(c.pool)
+		filesystems, err := nsp.GetFilesystems(c.pool)
 		if err != nil {
 			t.Error(err)
 		} else if !arrayContains(filesystems, c.pool) {
@@ -111,7 +111,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	})
 
 	t.Run("CreateFilesystem", func(t *testing.T) {
-		filesystems, err := ns.GetFilesystems(c.dataset)
+		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 			return
@@ -120,12 +120,12 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		err = ns.CreateFilesystem(c.filesystem)
+		err = nsp.CreateFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
 			return
 		}
-		filesystems, err = ns.GetFilesystems(c.dataset)
+		filesystems, err = nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 			return
@@ -135,7 +135,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	})
 
 	t.Run("CreateNfsShare", func(t *testing.T) {
-		filesystems, err := ns.GetFilesystems(c.dataset)
+		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 			return
@@ -144,7 +144,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		err = ns.CreateNfsShare(c.filesystem)
+		err = nsp.CreateNfsShare(c.filesystem)
 		if err != nil {
 			t.Error(err)
 		}
@@ -164,7 +164,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	})
 
 	t.Run("DeleteNfsShare", func(t *testing.T) {
-		filesystems, err := ns.GetFilesystems(c.dataset)
+		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 			return
@@ -173,14 +173,14 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		err = ns.DeleteNfsShare(c.filesystem)
+		err = nsp.DeleteNfsShare(c.filesystem)
 		if err != nil {
 			t.Error(err)
 		}
 	})
 
 	t.Run("DestroyFilesystem", func(t *testing.T) {
-		filesystems, err := ns.GetFilesystems(c.dataset)
+		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 			return
@@ -189,12 +189,12 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		err = ns.DestroyFilesystem(c.filesystem)
+		err = nsp.DestroyFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
 			return
 		}
-		filesystems, err = ns.GetFilesystems(c.dataset)
+		filesystems, err = nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 		} else if arrayContains(filesystems, c.filesystem) {

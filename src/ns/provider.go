@@ -1,4 +1,4 @@
-package nexentastor
+package ns
 
 import (
 	"fmt"
@@ -14,25 +14,13 @@ const (
 	checkJobStatusTimeout  = 60 * time.Second
 )
 
-// Provider - NexentaStore API provider
+// Provider - NexentaStor API provider
 type Provider struct {
-	address    string
-	username   string
-	password   string
-	restClient rest.ClientInterface
-	log        *logrus.Entry
-}
-
-// ProviderInterface - NexentaStor provider interface
-type ProviderInterface interface {
-	LogIn() error
-	GetPools() ([]string, error)
-	GetFilesystems(string) ([]string, error)
-	CreateFilesystem(string) error
-	DestroyFilesystem(string) error
-	CreateNfsShare(string) error
-	DeleteNfsShare(string) error
-	IsJobDone(string) (bool, error)
+	Address    string
+	Username   string
+	Password   string
+	RestClient rest.ClientInterface
+	Log        *logrus.Entry
 }
 
 func (nsp *Provider) parseNefError(resJSON map[string]interface{}, prefix string) error {
@@ -60,7 +48,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data map[string]interfac
 	map[string]interface{},
 	error,
 ) {
-	statusCode, resJSON, err := nsp.restClient.Send(method, path, data)
+	statusCode, resJSON, err := nsp.RestClient.Send(method, path, data)
 	if err != nil {
 		return resJSON, err
 	}
@@ -68,7 +56,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data map[string]interfac
 	// log in again if user is not logged in
 	if statusCode == 401 && resJSON["code"] == "EAUTH" {
 		// do login call if used is not authorized in api
-		nsp.log.Infof("Log in as '%v'...", nsp.username)
+		nsp.Log.Infof("Log in as '%v'...", nsp.Username)
 
 		err = nsp.LogIn()
 		if err != nil {
@@ -76,7 +64,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data map[string]interfac
 		}
 
 		// send original request again
-		statusCode, resJSON, err = nsp.restClient.Send(method, path, data)
+		statusCode, resJSON, err = nsp.RestClient.Send(method, path, data)
 		if err != nil {
 			return resJSON, err
 		}
@@ -92,7 +80,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data map[string]interfac
 
 		err = nsp.waitForAsyncJob(strings.TrimPrefix(href, "/jobStatus/"))
 		if err != nil {
-			nsp.log.Error(err)
+			nsp.Log.Error(err)
 		}
 	} else if statusCode >= 300 {
 		restError := nsp.parseNefError(resJSON, "request error")
@@ -135,7 +123,7 @@ func (nsp *Provider) getAsyncJobHref(resJSON map[string]interface{}) (string, er
 
 // waitForAsyncJob - keep asking for job status while it's not completed, return an error if timeout exceeded
 func (nsp *Provider) waitForAsyncJob(jobID string) (err error) {
-	jobLog := nsp.log.WithFields(logrus.Fields{
+	jobLog := nsp.Log.WithFields(logrus.Fields{
 		"job": jobID,
 	})
 
@@ -178,9 +166,9 @@ type ProviderArgs struct {
 }
 
 // NewProvider - create NexentaStor provider instance
-func NewProvider(args ProviderArgs) (nsp ProviderInterface, err error) {
+func NewProvider(args ProviderArgs) (nsp *Provider, err error) {
 	providerLog := args.Log.WithFields(logrus.Fields{
-		"cmp": "NexentaStorAPIProvider",
+		"cmp": "ns-provider",
 		"ns":  fmt.Sprint(args.Address),
 	})
 
@@ -195,11 +183,11 @@ func NewProvider(args ProviderArgs) (nsp ProviderInterface, err error) {
 	}
 
 	nsp = &Provider{
-		address:    args.Address,
-		username:   args.Username,
-		password:   args.Password,
-		restClient: restClient,
-		log:        providerLog,
+		Address:    args.Address,
+		Username:   args.Username,
+		Password:   args.Password,
+		RestClient: restClient,
+		Log:        providerLog,
 	}
 
 	return nsp, nil

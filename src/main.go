@@ -7,7 +7,8 @@ import (
 	"os"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
-	"github.com/Nexenta/nexentastor-csi-driver/src/nexentastor"
+	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
+	"github.com/Nexenta/nexentastor-csi-driver/src/nscluster"
 )
 
 const (
@@ -69,7 +70,7 @@ func main() {
 
 	//TESTS
 
-	ns, err := nexentastor.NewProvider(nexentastor.ProviderArgs{
+	ns1, err := ns.NewProvider(ns.ProviderArgs{
 		Address:  *address,
 		Username: *username,
 		Password: *password,
@@ -78,57 +79,27 @@ func main() {
 	if err != nil {
 		log.Error(err)
 	}
+	log.Info(ns1)
 
-	pools, err := ns.GetPools()
-	if err != nil {
-		if nefErr, ok := err.(*nexentastor.NefError); ok {
-			log.Errorf("NEF ERROR CANNOT GET POOLS: %v", nefErr.Code)
-		} else {
-			log.Errorf("CANNOT GET POOLS: %v %t", err, err)
-		}
-	}
-	log.Infof("pools: %v", pools)
-
-	filesystems, err := ns.GetFilesystems("")
+	ns2, err := ns.NewProvider(ns.ProviderArgs{
+		Address:  "https://10.3.199.253:8443",
+		Username: "admin",
+		Password: "Nexenta@1",
+		Log:      log,
+	})
 	if err != nil {
 		log.Error(err)
 	}
-	log.Infof("filesystems: %v", filesystems)
+	log.Info(ns2)
 
-	filesystemPath := "poolA/lol1"
-	err = ns.CreateFilesystem(filesystemPath)
+	cluster, err := nscluster.NewProvider(nscluster.ProviderArgs{
+		NSProvider1: ns1,
+		NSProvider2: ns2,
+		Log:         log,
+	})
 	if err != nil {
 		log.Error(err)
 	}
+	log.Infof("cluster: %v", cluster)
 
-	filesystems, err = ns.GetFilesystems("")
-	if err != nil {
-		log.Error(err)
-	}
-
-	err = ns.CreateNfsShare(filesystemPath)
-	if err != nil {
-		log.Error(err)
-	} else {
-		log.Infof("SHARED: %v", filesystemPath)
-	}
-
-	err = ns.DeleteNfsShare(filesystemPath)
-	if err != nil {
-		log.Error(err)
-	} else {
-		log.Infof("UNSHARED: %v", filesystemPath)
-	}
-
-	log.Infof("filesystems: %v", filesystems)
-	err = ns.DestroyFilesystem(filesystemPath)
-	if err != nil {
-		log.Error(err)
-	}
-
-	filesystems, err = ns.GetFilesystems("")
-	if err != nil {
-		log.Error(err)
-	}
-	log.Infof("filesystems: %v", filesystems)
 }

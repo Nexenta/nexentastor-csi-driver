@@ -1,4 +1,4 @@
-package nexentastor
+package ns
 
 import (
 	"fmt"
@@ -8,17 +8,17 @@ import (
 // LogIn - log in to NexentaStor API and get auth token
 func (nsp *Provider) LogIn() error {
 	data := make(map[string]interface{})
-	data["username"] = nsp.username
-	data["password"] = nsp.password
+	data["username"] = nsp.Username
+	data["password"] = nsp.Password
 
-	_, resJSON, err := nsp.restClient.Send("POST", "auth/login", data)
+	_, resJSON, err := nsp.RestClient.Send("POST", "auth/login", data)
 	if err != nil {
 		return err
 	}
 
 	if token, ok := resJSON["token"]; ok {
-		nsp.restClient.SetAuthToken(fmt.Sprint(token))
-		nsp.log.Info("Login token has been updated")
+		nsp.RestClient.SetAuthToken(fmt.Sprint(token))
+		nsp.Log.Info("Login token has been updated")
 		return nil
 	}
 
@@ -27,11 +27,11 @@ func (nsp *Provider) LogIn() error {
 	if restError != nil {
 		code := restError.(*NefError).Code
 		if code == "EAUTH" {
-			nsp.log.Errorf(
+			nsp.Log.Errorf(
 				"Login to NexentaStor %v failed (username: '%v'), "+
 					"please make sure to use correct address and password",
-				nsp.address,
-				nsp.username)
+				nsp.Address,
+				nsp.Username)
 		}
 		return restError
 	}
@@ -41,7 +41,7 @@ func (nsp *Provider) LogIn() error {
 
 // GetPools - get NexentaStor pools
 func (nsp *Provider) GetPools() ([]string, error) {
-	uri := nsp.restClient.BuildURI("/storage/pools", map[string]string{
+	uri := nsp.RestClient.BuildURI("/storage/pools", map[string]string{
 		"fields": "poolName,health,status",
 	})
 
@@ -58,7 +58,7 @@ func (nsp *Provider) GetPools() ([]string, error) {
 			pools = append(pools, fmt.Sprint(pool["poolName"]))
 		}
 	} else {
-		nsp.log.Warnf("response doesn't contain 'data' property: %v", resJSON)
+		nsp.Log.Warnf("response doesn't contain 'data' property: %v", resJSON)
 	}
 
 	return pools, nil
@@ -66,7 +66,7 @@ func (nsp *Provider) GetPools() ([]string, error) {
 
 // GetFilesystems - get NexentaStor filesystems
 func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
-	uri := nsp.restClient.BuildURI("/storage/filesystems", map[string]string{
+	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"pool":   pool,
 		"fields": "path",
 	})
@@ -148,11 +148,16 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 	return err
 }
 
+// GetRsfClusters - get SRF cluster from NexentaStor
+func (nsp *Provider) GetRsfClusters() (string, error) {
+	return "", nil
+}
+
 // IsJobDone - check if job is done by jobId
 func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 	uri := fmt.Sprintf("/jobStatus/%v", jobID)
 
-	statusCode, resJSON, err := nsp.restClient.Send("GET", uri, nil)
+	statusCode, resJSON, err := nsp.RestClient.Send("GET", uri, nil)
 	if err != nil { // request failed
 		return false, err
 	} else if statusCode == 200 || statusCode == 201 { // job is completed

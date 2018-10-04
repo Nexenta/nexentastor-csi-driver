@@ -1,6 +1,0 @@
-restIp: https://10.1.1.1:8443,https://10.1.1.2:8443 # NexentaStor REST API endpoint(s)
-username: admin
-password: PaSsWoRd123
-type: nfs                                            # [nfs|iscsi] default mount type
-dataset: poolA/datasetA                              # default parent dataset for creating fs/volumes
-dataIp: 10.1.1.11                                    # default single NexentaStor IP or HA VIP

@@ -12,7 +12,7 @@ LDFLAGS ?= -X github.com/Nexenta/nexentastor-csi-driver/driver.version=${VERSION
 all: build
 
 build:
-	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(DRIVER_NAME) -ldflags "$(LDFLAGS)" ./src
+	env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(DRIVER_NAME) -ldflags "$(LDFLAGS)" ./src
 
 test:
 	go test ./tests/* -v -count 1

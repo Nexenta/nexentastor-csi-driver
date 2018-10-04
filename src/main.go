@@ -69,35 +69,11 @@ func main() {
 
 	//TESTS
 
-	ns1, err := ns.NewProvider(ns.ProviderArgs{
-		Address: *address,
-		//Address:  "https://10.3.199.253:8443",
+	resolver, err := ns.NewResolver(ns.ResolverArgs{
+		Address:  *address,
 		Username: *username,
 		Password: *password,
 		Log:      log,
-	})
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	log.Info(ns1)
-
-	ns2, err := ns.NewProvider(ns.ProviderArgs{
-		Address: "https://10.3.199.253:8443",
-		//Address:  *address,
-		Username: "admin",
-		Password: "Nexenta@1",
-		Log:      log,
-	})
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	log.Info(ns2)
-
-	resolver, err := ns.NewResolver(ns.ResolverArgs{
-		Nodes: []ns.ProviderInterface{ns1, ns2},
-		Log:   log,
 	})
 	if err != nil {
 		log.Error(err)

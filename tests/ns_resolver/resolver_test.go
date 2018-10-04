@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"os"
-	"strings"
-	//"os/exec"
-	//"strings"
 	"testing"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
@@ -35,15 +32,6 @@ var c *config
 var logger *logrus.Entry
 
 func stringArrayContains(array []string, value string) bool {
-	for _, v := range array {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
-
-func nodesArrayContains(array []ns.ProviderInterface, value ns.ProviderInterface) bool {
 	for _, v := range array {
 		if v == value {
 			return true
@@ -85,102 +73,14 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestResolver_NewResolverSingle(t *testing.T) {
-	t.Logf("Using NS: %v", c.address)
-
-	addressArray := strings.Split(fmt.Sprint(c.address), ",")
-
-	nsp1, err := ns.NewProvider(ns.ProviderArgs{
-		Address:  addressArray[0],
-		Username: c.username,
-		Password: c.password,
-		Log:      logger,
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	nodes := []ns.ProviderInterface{nsp1}
-	nsr, err := ns.NewResolver(ns.ResolverArgs{
-		Nodes: nodes,
-		Log:   logger,
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	t.Run("Resolve should return single NS", func(t *testing.T) {
-		ns, err := nsr.Resolve(c.dataset)
-		if err != nil {
-			t.Error(err)
-			return
-		} else if ns != nsp1 {
-			t.Errorf("No NS returned by resolver")
-			return
-		}
-	})
-}
-func TestResolver_NewResolverDuplicatedAddress(t *testing.T) {
-	t.Logf("Using NS: %v", c.address)
-
-	addressArray := strings.Split(fmt.Sprint(c.address), ",")
-
-	nsp1, err := ns.NewProvider(ns.ProviderArgs{
-		Address:  addressArray[0],
-		Username: c.username,
-		Password: c.password,
-		Log:      logger,
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	t.Run("Resolver should detect same duplicated NS in config", func(t *testing.T) {
-		nodes := []ns.ProviderInterface{nsp1, nsp1}
-		_, err := ns.NewResolver(ns.ResolverArgs{
-			Nodes: nodes,
-			Log:   logger,
-		})
-		if err == nil {
-			t.Error("Resolver doesn't detect duplicated NS")
-			return
-		}
-	})
-}
 func TestResolver_NewResolverMulti(t *testing.T) {
 	t.Logf("Using NS: %v", c.address)
 
-	addressArray := strings.Split(fmt.Sprint(c.address), ",")
-
-	nsp1, err := ns.NewProvider(ns.ProviderArgs{
-		Address:  addressArray[0],
-		Username: c.username,
-		Password: c.password,
-		Log:      logger,
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	nsp2, err := ns.NewProvider(ns.ProviderArgs{
-		Address:  addressArray[1],
-		Username: c.username,
-		Password: c.password,
-		Log:      logger,
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	nodes := []ns.ProviderInterface{nsp1, nsp2}
 	nsr, err := ns.NewResolver(ns.ResolverArgs{
-		Nodes: nodes,
-		Log:   logger,
+		Address:  c.address,
+		Username: c.username,
+		Password: c.password,
+		Log:      logger,
 	})
 	if err != nil {
 		t.Error(err)
@@ -188,32 +88,29 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 	}
 
 	t.Run("Resolve should return NS with requested dataset", func(t *testing.T) {
-		ns, err := nsr.Resolve(c.dataset)
+		nsProvider, err := nsr.Resolve(c.dataset)
 		if err != nil {
 			t.Error(err)
 			return
-		} else if ns == nil {
+		} else if nsProvider == nil {
 			t.Error("No NS returned by resolver")
-			return
-		} else if !nodesArrayContains(nodes, ns) {
-			t.Errorf("Nodes (%v) don't contain resolved NS: %v", nodes, c.address)
 			return
 		}
 
-		filesystems, err := ns.GetFilesystems(c.pool)
+		filesystems, err := nsProvider.GetFilesystems(c.pool)
 		if err != nil {
 			t.Errorf("NS Error: %v", err)
 			return
 		} else if !stringArrayContains(filesystems, c.dataset) {
-			t.Errorf("Returned NS (%v) doesn't contain dataset: %v", ns, c.dataset)
+			t.Errorf("Returned NS (%v) doesn't contain dataset: %v", nsProvider, c.dataset)
 			return
 		}
 	})
 
 	t.Run("Resolve should return error if dataset not exists", func(t *testing.T) {
-		ns, err := nsr.Resolve("not/exists")
+		nsProvider, err := nsr.Resolve("not/exists")
 		if err == nil {
-			t.Errorf("Resolver return NS for non-existing datastore: %v", ns)
+			t.Errorf("Resolver return NS for non-existing datastore: %v", nsProvider)
 			return
 		}
 	})

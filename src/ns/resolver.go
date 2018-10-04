@@ -12,15 +12,6 @@ type Resolver struct {
 	Log   *logrus.Entry
 }
 
-func arrayContains(array []string, value string) bool {
-	for _, v := range array {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
-
 // Resolve - get one NS from the pool of NSs by provided pool or dataset path
 func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastError error) {
 	if path == "" {
@@ -49,33 +40,44 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 	return nil, fmt.Errorf(message)
 }
 
-// ResolverArgs - params to create resolver instanse
+// ResolverArgs - params to create resolver instance from config
 type ResolverArgs struct {
-	Nodes []ProviderInterface
-	Log   *logrus.Entry
+	Address  string
+	Username string
+	Password string
+	Log      *logrus.Entry
 }
 
-// NewResolver - create NexentaStor resolver instance
+// NewResolver - create NexentaStor resolver instance based on confiuration
 func NewResolver(args ResolverArgs) (nsr *Resolver, err error) {
-	var clusterAddressesArray []string
-	for _, ns := range args.Nodes {
-		address := fmt.Sprint(ns)
-		if arrayContains(clusterAddressesArray, address) {
-			return nil, fmt.Errorf("Duplicated NexentaStor address: %v", address)
-		}
-		clusterAddressesArray = append(clusterAddressesArray, address)
+	if len(args.Address) == 0 {
+		return nil, fmt.Errorf("NexentaStor address not specified: %v", args.Address)
 	}
-	clusterAddresses := strings.Join(clusterAddressesArray, ",")
 
 	resolverLog := args.Log.WithFields(logrus.Fields{
 		"cmp": "NSResolver",
-		"ns":  clusterAddresses,
+		"ns":  args.Address,
 	})
 
-	resolverLog.Debugf("Create for %v", clusterAddresses)
+	resolverLog.Debugf("Create for %v", args.Address)
+
+	var nodes []ProviderInterface
+	addressList := strings.Split(args.Address, ",")
+	for _, address := range addressList {
+		nsProvider, err := NewProvider(ProviderArgs{
+			Address:  address,
+			Username: args.Username,
+			Password: args.Password,
+			Log:      resolverLog,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Cannot create provider for %v NexentaStor: %v", address, err)
+		}
+		nodes = append(nodes, nsProvider)
+	}
 
 	nsr = &Resolver{
-		Nodes: args.Nodes,
+		Nodes: nodes,
 		Log:   resolverLog,
 	}
 

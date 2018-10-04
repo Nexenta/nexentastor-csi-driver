@@ -58,13 +58,13 @@ func (nsp *Provider) GetPools() ([]string, error) {
 			pools = append(pools, fmt.Sprint(pool["poolName"]))
 		}
 	} else {
-		nsp.Log.Warnf("response doesn't contain 'data' property: %v", resJSON)
+		return nil, fmt.Errorf("/storage/pools response doesn't contain 'data' property: %v", resJSON)
 	}
 
 	return pools, nil
 }
 
-// GetFilesystems - get NexentaStor filesystems
+// GetFilesystems - get all NexentaStor filesystems on pool
 func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"pool":   pool,
@@ -83,9 +83,36 @@ func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
 			filesystem := val.(map[string]interface{})
 			filesystems = append(filesystems, fmt.Sprint(filesystem["path"]))
 		}
+	} else {
+		return nil, fmt.Errorf("/storage/filesystems response doesn't contain 'data' property: %v", resJSON)
 	}
 
 	return filesystems, nil
+}
+
+// GetFilesystem - get NexentaStor filesystem by its path
+func (nsp *Provider) GetFilesystem(path string) (string, error) {
+	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
+		"path":   path,
+		"fields": "path",
+	})
+
+	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	if err != nil {
+		return "", err
+	}
+
+	var filesystem string
+	if data, ok := resJSON["data"]; ok {
+		if dataArray, ok := data.([]interface{}); ok && len(dataArray) != 0 {
+			filesystemData := dataArray[0].(map[string]interface{})
+			filesystem = fmt.Sprint(filesystemData["path"])
+		}
+	} else {
+		return "", fmt.Errorf("/storage/filesystems response doesn't contain 'data' property: %v", resJSON)
+	}
+
+	return filesystem, nil
 }
 
 // CreateFilesystem - create filesystem by path
@@ -167,12 +194,12 @@ func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 	}
 
 	// job is failed
-	restError := nsp.parseNefError(resJSON, "Job request error")
+	restError := nsp.parseNefError(resJSON, "Job was finished with error")
 	if restError != nil {
 		err = restError
 	} else {
 		err = fmt.Errorf(
-			"job request returned %v code, but response body doesn't contain explanation: %v",
+			"Job request returned %v code, but response body doesn't contain explanation: %v",
 			statusCode,
 			resJSON)
 	}

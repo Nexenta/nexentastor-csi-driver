@@ -28,10 +28,10 @@ type config struct {
 	pool       string
 	dataset    string
 	filesystem string
-	log        bool
 }
 
 var c *config
+var logger *logrus.Entry
 
 func arrayContains(array []string, value string) bool {
 	for _, v := range array {
@@ -55,6 +55,14 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
+	logger = logrus.New().WithFields(logrus.Fields{
+		"ns": *address,
+	})
+	logger.Logger.SetLevel(logrus.PanicLevel)
+	if *log {
+		logger.Logger.SetLevel(logrus.DebugLevel)
+	}
+
 	c = &config{
 		address:    *address,
 		username:   *username,
@@ -62,7 +70,6 @@ func TestMain(m *testing.M) {
 		pool:       *pool,
 		dataset:    fmt.Sprintf("%v/%v", *pool, *dataset),
 		filesystem: fmt.Sprintf("%v/%v/%v", *pool, *dataset, *filesystem),
-		log:        *log,
 	}
 
 	os.Exit(m.Run())
@@ -71,20 +78,11 @@ func TestMain(m *testing.M) {
 func TestProvider_NewProvider(t *testing.T) {
 	t.Logf("Using NS: %v", c.address)
 
-	log := logrus.New().WithFields(logrus.Fields{
-		"ns": c.address,
-	})
-
-	log.Logger.SetLevel(logrus.PanicLevel)
-	if c.log {
-		log.Logger.SetLevel(logrus.DebugLevel)
-	}
-
 	nsp, err := ns.NewProvider(ns.ProviderArgs{
 		Address:  c.address,
 		Username: c.username,
 		Password: c.password,
-		Log:      log,
+		Log:      logger,
 	})
 	if err != nil {
 		t.Error(err)
@@ -107,6 +105,25 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Errorf("No %v pool in result", c.dataset)
 		} else if !arrayContains(filesystems, c.dataset) {
 			t.Errorf("Dataset %v doesn't exist", c.dataset)
+		}
+	})
+
+	t.Run("GetFilesystem_exists", func(t *testing.T) {
+		filesystem, err := nsp.GetFilesystem(c.dataset)
+		if err != nil {
+			t.Error(err)
+		} else if filesystem != c.dataset {
+			t.Errorf("No %v filesystem in the result", c.dataset)
+		}
+	})
+
+	t.Run("GetFilesystem_not_exists", func(t *testing.T) {
+		nonExistingName := "NON_EXISTING"
+		filesystem, err := nsp.GetFilesystem(nonExistingName)
+		if err != nil {
+			t.Error(err)
+		} else if filesystem != "" {
+			t.Errorf("Filesystem %v should not exist, but found in the result: %v", nonExistingName, filesystem)
 		}
 	})
 
@@ -159,7 +176,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if !strings.Contains(fmt.Sprintf("%s", out), c.filesystem) {
-			t.Errorf("connot find '%v' nfs in the 'showmount' output: \n---\n%s\n---\n", c.filesystem, out)
+			t.Errorf("cannot find '%v' nfs in the 'showmount' output: \n---\n%s\n---\n", c.filesystem, out)
 		}
 	})
 

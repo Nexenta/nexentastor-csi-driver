@@ -8,7 +8,6 @@ import (
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
-	"github.com/Nexenta/nexentastor-csi-driver/src/nscluster"
 )
 
 const (
@@ -71,35 +70,45 @@ func main() {
 	//TESTS
 
 	ns1, err := ns.NewProvider(ns.ProviderArgs{
-		Address:  *address,
+		Address: *address,
+		//Address:  "https://10.3.199.253:8443",
 		Username: *username,
 		Password: *password,
 		Log:      log,
 	})
 	if err != nil {
 		log.Error(err)
+		return
 	}
 	log.Info(ns1)
 
 	ns2, err := ns.NewProvider(ns.ProviderArgs{
-		Address:  "https://10.3.199.253:8443",
+		Address: "https://10.3.199.253:8443",
+		//Address:  *address,
 		Username: "admin",
 		Password: "Nexenta@1",
 		Log:      log,
 	})
 	if err != nil {
 		log.Error(err)
+		return
 	}
 	log.Info(ns2)
 
-	cluster, err := nscluster.NewProvider(nscluster.ProviderArgs{
-		NSProvider1: ns1,
-		NSProvider2: ns2,
-		Log:         log,
+	resolver, err := ns.NewResolver(ns.ResolverArgs{
+		Nodes: []ns.ProviderInterface{ns1, ns2},
+		Log:   log,
 	})
 	if err != nil {
 		log.Error(err)
+		return
 	}
-	log.Infof("cluster: %v", cluster)
 
+	resolvedNS, err := resolver.Resolve("csiDriverPool/csiDriverDataset")
+	if err != nil {
+		log.Errorf("Resolver Error: %v", err)
+		return
+	}
+
+	log.Warnf("DONE %v", resolvedNS)
 }

@@ -14,6 +14,19 @@ const (
 	checkJobStatusTimeout  = 60 * time.Second
 )
 
+// ProviderInterface - NexentaStor provider interface
+type ProviderInterface interface {
+	LogIn() error
+	GetPools() ([]string, error)
+	GetFilesystem(string) (string, error)
+	GetFilesystems(string) ([]string, error)
+	CreateFilesystem(string) error
+	DestroyFilesystem(string) error
+	CreateNfsShare(string) error
+	DeleteNfsShare(string) error
+	IsJobDone(string) (bool, error)
+}
+
 // Provider - NexentaStor API provider
 type Provider struct {
 	Address    string
@@ -21,6 +34,10 @@ type Provider struct {
 	Password   string
 	RestClient rest.ClientInterface
 	Log        *logrus.Entry
+}
+
+func (nsp *Provider) String() string {
+	return nsp.Address
 }
 
 func (nsp *Provider) parseNefError(resJSON map[string]interface{}, prefix string) error {
@@ -80,7 +97,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data map[string]interfac
 
 		err = nsp.waitForAsyncJob(strings.TrimPrefix(href, "/jobStatus/"))
 		if err != nil {
-			nsp.Log.Error(err)
+			nsp.Log.Debug(err)
 		}
 	} else if statusCode >= 300 {
 		restError := nsp.parseNefError(resJSON, "request error")
@@ -166,9 +183,9 @@ type ProviderArgs struct {
 }
 
 // NewProvider - create NexentaStor provider instance
-func NewProvider(args ProviderArgs) (nsp *Provider, err error) {
+func NewProvider(args ProviderArgs) (nsp ProviderInterface, err error) {
 	providerLog := args.Log.WithFields(logrus.Fields{
-		"cmp": "ns-provider",
+		"cmp": "NSProvider",
 		"ns":  fmt.Sprint(args.Address),
 	})
 

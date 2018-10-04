@@ -2,18 +2,20 @@
 
 NexentaStor CSI driver for Kubernetes.
 
-## Build
+## Development
+
+### Build
 
 ```bash
 make
 ```
 
-## Run
+### Run
 ```bash
 make && ./bin/nexentastor-csi-plugin --rest-ip="https://10.3.199.253:8443,https://10.3.199.252:8443" --username="admin" --password="Nexenta@1"
 ```
 
-## Tests
+### Tests
 
 ```bash
 # run all tests

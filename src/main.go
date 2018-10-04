@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
-	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
 const (
@@ -72,22 +71,6 @@ func main() {
 
 	//TESTS
 
-	resolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  *address,
-		Username: *username,
-		Password: *password,
-		Log:      log,
-	})
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	resolvedNS, err := resolver.Resolve("csiDriverPool/csiDriverDataset")
-	if err != nil {
-		log.Errorf("Resolver Error: %v", err)
-		return
-	}
-
-	log.Warnf("DONE %v", resolvedNS)
+	d := driver.NewDriver(*nodeID, *endpoint, log)
+	d.Run()
 }

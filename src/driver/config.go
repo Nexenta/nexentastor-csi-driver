@@ -52,12 +52,9 @@ func ReadFromFile(path string) (*Config, error) {
 	}
 
 	var config Config
-
 	if err := yaml.Unmarshal(content, &config); err != nil {
 		return nil, fmt.Errorf("Cannot parse yaml in '%v' config file: %v", path, err)
-	}
-
-	if err := config.validate(); err != nil {
+	} else if err := config.validate(); err != nil {
 		return nil, err
 	}
 

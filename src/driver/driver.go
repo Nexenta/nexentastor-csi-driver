@@ -4,30 +4,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const DriverName = "nexentastor-csi-plugin"
+// Name - driver name
+var Name = "nexentastor-csi-plugin"
 
-var (
-	version string
-	commit  string
-)
+// Version - driver version, to set version set flags:
+// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/src/driver.Version=0.0.1"
+var Version string
 
-// GetVersion - to set version set flags:
-// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/driver/driver.version=0.0.1"
-func GetVersion() string {
-	if version == "" {
-		return "-"
-	}
-	return version
-}
-
-// GetCommit - to set commit set flags:
-// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/driver/driver.commit=asdf"
-func GetCommit() string {
-	if commit == "" {
-		return "-"
-	}
-	return commit
-}
+// Commit - driver last commit, to set commit set flags:
+// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/src/driver.Commit=asdf"
+var Commit string
 
 // Driver - K8s CSI driver for NexentaStor
 type Driver struct {
@@ -40,16 +26,23 @@ func (d *Driver) Run() {
 	d.Log.Warn("Run")
 }
 
+// Args - params to crete new driver
+type Args struct {
+	NodeID   string
+	Endpoint string
+	Log      *logrus.Entry
+}
+
 // NewDriver - new driver instance
-func NewDriver(nodeID string, endpoint string, log *logrus.Entry) *Driver {
-	driverLog := log.WithFields(logrus.Fields{
+func NewDriver(args Args) *Driver {
+	driverLog := args.Log.WithFields(logrus.Fields{
 		"cmp": "Driver",
 	})
 
-	driverLog.Infof("New '%v' driver created", DriverName)
+	driverLog.Infof("New %v@%v-%v driver created", Name, Version, Commit)
 
 	d := &Driver{
-		Endpoint: endpoint,
+		Endpoint: args.Endpoint,
 		Log:      driverLog,
 	}
 

@@ -5,7 +5,7 @@ REGISTRY=nexenta
 IMAGE_TAG=latest
 VERSION ?= $(shell git rev-parse --abbrev-ref HEAD)
 COMMIT ?= $(shell git rev-parse HEAD)
-LDFLAGS ?= -X github.com/Nexenta/nexentastor-csi-driver/driver.version=${VERSION} -X github.com/Nexenta/nexentastor-csi-driver/driver.commit=${COMMIT}
+LDFLAGS ?= -X github.com/Nexenta/nexentastor-csi-driver/src/driver.Version=${VERSION} -X github.com/Nexenta/nexentastor-csi-driver/src/driver.Commit=${COMMIT}
 
 .PHONY: all test build container-build container-push clean
 

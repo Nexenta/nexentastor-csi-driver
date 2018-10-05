@@ -28,7 +28,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Printf("Version: %s, commit: %s\n", driver.GetVersion(), driver.GetCommit())
+		fmt.Printf("%v@%v-%v\n", driver.Name, driver.Version, driver.Commit)
 		os.Exit(0)
 	}
 
@@ -69,8 +69,10 @@ func main() {
 	log.Infof("- Default dataset: '%v'\n", *defaultDataset)
 	log.Infof("- Default data IP: '%v'\n", *defaultDataIP)
 
-	//TESTS
-
-	d := driver.NewDriver(*nodeID, *endpoint, log)
+	d := driver.NewDriver(driver.Args{
+		NodeID:   *nodeID,
+		Endpoint: *endpoint,
+		Log:      log,
+	})
 	d.Run()
 }

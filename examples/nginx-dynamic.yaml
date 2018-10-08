@@ -1,0 +1,43 @@
+# Nginx pod with storage provided by NexentaStor CSI driver
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-plugin-cs-nginx-dynamic
+provisioner: nexentastor-csi-plugin
+parameters:
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-plugin-pvc-nginx-dynamic
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: nexentastor-csi-plugin-cs-nginx-dynamic
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    imagePullPolicy: IfNotPresent
+    name: nginx
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    volumeMounts:
+      - mountPath: /var/lib/www/html
+        name: nexentastor-csi-plugin-data
+  volumes:
+  - name: nexentastor-csi-plugin-data
+    persistentVolumeClaim:
+      claimName: nexentastor-csi-plugin-pvc-nginx-dynamic
+      readOnly: false

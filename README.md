@@ -2,6 +2,23 @@
 
 NexentaStor CSI driver for Kubernetes.
 
+## Installation
+
+1. Clone driver repository
+    ```bash
+    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
+    cd nexentastor-csi-driver
+    ```
+2. Create Kubernetes secret
+    ```bash
+    # edit `./kubernetes/nexentastor-csi-driver-config.yaml` file
+    kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/secret/nexentastor-csi-driver-config.yaml
+    ```
+3. Register plugin to Kubernetes
+    ```bash
+    kubectl apply -f ./kubernetes
+    ```
+
 ## Development
 
 ### Build

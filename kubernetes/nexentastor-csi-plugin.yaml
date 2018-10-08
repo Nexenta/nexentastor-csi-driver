@@ -1,0 +1,72 @@
+# Driver-registrar and CSI driver node plugin API objects
+# Necessary to run nexentastor-csi-plugin
+
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: nexentastor-csi-plugin
+spec:
+  selector:
+    matchLabels:
+      app: nexentastor-csi-plugin
+  template:
+    metadata:
+      labels:
+        app: nexentastor-csi-plugin
+    spec:
+      serviceAccount: nexentastor-csi-plugin
+      hostNetwork: true
+      containers:
+        - name: driver-registrar
+          image: quay.io/k8scsi/driver-registrar:v0.4.0
+          args:
+            - '--v=5'
+            - '--csi-address=$(ADDRESS)'
+          env:
+            - name: ADDRESS
+              value: /plugin/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /plugin
+        - name: driver
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ['SYS_ADMIN']
+            allowPrivilegeEscalation: true
+          image: 10.3.199.92:5000/nexentastor-csi-plugin:latest
+          args:
+            - '--nodeid=$(NODE_ID)'
+            - '--endpoint=$(CSI_ENDPOINT)'
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://plugin/csi.sock
+          imagePullPolicy: 'Always'
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /plugin
+            - name: secret
+              mountPath: /config
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: 'Bidirectional'
+      volumes:
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/nexentastor-csi-plugin
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
+        - name: secret
+          secret:
+            secretName: nexentastor-csi-driver-config

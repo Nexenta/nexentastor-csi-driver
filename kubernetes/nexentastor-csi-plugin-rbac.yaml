@@ -1,0 +1,38 @@
+# API objects to create RBAC roles for CSI node plugin
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nexentastor-csi-plugin
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-plugin
+rules:
+  - apiGroups: ['']
+    resources: ['persistentvolumes']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['services']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['nodes']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['storage.k8s.io']
+    resources: ['volumeattachments']
+    verbs: ['get', 'list', 'watch', 'update']
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-plugin
+subjects:
+  - kind: ServiceAccount
+    name: nexentastor-csi-plugin
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: nexentastor-csi-plugin
+  apiGroup: rbac.authorization.k8s.io

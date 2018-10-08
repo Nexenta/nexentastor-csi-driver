@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"os"
 
+	"github.com/Nexenta/nexentastor-csi-driver/src/config"
 	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
 )
 
@@ -41,16 +42,16 @@ func main() {
 	log.Infof("- Node ID:         '%v'", *nodeID)
 
 	// initial config file validation
-	config, err := driver.GetConfig()
+	cfg, err := config.Get()
 	if err != nil {
 		log.Fatalf("Cannot use config file: %v", err)
 	}
 
 	log.Info("Config file options:")
-	log.Infof("- NexentaStor address: %v", config.Address)
-	log.Infof("- NexentaStor username: %v", config.Username)
-	log.Infof("- Default dataset: %v", config.DefaultDataset)
-	log.Infof("- Default data IP: %v", config.DefaultDataIP)
+	log.Infof("- NexentaStor address: %v", cfg.Address)
+	log.Infof("- NexentaStor username: %v", cfg.Username)
+	log.Infof("- Default dataset: %v", cfg.DefaultDataset)
+	log.Infof("- Default data IP: %v", cfg.DefaultDataIP)
 
 	d := driver.NewDriver(driver.Args{
 		NodeID:   *nodeID,

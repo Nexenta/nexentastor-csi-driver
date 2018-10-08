@@ -1,4 +1,4 @@
-package driver
+package config
 
 import (
 	"fmt"
@@ -18,6 +18,7 @@ type Config struct {
 	DefaultDataIP  string `yaml:"defaultDataIp,omitempty"`
 }
 
+// Validate - validate current config
 func (c *Config) Validate() error {
 	var errors []string
 
@@ -39,9 +40,9 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// GetConfig - read and validate config from default config file
-func GetConfig() (*Config, error) {
-	config, err := ReadConfigFromFile(defaultConfigFile)
+// Get - read and validate config from default config file
+func Get() (*Config, error) {
+	config, err := ReadFromFile(defaultConfigFile)
 	if err != nil {
 		return nil, err
 	} else if err := config.Validate(); err != nil {
@@ -50,8 +51,8 @@ func GetConfig() (*Config, error) {
 	return config, nil
 }
 
-// ReadConfigFromFile - read specific config file
-func ReadConfigFromFile(path string) (*Config, error) {
+// ReadFromFile - read specific config file
+func ReadFromFile(path string) (*Config, error) {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot read '%v' config file: %v", path, err)

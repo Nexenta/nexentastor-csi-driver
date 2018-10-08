@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
+	"github.com/Nexenta/nexentastor-csi-driver/src/config"
 )
 
 var testConfigParams = map[string]string{
@@ -20,10 +20,10 @@ func testParam(t *testing.T, name, expected, given string) {
 	}
 }
 
-func TestDriver_Config_Full(t *testing.T) {
+func TestConfig_Full(t *testing.T) {
 	path := "./_fixtures/test-config-full.yaml"
 
-	c, err := driver.ReadConfigFromFile(path)
+	c, err := config.ReadFromFile(path)
 	if err != nil {
 		t.Errorf("cannot read config file '%v': %v", path, err)
 		return
@@ -36,10 +36,10 @@ func TestDriver_Config_Full(t *testing.T) {
 	testParam(t, "DefaultDataIp", testConfigParams["DefaultDataIp"], c.DefaultDataIP)
 }
 
-func TestDriver_Config_Short(t *testing.T) {
+func TestConfig_Short(t *testing.T) {
 	path := "./_fixtures/test-config-short.yaml"
 
-	c, err := driver.ReadConfigFromFile(path)
+	c, err := config.ReadFromFile(path)
 	if err != nil {
 		t.Errorf("cannot read config file '%v': %v", path, err)
 		return
@@ -52,11 +52,11 @@ func TestDriver_Config_Short(t *testing.T) {
 	testParam(t, "DefaultDataIp", "", c.DefaultDataIP)
 }
 
-func TestDriver_Config_Not_Valid(t *testing.T) {
+func TestConfig_Not_Valid(t *testing.T) {
 
 	t.Run("should return an error if config file if not valid", func(t *testing.T) {
 		path := "./_fixtures/test-config-not-valid.yaml"
-		c, err := driver.ReadConfigFromFile(path)
+		c, err := config.ReadFromFile(path)
 		if err == nil {
 			t.Errorf("not valid '%v' config file should return an error, but got this: %v", path, c)
 			return
@@ -65,7 +65,7 @@ func TestDriver_Config_Not_Valid(t *testing.T) {
 
 	t.Run("should return nan error if file not exists", func(t *testing.T) {
 		path := "./_fixtures/not-existing-test-config.yaml"
-		c, err := driver.ReadConfigFromFile(path)
+		c, err := config.ReadFromFile(path)
 		if err == nil {
 			t.Errorf("not existing config file '%v' returns config: %v", path, c)
 			return

@@ -18,7 +18,7 @@ type Config struct {
 	DefaultDataIP  string `yaml:"defaultDataIp,omitempty"`
 }
 
-func (c *Config) validate() error {
+func (c *Config) Validate() error {
 	var errors []string
 
 	//TODO validate address schema too
@@ -39,13 +39,19 @@ func (c *Config) validate() error {
 	return nil
 }
 
-// Read - read config from default config file
-func Read() (*Config, error) {
-	return ReadFromFile(defaultConfigFile)
+// GetConfig - read and validate config from default config file
+func GetConfig() (*Config, error) {
+	config, err := ReadConfigFromFile(defaultConfigFile)
+	if err != nil {
+		return nil, err
+	} else if err := config.Validate(); err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
-// ReadFromFile - read specific config file
-func ReadFromFile(path string) (*Config, error) {
+// ReadConfigFromFile - read specific config file
+func ReadConfigFromFile(path string) (*Config, error) {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot read '%v' config file: %v", path, err)
@@ -54,7 +60,7 @@ func ReadFromFile(path string) (*Config, error) {
 	var config Config
 	if err := yaml.Unmarshal(content, &config); err != nil {
 		return nil, fmt.Errorf("Cannot parse yaml in '%v' config file: %v", path, err)
-	} else if err := config.validate(); err != nil {
+	} else if err := config.Validate(); err != nil {
 		return nil, err
 	}
 

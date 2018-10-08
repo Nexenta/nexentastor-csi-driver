@@ -17,12 +17,7 @@ func main() {
 	var (
 		nodeID   = flag.String("nodeid", "", "Kubernetes node ID")
 		endpoint = flag.String("endpoint", defaultEndpoint, "CSI endpoint")
-		// address        = flag.String("rest-ip", "", "NexentaStor API address(s) [schema://host:port,...]")
-		// username       = flag.String("username", "", "NexentaStor API username")
-		// password       = flag.String("password", "", "NexentaStor API password")
-		// defaultDataset = flag.String("default-dataset", "", "default dataset to create filesystems on")
-		// defaultDataIP  = flag.String("default-data-ip", "", "default data IP for sharing filesystems")
-		version = flag.Bool("version", false, "Print driver version")
+		version  = flag.Bool("version", false, "Print driver version")
 	)
 
 	flag.Parse()
@@ -31,27 +26,6 @@ func main() {
 		fmt.Printf("%v@%v-%v (%v)\n", driver.Name, driver.Version, driver.Commit, driver.DateTime)
 		os.Exit(0)
 	}
-
-	// if len(*address) == 0 {
-	// 	fmt.Print(
-	// 		"NexentaStor REST API address is not set, use 'restIp' option in the secret",
-	// 	)
-	// 	os.Exit(1)
-	// }
-
-	// if len(*username) == 0 {
-	// 	fmt.Print(
-	// 		"NexentaStor REST API username is not set, use 'username' option in the secret",
-	// 	)
-	// 	os.Exit(1)
-	// }
-
-	// if len(*password) == 0 {
-	// 	fmt.Print(
-	// 		"NexentaStor REST API password is not set, use 'password' option in the secret",
-	// 	)
-	// 	os.Exit(1)
-	// }
 
 	// init logger
 	log := logrus.New().WithFields(logrus.Fields{
@@ -62,12 +36,21 @@ func main() {
 	// logger level (set from config?)
 	log.Logger.SetLevel(logrus.DebugLevel)
 
-	log.Info("Start driver with:")
-	log.Infof("- CSI endpoint:    '%v'\n", *endpoint)
-	log.Infof("- Node ID:         '%v'\n", *nodeID)
-	// log.Infof("- NS address(s):   '%v'\n", *address)
-	// log.Infof("- Default dataset: '%v'\n", *defaultDataset)
-	// log.Infof("- Default data IP: '%v'\n", *defaultDataIP)
+	log.Info("Start driver with CLI options:")
+	log.Infof("- CSI endpoint:    '%v'", *endpoint)
+	log.Infof("- Node ID:         '%v'", *nodeID)
+
+	// initial config file validation
+	config, err := driver.GetConfig()
+	if err != nil {
+		log.Fatalf("Cannot use config file: %v", err)
+	}
+
+	log.Info("Config file options:")
+	log.Infof("- NexentaStor address: %v", config.Address)
+	log.Infof("- NexentaStor username: %v", config.Username)
+	log.Infof("- Default dataset: %v", config.DefaultDataset)
+	log.Infof("- Default data IP: %v", config.DefaultDataIP)
 
 	d := driver.NewDriver(driver.Args{
 		NodeID:   *nodeID,

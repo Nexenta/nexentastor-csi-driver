@@ -34,12 +34,17 @@ func (cs *ControllerServer) resolveNS(cfg *config.Config, datasetPath string) (n
 		Log:      cs.Log,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %v", err)
+		return nil, status.Errorf(codes.Internal, "Cannot create NexentaStor resolver: %v", err)
 	}
 
 	nsProvider, err := nsResolver.Resolve(datasetPath)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot resolve NexentaStor: %v", err)
+		return nil, status.Errorf(
+			codes.FailedPrecondition,
+			"Cannot resolve '%v' on any NexentaStor(s): %v",
+			datasetPath,
+			err,
+		)
 	}
 
 	return nsProvider, nil
@@ -54,7 +59,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	cfg, err := config.Get()
 	if err != nil {
-		return nil, fmt.Errorf("Cannot use config file: %v", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
 
 	reqParams := req.GetParameters()
@@ -106,13 +111,15 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	} else if ns.IsAlreadyExistNefError(err) {
 		existingVolume, err := nsProvider.GetFilesystem(volumePath)
 		if err != nil {
-			return nil, fmt.Errorf(
+			return nil, status.Errorf(
+				codes.AlreadyExists,
 				"Volume '%v' already exists, but filesystem properties request failed: %v",
 				volumePath,
 				err,
 			)
 		} else if existingVolume.QuotaSize != capacityBytes {
-			return nil, fmt.Errorf(
+			return nil, status.Errorf(
+				codes.AlreadyExists,
 				"Volume '%v' already exists, but with a different size: requested=%v, existing=%v",
 				volumePath,
 				capacityBytes,

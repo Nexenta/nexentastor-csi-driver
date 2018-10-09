@@ -26,3 +26,8 @@ func GetNefErrorCode(err error) string {
 func IsAlreadyExistNefError(err error) bool {
 	return GetNefErrorCode(err) == "EEXIST"
 }
+
+// IsNotExistNefError - treats an error as NefError and returns true if its code is "ENOENT"
+func IsNotExistNefError(err error) bool {
+	return GetNefErrorCode(err) == "ENOENT"
+}

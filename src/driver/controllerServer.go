@@ -107,13 +107,14 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	err = nsProvider.CreateFilesystem(volumePath, nefParams)
 	if err == nil {
+		cs.Log.Infof("Volume '%v' has been created", volumePath)
 		return res, nil
 	} else if ns.IsAlreadyExistNefError(err) {
 		existingVolume, err := nsProvider.GetFilesystem(volumePath)
 		if err != nil {
 			return nil, status.Errorf(
 				codes.AlreadyExists,
-				"Volume '%v' already exists, but filesystem properties request failed: %v",
+				"Volume '%v' already exists, but volume properties request failed: %v",
 				volumePath,
 				err,
 			)
@@ -139,7 +140,34 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	error,
 ) {
 	cs.Log.Infof("DeleteVolume(): %+v", req)
-	return nil, status.Error(codes.Unimplemented, "")
+
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
+	}
+
+	volumePath := req.GetVolumeId()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
+	}
+
+	nsPorvider, err := cs.resolveNS(cfg, volumePath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = nsPorvider.DestroyFilesystem(volumePath)
+	if err != nil && !ns.IsNotExistNefError(err) {
+		return nil, status.Errorf(
+			codes.Internal,
+			"Cannot delete '%v' volume: %v",
+			volumePath,
+			err,
+		)
+	}
+
+	cs.Log.Infof("Volume '%v' has been deleted", volumePath)
+	return &csi.DeleteVolumeResponse{}, nil
 }
 
 // ControllerPublishVolume - publish volume

@@ -87,7 +87,7 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 		return
 	}
 
-	t.Run("Resolve should return NS with requested dataset", func(t *testing.T) {
+	t.Run("Resolve() should return NS with requested dataset", func(t *testing.T) {
 		nsProvider, err := nsr.Resolve(c.dataset)
 		if err != nil {
 			t.Error(err)
@@ -107,7 +107,7 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 		}
 	})
 
-	t.Run("Resolve should return error if dataset not exists", func(t *testing.T) {
+	t.Run("Resolve() should return error if dataset not exists", func(t *testing.T) {
 		nsProvider, err := nsr.Resolve("not/exists")
 		if err == nil {
 			t.Errorf("Resolver return NS for non-existing datastore: %v", nsProvider)

@@ -22,7 +22,7 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 		filesystem, err := ns.GetFilesystem(path)
 		if err != nil {
 			lastError = err
-		} else if filesystem != "" {
+		} else if filesystem != nil {
 			resolvedNS = ns
 			break
 		}

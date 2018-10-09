@@ -5,6 +5,12 @@ import (
 	"net/url"
 )
 
+// Filesystem - NexentaStor filesystem
+type Filesystem struct {
+	Path      string
+	QuotaSize int64
+}
+
 // LogIn - log in to NexentaStor API and get auth token
 func (nsp *Provider) LogIn() error {
 	data := make(map[string]interface{})
@@ -64,6 +70,33 @@ func (nsp *Provider) GetPools() ([]string, error) {
 	return pools, nil
 }
 
+// GetFilesystem - get NexentaStor filesystem by its path
+func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
+	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
+		"path":   path,
+		"fields": "path,quotaSize",
+	})
+
+	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if data, ok := resJSON["data"]; ok {
+		if dataArray, ok := data.([]interface{}); ok && len(dataArray) != 0 {
+			filesystemData := dataArray[0].(map[string]interface{})
+			return &Filesystem{
+				Path:      filesystemData["path"].(string),
+				QuotaSize: int64(filesystemData["quotaSize"].(float64)),
+			}, nil
+		}
+	} else {
+		return nil, fmt.Errorf("/storage/filesystems response doesn't contain 'data' property: %v", resJSON)
+	}
+
+	return nil, nil
+}
+
 // GetFilesystems - get all NexentaStor filesystems on pool
 func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
@@ -90,35 +123,14 @@ func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
 	return filesystems, nil
 }
 
-// GetFilesystem - get NexentaStor filesystem by its path
-func (nsp *Provider) GetFilesystem(path string) (string, error) {
-	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
-		"path":   path,
-		"fields": "path",
-	})
-
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
-	if err != nil {
-		return "", err
-	}
-
-	var filesystem string
-	if data, ok := resJSON["data"]; ok {
-		if dataArray, ok := data.([]interface{}); ok && len(dataArray) != 0 {
-			filesystemData := dataArray[0].(map[string]interface{})
-			filesystem = fmt.Sprint(filesystemData["path"])
-		}
-	} else {
-		return "", fmt.Errorf("/storage/filesystems response doesn't contain 'data' property: %v", resJSON)
-	}
-
-	return filesystem, nil
-}
-
 // CreateFilesystem - create filesystem by path
-func (nsp *Provider) CreateFilesystem(path string) error {
+func (nsp *Provider) CreateFilesystem(path string, params map[string]interface{}) error {
 	data := make(map[string]interface{})
 	data["path"] = path
+
+	for key, val := range params {
+		data[key] = val
+	}
 
 	_, err := nsp.doAuthRequest("POST", "/storage/filesystems", data)
 

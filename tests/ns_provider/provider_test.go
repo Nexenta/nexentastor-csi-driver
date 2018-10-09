@@ -88,7 +88,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		t.Error(err)
 	}
 
-	t.Run("GetPools", func(t *testing.T) {
+	t.Run("GetPools()", func(t *testing.T) {
 		pools, err := nsp.GetPools()
 		if err != nil {
 			t.Error(err)
@@ -97,7 +97,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("GetFilesystems", func(t *testing.T) {
+	t.Run("GetFilesystems()", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.pool)
 		if err != nil {
 			t.Error(err)
@@ -108,26 +108,26 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("GetFilesystem_exists", func(t *testing.T) {
+	t.Run("GetFilesystem() exists", func(t *testing.T) {
 		filesystem, err := nsp.GetFilesystem(c.dataset)
 		if err != nil {
 			t.Error(err)
-		} else if filesystem != c.dataset {
+		} else if filesystem == nil || filesystem.Path != c.dataset {
 			t.Errorf("No %v filesystem in the result", c.dataset)
 		}
 	})
 
-	t.Run("GetFilesystem_not_exists", func(t *testing.T) {
+	t.Run("GetFilesystem() not exists", func(t *testing.T) {
 		nonExistingName := "NON_EXISTING"
 		filesystem, err := nsp.GetFilesystem(nonExistingName)
 		if err != nil {
 			t.Error(err)
-		} else if filesystem != "" {
+		} else if filesystem != nil {
 			t.Errorf("Filesystem %v should not exist, but found in the result: %v", nonExistingName, filesystem)
 		}
 	})
 
-	t.Run("CreateFilesystem", func(t *testing.T) {
+	t.Run("CreateFilesystem()", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
@@ -137,7 +137,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		err = nsp.CreateFilesystem(c.filesystem)
+		err = nsp.CreateFilesystem(c.filesystem, nil)
 		if err != nil {
 			t.Error(err)
 			return
@@ -151,7 +151,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("CreateNfsShare", func(t *testing.T) {
+	t.Run("CreateNfsShare()", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
@@ -180,7 +180,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("DeleteNfsShare", func(t *testing.T) {
+	t.Run("DeleteNfsShare()", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
@@ -196,7 +196,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("DestroyFilesystem", func(t *testing.T) {
+	t.Run("DestroyFilesystem()", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
@@ -216,6 +216,43 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 		} else if arrayContains(filesystems, c.filesystem) {
 			t.Errorf("Filesystem %v still exists on NS %v", c.filesystem, c.address)
+		}
+	})
+
+	t.Run("CreateFilesystem() with quota size", func(t *testing.T) {
+		filesystems, err := nsp.GetFilesystems(c.dataset)
+		if err != nil {
+			t.Error(err)
+			return
+		} else if arrayContains(filesystems, c.filesystem) {
+			t.Skipf("Filesystem %v already exists on NS %v", c.filesystem, c.address)
+			return
+		}
+
+		var quotaSize int64 = 2 * 1024 * 1024 * 1024
+
+		params := make(map[string]interface{})
+		params["quotaSize"] = quotaSize
+
+		err = nsp.CreateFilesystem(c.filesystem, params)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		filesystem, err := nsp.GetFilesystem(c.filesystem)
+		if err != nil {
+			t.Error(err)
+			return
+		} else if filesystem == nil {
+			t.Errorf("New filesystem %v wasn't created on NS %v", c.filesystem, c.address)
+		} else if filesystem.QuotaSize != quotaSize {
+			t.Errorf(
+				"New filesystem %v quota size expected to be %v, but got %v (NS %v)",
+				filesystem.Path,
+				quotaSize,
+				filesystem.QuotaSize,
+				c.address,
+			)
 		}
 	})
 }

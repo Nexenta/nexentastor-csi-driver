@@ -61,10 +61,14 @@ func (client *Client) Send(method, path string, data map[string]interface{}) (
 			return 0, nil, err
 		}
 		jsonDataReader = strings.NewReader(string(jsonData))
-		client.log.Infof("Data: %v", data) //TODO use debug
+		requestLog.Infof("Data: %v", data) //TODO hide passwords
 	}
 
-	req, _ := http.NewRequest(method, uri, jsonDataReader)
+	req, err := http.NewRequest(method, uri, jsonDataReader)
+	if err != nil {
+		requestLog.Errorf("Request creation error: %v", err)
+		return 0, nil, err
+	}
 
 	req.Header.Set("Content-Type", "application/json")
 	if len(client.authToken) != 0 {

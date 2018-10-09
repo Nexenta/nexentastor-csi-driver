@@ -18,9 +18,9 @@ const (
 type ProviderInterface interface {
 	LogIn() error
 	GetPools() ([]string, error)
-	GetFilesystem(string) (string, error)
+	GetFilesystem(string) (*Filesystem, error)
 	GetFilesystems(string) ([]string, error)
-	CreateFilesystem(string) error
+	CreateFilesystem(string, map[string]interface{}) error
 	DestroyFilesystem(string) error
 	CreateNfsShare(string) error
 	DeleteNfsShare(string) error
@@ -49,6 +49,9 @@ func (nsp *Provider) parseNefError(resJSON map[string]interface{}, prefix string
 	}
 	if message, ok := resJSON["message"]; ok {
 		restErrorMessage = fmt.Sprintf("%v: %v", restErrorMessage, message)
+	}
+	if errors, ok := resJSON["errors"]; ok {
+		restErrorMessage = fmt.Sprintf("%v, errors: [%v]", restErrorMessage, errors)
 	}
 	if code, ok := resJSON["code"]; ok {
 		restErrorCode = code.(string)

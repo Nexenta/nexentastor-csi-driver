@@ -101,8 +101,8 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.pool)
 		if err != nil {
 			t.Error(err)
-		} else if !arrayContains(filesystems, c.pool) {
-			t.Errorf("No %v pool in result", c.dataset)
+		} else if arrayContains(filesystems, c.pool) {
+			t.Errorf("Pool %v should not be in the results", c.pool)
 		} else if !arrayContains(filesystems, c.dataset) {
 			t.Errorf("Dataset %v doesn't exist", c.dataset)
 		}

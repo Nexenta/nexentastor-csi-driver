@@ -98,9 +98,9 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 }
 
 // GetFilesystems - get all NexentaStor filesystems on pool
-func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
+func (nsp *Provider) GetFilesystems(parent string) ([]string, error) {
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
-		"pool":   pool,
+		"parent": parent,
 		"fields": "path",
 	})
 
@@ -114,7 +114,10 @@ func (nsp *Provider) GetFilesystems(pool string) ([]string, error) {
 	if data, ok := resJSON["data"]; ok {
 		for _, val := range data.([]interface{}) {
 			filesystem := val.(map[string]interface{})
-			filesystems = append(filesystems, fmt.Sprint(filesystem["path"]))
+			filesystemPath := fmt.Sprint(filesystem["path"])
+			if filesystemPath != parent {
+				filesystems = append(filesystems, filesystemPath)
+			}
 		}
 	} else {
 		return nil, fmt.Errorf("/storage/filesystems response doesn't contain 'data' property: %v", resJSON)

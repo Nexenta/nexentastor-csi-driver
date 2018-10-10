@@ -33,7 +33,16 @@ type config struct {
 var c *config
 var logger *logrus.Entry
 
-func arrayContains(array []string, value string) bool {
+func filesystemArrayContains(array []*ns.Filesystem, value string) bool {
+	for _, v := range array {
+		if v.Path == value {
+			return true
+		}
+	}
+	return false
+}
+
+func stringArrayContains(array []string, value string) bool {
 	for _, v := range array {
 		if v == value {
 			return true
@@ -92,7 +101,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		pools, err := nsp.GetPools()
 		if err != nil {
 			t.Error(err)
-		} else if !arrayContains(pools, c.pool) {
+		} else if !stringArrayContains(pools, c.pool) {
 			t.Errorf("Pool %v doesn't exist on NS %v", c.pool, c.address)
 		}
 	})
@@ -101,9 +110,9 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.pool)
 		if err != nil {
 			t.Error(err)
-		} else if arrayContains(filesystems, c.pool) {
+		} else if filesystemArrayContains(filesystems, c.pool) {
 			t.Errorf("Pool %v should not be in the results", c.pool)
-		} else if !arrayContains(filesystems, c.dataset) {
+		} else if !filesystemArrayContains(filesystems, c.dataset) {
 			t.Errorf("Dataset %v doesn't exist", c.dataset)
 		}
 	})
@@ -132,7 +141,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
-		} else if arrayContains(filesystems, c.filesystem) {
+		} else if filesystemArrayContains(filesystems, c.filesystem) {
 			t.Skipf("Filesystem %v already exists on NS %v", c.filesystem, c.address)
 			return
 		}
@@ -146,7 +155,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
-		} else if !arrayContains(filesystems, c.filesystem) {
+		} else if !filesystemArrayContains(filesystems, c.filesystem) {
 			t.Errorf("New filesystem %v wasn't created on NS %v", c.filesystem, c.address)
 		}
 	})
@@ -156,7 +165,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
-		} else if !arrayContains(filesystems, c.filesystem) {
+		} else if !filesystemArrayContains(filesystems, c.filesystem) {
 			t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
 			return
 		}
@@ -185,7 +194,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
-		} else if !arrayContains(filesystems, c.filesystem) {
+		} else if !filesystemArrayContains(filesystems, c.filesystem) {
 			t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
 			return
 		}
@@ -201,7 +210,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
-		} else if !arrayContains(filesystems, c.filesystem) {
+		} else if !filesystemArrayContains(filesystems, c.filesystem) {
 			t.Skipf("Filesystem %v doens't exist on NS %v", c.filesystem, c.address)
 			return
 		}
@@ -214,7 +223,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystems, err = nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
-		} else if arrayContains(filesystems, c.filesystem) {
+		} else if filesystemArrayContains(filesystems, c.filesystem) {
 			t.Errorf("Filesystem %v still exists on NS %v", c.filesystem, c.address)
 		}
 	})
@@ -224,7 +233,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
-		} else if arrayContains(filesystems, c.filesystem) {
+		} else if filesystemArrayContains(filesystems, c.filesystem) {
 			t.Skipf("Filesystem %v already exists on NS %v", c.filesystem, c.address)
 			return
 		}

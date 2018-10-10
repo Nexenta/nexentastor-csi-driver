@@ -50,6 +50,40 @@ func (cs *ControllerServer) resolveNS(cfg *config.Config, datasetPath string) (n
 	return nsProvider, nil
 }
 
+// ListVolumes - list volumes
+func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
+	*csi.ListVolumesResponse,
+	error,
+) {
+	cs.Log.Infof("ListVolumes(): %+v", req)
+
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
+	}
+
+	nsProvider, err := cs.resolveNS(cfg, cfg.DefaultDataset)
+	if err != nil {
+		return nil, err
+	}
+
+	filesystems, err := nsProvider.GetFilesystems(cfg.DefaultDataset)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot get filesystems: %v", err)
+	}
+
+	entries := make([]*csi.ListVolumesResponse_Entry, len(filesystems))
+	for i, item := range filesystems {
+		entries[i] = &csi.ListVolumesResponse_Entry{
+			Volume: &csi.Volume{Id: item.Path},
+		}
+	}
+
+	return &csi.ListVolumesResponse{
+		Entries: entries,
+	}, nil
+}
+
 // CreateVolume - creates FS on NexentaStor
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (
 	*csi.CreateVolumeResponse,
@@ -185,15 +219,6 @@ func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 	error,
 ) {
 	cs.Log.Infof("ControllerUnpublishVolume(): %+v", req)
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// ListVolumes - list volumes
-func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
-	*csi.ListVolumesResponse,
-	error,
-) {
-	cs.Log.Infof("ListVolumes(): %+v", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 

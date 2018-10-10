@@ -19,7 +19,7 @@ type ProviderInterface interface {
 	LogIn() error
 	GetPools() ([]string, error)
 	GetFilesystem(string) (*Filesystem, error)
-	GetFilesystems(string) ([]string, error)
+	GetFilesystems(string) ([]*Filesystem, error)
 	CreateFilesystem(string, map[string]interface{}) error
 	DestroyFilesystem(string) error
 	CreateNfsShare(string) error

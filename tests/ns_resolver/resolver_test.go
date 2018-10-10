@@ -31,9 +31,9 @@ type config struct {
 var c *config
 var logger *logrus.Entry
 
-func stringArrayContains(array []string, value string) bool {
+func filesystemArrayContains(array []*ns.Filesystem, value string) bool {
 	for _, v := range array {
-		if v == value {
+		if v.Path == value {
 			return true
 		}
 	}
@@ -101,7 +101,7 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 		if err != nil {
 			t.Errorf("NS Error: %v", err)
 			return
-		} else if !stringArrayContains(filesystems, c.dataset) {
+		} else if !filesystemArrayContains(filesystems, c.dataset) {
 			t.Errorf("Returned NS (%v) doesn't contain dataset: %v", nsProvider, c.dataset)
 			return
 		}

@@ -3,6 +3,7 @@ package ns
 import (
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 // Filesystem - NexentaStor filesystem
@@ -72,9 +73,10 @@ func (nsp *Provider) GetPools() ([]string, error) {
 
 // GetFilesystem - get NexentaStor filesystem by its path
 func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
+	fields := []string{"path", "quotaSize"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"path":   path,
-		"fields": "path,quotaSize",
+		"fields": strings.Join(fields, ","),
 	})
 
 	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
@@ -82,26 +84,30 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 		return nil, err
 	}
 
-	if data, ok := resJSON["data"]; ok {
-		if dataArray, ok := data.([]interface{}); ok && len(dataArray) != 0 {
-			filesystemData := dataArray[0].(map[string]interface{})
-			return &Filesystem{
-				Path:      filesystemData["path"].(string),
-				QuotaSize: int64(filesystemData["quotaSize"].(float64)),
-			}, nil
+	if err = mapHasProps(resJSON, []string{"data"}); err != nil {
+		return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
+	}
+
+	if dataArray, ok := resJSON["data"].([]interface{}); ok && len(dataArray) != 0 {
+		filesystem := dataArray[0].(map[string]interface{})
+		if err := mapHasProps(filesystem, fields); err != nil {
+			return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
 		}
-	} else {
-		return nil, fmt.Errorf("/storage/filesystems response doesn't contain 'data' property: %v", resJSON)
+		return &Filesystem{
+			Path:      filesystem["path"].(string),
+			QuotaSize: int64(filesystem["quotaSize"].(float64)),
+		}, nil
 	}
 
 	return nil, nil
 }
 
-// GetFilesystems - get all NexentaStor filesystems on pool
-func (nsp *Provider) GetFilesystems(parent string) ([]string, error) {
+// GetFilesystems - get all NexentaStor filesystems by parent filesystem
+func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
+	fields := []string{"path", "quotaSize"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"parent": parent,
-		"fields": "path",
+		"fields": strings.Join(fields, ","),
 	})
 
 	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
@@ -109,18 +115,24 @@ func (nsp *Provider) GetFilesystems(parent string) ([]string, error) {
 		return nil, err
 	}
 
-	filesystems := []string{}
+	filesystems := []*Filesystem{}
 
-	if data, ok := resJSON["data"]; ok {
-		for _, val := range data.([]interface{}) {
-			filesystem := val.(map[string]interface{})
-			filesystemPath := fmt.Sprint(filesystem["path"])
-			if filesystemPath != parent {
-				filesystems = append(filesystems, filesystemPath)
-			}
+	if err = mapHasProps(resJSON, []string{"data"}); err != nil {
+		return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
+	}
+
+	for _, val := range resJSON["data"].([]interface{}) {
+		filesystem := val.(map[string]interface{})
+		if err := mapHasProps(filesystem, fields); err != nil {
+			return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
 		}
-	} else {
-		return nil, fmt.Errorf("/storage/filesystems response doesn't contain 'data' property: %v", resJSON)
+		filesystemPath := filesystem["path"].(string)
+		if filesystemPath != parent {
+			filesystems = append(filesystems, &Filesystem{
+				Path:      filesystemPath,
+				QuotaSize: int64(filesystem["quotaSize"].(float64)),
+			})
+		}
 	}
 
 	return filesystems, nil
@@ -219,4 +231,17 @@ func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 			resJSON)
 	}
 	return false, err
+}
+
+func mapHasProps(m map[string]interface{}, props []string) error {
+	var missedProps []string
+	for _, prop := range props {
+		if _, ok := m[prop]; !ok {
+			missedProps = append(missedProps, prop)
+		}
+	}
+	if len(missedProps) != 0 {
+		return fmt.Errorf("Properties missed: %v", missedProps)
+	}
+	return nil
 }

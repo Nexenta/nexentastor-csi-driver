@@ -135,7 +135,6 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		Volume: &csi.Volume{
 			Id:            volumePath,
 			CapacityBytes: capacityBytes,
-			Attributes:    req.GetParameters(),
 		},
 	}
 
@@ -210,7 +209,7 @@ func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 	error,
 ) {
 	cs.Log.Infof("ControllerPublishVolume(): %+v", req)
-	return nil, status.Error(codes.Unimplemented, "")
+	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
 // ControllerUnpublishVolume - unpublish volume
@@ -219,20 +218,21 @@ func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 	error,
 ) {
 	cs.Log.Infof("ControllerUnpublishVolume(): %+v", req)
-	return nil, status.Error(codes.Unimplemented, "")
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
-// ValidateVolumeCapabilities - validate volume capabilities
+// ValidateVolumeCapabilities - validate volume capabilities (only mount is supported)
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
 	*csi.ValidateVolumeCapabilitiesResponse,
 	error,
 ) {
+	supported := true
 	for _, cap := range req.VolumeCapabilities {
 		if cap.GetBlock() != nil {
-			return &csi.ValidateVolumeCapabilitiesResponse{Supported: false, Message: ""}, nil
+			supported = false
 		}
 	}
-	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true}, nil
+	return &csi.ValidateVolumeCapabilitiesResponse{Supported: supported}, nil
 }
 
 // NewControllerServer - create an instance of controller service

@@ -27,12 +27,12 @@ type ControllerServer struct {
 	Log *logrus.Entry
 }
 
-func (cs *ControllerServer) resolveNS(cfg *config.Config, datasetPath string) (ns.ProviderInterface, error) {
+func (s *ControllerServer) resolveNS(cfg *config.Config, datasetPath string) (ns.ProviderInterface, error) {
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
 		Address:  cfg.Address,
 		Username: cfg.Username,
 		Password: cfg.Password,
-		Log:      cs.Log,
+		Log:      s.Log,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot create NexentaStor resolver: %v", err)
@@ -52,18 +52,18 @@ func (cs *ControllerServer) resolveNS(cfg *config.Config, datasetPath string) (n
 }
 
 // ListVolumes - list volumes
-func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
+func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 	*csi.ListVolumesResponse,
 	error,
 ) {
-	cs.Log.Infof("ListVolumes(): %+v", req)
+	s.Log.Infof("ListVolumes(): %+v", req)
 
 	cfg, err := config.Get()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
 
-	nsProvider, err := cs.resolveNS(cfg, cfg.DefaultDataset)
+	nsProvider, err := s.resolveNS(cfg, cfg.DefaultDataset)
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +86,11 @@ func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolume
 }
 
 // CreateVolume - creates FS on NexentaStor
-func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (
+func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (
 	*csi.CreateVolumeResponse,
 	error,
 ) {
-	cs.Log.Infof("CreateVolume(): %+v", req)
+	s.Log.Infof("CreateVolume(): %+v", req)
 
 	cfg, err := config.Get()
 	if err != nil {
@@ -127,7 +127,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	nefParams["quotaSize"] = capacityBytes
 
-	nsProvider, err := cs.resolveNS(cfg, datasetPath)
+	nsProvider, err := s.resolveNS(cfg, datasetPath)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	err = nsProvider.CreateFilesystem(volumePath, nefParams)
 	if err == nil {
-		cs.Log.Infof("Volume '%v' has been created", volumePath)
+		s.Log.Infof("Volume '%v' has been created", volumePath)
 		return res, nil
 	} else if ns.IsAlreadyExistNefError(err) {
 		existingVolume, err := nsProvider.GetFilesystem(volumePath)
@@ -161,7 +161,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				existingVolume.QuotaSize,
 			)
 		}
-		cs.Log.Infof("Volume '%v' already exists and can be used", volumePath)
+		s.Log.Infof("Volume '%v' already exists and can be used", volumePath)
 		return res, nil
 	}
 
@@ -169,11 +169,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 }
 
 // DeleteVolume - destroys FS on NexentaStor
-func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (
+func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (
 	*csi.DeleteVolumeResponse,
 	error,
 ) {
-	cs.Log.Infof("DeleteVolume(): %+v", req)
+	s.Log.Infof("DeleteVolume(): %+v", req)
 
 	cfg, err := config.Get()
 	if err != nil {
@@ -185,7 +185,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
-	nsPorvider, err := cs.resolveNS(cfg, volumePath)
+	nsPorvider, err := s.resolveNS(cfg, volumePath)
 	if err != nil {
 		return nil, err
 	}
@@ -200,30 +200,30 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		)
 	}
 
-	cs.Log.Infof("Volume '%v' has been deleted", volumePath)
+	s.Log.Infof("Volume '%v' has been deleted", volumePath)
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
 // ControllerPublishVolume - publish volume
-func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (
+func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (
 	*csi.ControllerPublishVolumeResponse,
 	error,
 ) {
-	cs.Log.Infof("ControllerPublishVolume(): %+v", req)
+	s.Log.Infof("ControllerPublishVolume(): %+v", req)
 	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
 // ControllerUnpublishVolume - unpublish volume
-func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (
+func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (
 	*csi.ControllerUnpublishVolumeResponse,
 	error,
 ) {
-	cs.Log.Infof("ControllerUnpublishVolume(): %+v", req)
+	s.Log.Infof("ControllerUnpublishVolume(): %+v", req)
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
 // ValidateVolumeCapabilities - validate volume capabilities (only mount is supported)
-func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
+func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
 	*csi.ValidateVolumeCapabilitiesResponse,
 	error,
 ) {

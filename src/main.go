@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/config"
 	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (

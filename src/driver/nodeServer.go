@@ -1,12 +1,21 @@
 package driver
 
 import (
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
+	"github.com/Nexenta/nexentastor-csi-driver/src/config"
+	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
+
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // NodeServer - k8s csi driver node server
@@ -16,21 +25,45 @@ type NodeServer struct {
 	Log *logrus.Entry
 }
 
+func (nodeServer *NodeServer) resolveNS(cfg *config.Config, datasetPath string) (ns.ProviderInterface, error) {
+	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
+		Address:  cfg.Address,
+		Username: cfg.Username,
+		Password: cfg.Password,
+		Log:      nodeServer.Log,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot create NexentaStor resolver: %v", err)
+	}
+
+	nsProvider, err := nsResolver.Resolve(datasetPath)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.FailedPrecondition,
+			"Cannot resolve '%v' on any NexentaStor(s): %v",
+			datasetPath,
+			err,
+		)
+	}
+
+	return nsProvider, nil
+}
+
 // NodeGetId - returns node id where pod is running
-func (ns *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (
+func (nodeServer *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (
 	*csi.NodeGetIdResponse,
 	error,
 ) {
-	ns.Log.Infof("NodeGetId(): %+v", req)
-	return ns.DefaultNodeServer.NodeGetId(ctx, req)
+	nodeServer.Log.Infof("NodeGetId(): %+v", req)
+	return nodeServer.DefaultNodeServer.NodeGetId(ctx, req)
 }
 
 // NodeGetCapabilities - get node capabilities
-func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (
+func (nodeServer *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (
 	*csi.NodeGetCapabilitiesResponse,
 	error,
 ) {
-	ns.Log.Infof("NodeGetCapabilities(): %+v", req)
+	nodeServer.Log.Infof("NodeGetCapabilities(): %+v", req)
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			{
@@ -45,40 +78,191 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 }
 
 // NodePublishVolume - mounts NS fs to the node
-func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (
+func (nodeServer *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (
 	*csi.NodePublishVolumeResponse,
 	error,
 ) {
-	ns.Log.Infof("NodePublishVolume(): %+v", req)
-	return nil, status.Error(codes.Unimplemented, "")
-	//return &csi.NodePublishVolumeResponse{}, nil
+	nodeServer.Log.Infof("NodePublishVolume(): %+v", req)
+
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
+	}
+
+	targetPath := req.GetTargetPath()
+	if len(targetPath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path must be provided")
+	}
+
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
+	}
+
+	nsProvider, err := nodeServer.resolveNS(cfg, volumeID)
+	if err != nil {
+		return nil, err
+	}
+
+	filesystem, err := nsProvider.GetFilesystem(volumeID)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"Cannot get filesystem '%v' volume: %v",
+			volumeID,
+			err,
+		)
+	} else if filesystem == nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot find filesystem '%v'", volumeID)
+	}
+
+	if !filesystem.SharedOverNfs {
+		err = nsProvider.CreateNfsShare(filesystem.Path)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v'", filesystem.Path)
+		}
+	}
+
+	mounter := mount.New("")
+	notMountPoint, err := mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(targetPath, 0750); err != nil {
+				return nil, status.Errorf(
+					codes.Internal,
+					"Failed to mkdir to share target path %v: %v",
+					targetPath,
+					err,
+				)
+			}
+			notMountPoint = true
+		} else {
+			return nil, status.Errorf(
+				codes.Internal,
+				"Cannot ensure that target path %v can be used as a mount point: %v",
+				targetPath,
+				err,
+			)
+		}
+	}
+
+	if !notMountPoint { // already mounted
+		return nil, status.Errorf(codes.Internal, "Target path '%v' is already a mount point", targetPath)
+	}
+
+	mountOptions := []string{} //TODO look up config for NFS share options
+	if req.GetReadonly() {
+		if !arrays.StringsContains(mountOptions, "ro") {
+			mountOptions = append(mountOptions, "ro")
+		}
+	}
+
+	nfsEndpoint := fmt.Sprintf("%v:%v", cfg.DefaultDataIP, filesystem.MountPoint)
+
+	nodeServer.Log.Infof(
+		"Mount params: targetPath: '%v', nfsEndpoint: '%v', fsType: '%v', readOnly: '%v', volumeAttributes: '%v', mountFlags %v",
+		targetPath,
+		nfsEndpoint,
+		req.GetVolumeCapability().GetMount().GetFsType(),
+		req.GetReadonly(),
+		req.GetVolumeAttributes(),
+		req.GetVolumeCapability().GetMount().GetMountFlags(),
+	)
+
+	err = mounter.Mount(nfsEndpoint, targetPath, "nfs", mountOptions)
+	if err != nil {
+		if os.IsPermission(err) {
+			return nil, status.Errorf(
+				codes.PermissionDenied,
+				"Permission denied to mount '%v' to '%v': %v",
+				nfsEndpoint,
+				targetPath,
+				err,
+			)
+		} else if strings.Contains(err.Error(), "invalid argument") {
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"Cannot mount '%v' to '%v', invalid argument: %v",
+				nfsEndpoint,
+				targetPath,
+				err,
+			)
+		}
+		return nil, status.Errorf(
+			codes.Internal,
+			"Failed to mount '%v' to '%v': %v",
+			nfsEndpoint,
+			targetPath,
+			err,
+		)
+	}
+
+	nodeServer.Log.Infof("Volume %v has beed published to %v", volumeID, targetPath)
+	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-// NodeUnpublishVolume - umount NS fs from the node
-func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (
+// NodeUnpublishVolume - umount NS fs from the node and delete directory if successful
+func (nodeServer *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (
 	*csi.NodeUnpublishVolumeResponse,
 	error,
 ) {
-	ns.Log.Infof("NodePublishVolume(): %+v", req)
-	return nil, status.Error(codes.Unimplemented, "")
-	//return &csi.NodeUnpublishVolumeResponse{}, nil
+	nodeServer.Log.Infof("NodePublishVolume(): %+v", req)
+
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
+	}
+
+	targetPath := req.GetTargetPath()
+	if len(targetPath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path must be provided")
+	}
+
+	mounter := mount.New("")
+
+	if err := mounter.Unmount(targetPath); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to unmount target path '%v': %v", targetPath, err)
+	}
+
+	notMountPoint, err := mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			nodeServer.Log.Warnf("Mount point '%v' already doesn't exist: %v, return OK", targetPath, err)
+			return &csi.NodeUnpublishVolumeResponse{}, nil
+		}
+		return nil, status.Errorf(
+			codes.Internal,
+			"Cannot ensure that target path %v is a mount point: %v",
+			targetPath,
+			err,
+		)
+	} else if !notMountPoint { // still mounted
+		return nil, status.Errorf(codes.Internal, "Target path %v is still mounted", targetPath)
+	}
+
+	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+		return nil, status.Errorf(codes.Internal, "Cannot remove unmounted target path %v: %v", targetPath, err)
+	}
+
+	nodeServer.Log.Infof("Volume %v has beed unpublished from %v", volumeID, targetPath)
+	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
 // NodeStageVolume - stage volume
-func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (
+func (nodeServer *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (
 	*csi.NodeStageVolumeResponse,
 	error,
 ) {
-	ns.Log.Infof("NodeStageVolume(): %+v", req)
+	nodeServer.Log.Infof("NodeStageVolume(): %+v", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // NodeUnstageVolume - unstage volume
-func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (
+func (nodeServer *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (
 	*csi.NodeUnstageVolumeResponse,
 	error,
 ) {
-	ns.Log.Infof("NodeUnstageVolume(): %+v", req)
+	nodeServer.Log.Infof("NodeUnstageVolume(): %+v", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 

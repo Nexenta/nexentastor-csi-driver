@@ -2,11 +2,12 @@ package ns
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strings"
 	"time"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/rest"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (

@@ -2,8 +2,9 @@ package ns
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Resolver - NexentaStor cluster API provider

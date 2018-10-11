@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
@@ -36,15 +37,6 @@ var logger *logrus.Entry
 func filesystemArrayContains(array []*ns.Filesystem, value string) bool {
 	for _, v := range array {
 		if v.Path == value {
-			return true
-		}
-	}
-	return false
-}
-
-func stringArrayContains(array []string, value string) bool {
-	for _, v := range array {
-		if v == value {
 			return true
 		}
 	}
@@ -101,7 +93,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		pools, err := nsp.GetPools()
 		if err != nil {
 			t.Error(err)
-		} else if !stringArrayContains(pools, c.pool) {
+		} else if !arrays.StringsContains(pools, c.pool) {
 			t.Errorf("Pool %v doesn't exist on NS %v", c.pool, c.address)
 		}
 	})
@@ -160,6 +152,20 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
+	t.Run("GetFilesystem() created filesystem should not be shared", func(t *testing.T) {
+		filesystem, err := nsp.GetFilesystem(c.filesystem)
+		if err != nil {
+			t.Error(err)
+			return
+		} else if filesystem == nil {
+			t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
+			return
+		} else if filesystem.SharedOverNfs {
+			t.Errorf("Created filesystem %v should not be shared (NS %v)", c.filesystem, c.address)
+			return
+		}
+	})
+
 	t.Run("CreateNfsShare()", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
@@ -173,6 +179,20 @@ func TestProvider_NewProvider(t *testing.T) {
 		err = nsp.CreateNfsShare(c.filesystem)
 		if err != nil {
 			t.Error(err)
+		}
+	})
+
+	t.Run("GetFilesystem() created filesystem should be shared", func(t *testing.T) {
+		filesystem, err := nsp.GetFilesystem(c.filesystem)
+		if err != nil {
+			t.Error(err)
+			return
+		} else if filesystem == nil {
+			t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
+			return
+		} else if !filesystem.SharedOverNfs {
+			t.Errorf("Created filesystem %v should be shared (NS %v)", c.filesystem, c.address)
+			return
 		}
 	})
 

@@ -8,8 +8,10 @@ import (
 
 // Filesystem - NexentaStor filesystem
 type Filesystem struct {
-	Path      string
-	QuotaSize int64
+	Path          string
+	MountPoint    string
+	SharedOverNfs bool
+	QuotaSize     int64
 }
 
 // LogIn - log in to NexentaStor API and get auth token
@@ -73,7 +75,7 @@ func (nsp *Provider) GetPools() ([]string, error) {
 
 // GetFilesystem - get NexentaStor filesystem by its path
 func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
-	fields := []string{"path", "quotaSize"}
+	fields := []string{"path", "quotaSize", "mountPoint", "sharedOverNfs"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"path":   path,
 		"fields": strings.Join(fields, ","),
@@ -94,8 +96,10 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 			return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
 		}
 		return &Filesystem{
-			Path:      filesystem["path"].(string),
-			QuotaSize: int64(filesystem["quotaSize"].(float64)),
+			Path:          filesystem["path"].(string),
+			MountPoint:    filesystem["mountPoint"].(string),
+			SharedOverNfs: filesystem["sharedOverNfs"].(bool),
+			QuotaSize:     int64(filesystem["quotaSize"].(float64)),
 		}, nil
 	}
 
@@ -104,7 +108,7 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 
 // GetFilesystems - get all NexentaStor filesystems by parent filesystem
 func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
-	fields := []string{"path", "quotaSize"}
+	fields := []string{"path", "quotaSize", "mountPoint", "sharedOverNfs"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"parent": parent,
 		"fields": strings.Join(fields, ","),
@@ -129,8 +133,10 @@ func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
 		filesystemPath := filesystem["path"].(string)
 		if filesystemPath != parent {
 			filesystems = append(filesystems, &Filesystem{
-				Path:      filesystemPath,
-				QuotaSize: int64(filesystem["quotaSize"].(float64)),
+				Path:          filesystemPath,
+				MountPoint:    filesystem["mountPoint"].(string),
+				SharedOverNfs: filesystem["sharedOverNfs"].(bool),
+				QuotaSize:     int64(filesystem["quotaSize"].(float64)),
 			})
 		}
 	}
@@ -180,6 +186,9 @@ func (nsp *Provider) CreateNfsShare(path string) error {
 
 	data := make(map[string]interface{})
 	data["filesystem"] = path
+	data["anon"] = "root" //TODO this should be configurable
+
+	//TODO add host access options
 
 	_, err := nsp.doAuthRequest("POST", "nas/nfs", data)
 

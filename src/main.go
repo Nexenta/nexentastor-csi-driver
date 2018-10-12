@@ -35,7 +35,8 @@ func main() {
 		"cmp": "Main",
 	})
 
-	// logger level (set from config?)
+	// logger config
+	//log.Logger.SetFormatter()
 	log.Logger.SetLevel(logrus.DebugLevel)
 
 	log.Info("Start driver with CLI options:")

@@ -34,7 +34,7 @@ spec:
     - containerPort: 80
       protocol: TCP
     volumeMounts:
-      - mountPath: /var/lib/www/html
+      - mountPath: /usr/share/nginx/html
         name: nexentastor-csi-plugin-data
   volumes:
   - name: nexentastor-csi-plugin-data

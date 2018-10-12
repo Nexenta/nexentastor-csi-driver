@@ -25,6 +25,7 @@ type ProviderInterface interface {
 	DestroyFilesystem(string) error
 	CreateNfsShare(string) error
 	DeleteNfsShare(string) error
+	SetFilesystemACL(path string) error
 	IsJobDone(string) (bool, error)
 }
 
@@ -65,7 +66,7 @@ func (nsp *Provider) parseNefError(resJSON map[string]interface{}, prefix string
 	return nil
 }
 
-func (nsp *Provider) doAuthRequest(method, path string, data map[string]interface{}) (
+func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 	map[string]interface{},
 	error,
 ) {

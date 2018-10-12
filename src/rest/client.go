@@ -29,17 +29,18 @@ type Client struct {
 // ClientInterface - request client interface
 type ClientInterface interface {
 	SetAuthToken(string)
-	Send(string, string, map[string]interface{}) (int, map[string]interface{}, error)
+	Send(string, string, interface{}) (int, map[string]interface{}, error)
 	BuildURI(string, map[string]string) string
 }
 
-//SetAuthToken - set Bearer auth token for all requests
+// SetAuthToken - set Bearer auth token for all requests
 func (client *Client) SetAuthToken(token string) {
 	client.authToken = token
 }
 
-//Send - send request to REST server
-func (client *Client) Send(method, path string, data map[string]interface{}) (
+// Send - send request to REST server
+// data interface{} - request payload, any interface for json.Marshal()
+func (client *Client) Send(method, path string, data interface{}) (
 	int,
 	map[string]interface{},
 	error,
@@ -54,7 +55,7 @@ func (client *Client) Send(method, path string, data map[string]interface{}) (
 
 	// send request data as json
 	var jsonDataReader io.Reader
-	if len(data) == 0 {
+	if data == nil {
 		jsonDataReader = nil
 	} else {
 		jsonData, err := json.Marshal(data)
@@ -105,7 +106,7 @@ func (client *Client) Send(method, path string, data map[string]interface{}) (
 	return res.StatusCode, jsonRes, nil
 }
 
-//BuildURI - build request URI using [path?params...] format
+// BuildURI - build request URI using [path?params...] format
 func (client *Client) BuildURI(uri string, params map[string]string) string {
 	paramsStr := ""
 	paramValues := url.Values{}

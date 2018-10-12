@@ -242,7 +242,7 @@ func NewControllerServer(driver *Driver) *ControllerServer {
 		"cmp": "ControllerServer",
 	})
 
-	nodeServerLog.Info("New ControllerServer is created")
+	nodeServerLog.Info("New ControllerServer has been created")
 
 	return &ControllerServer{
 		DefaultControllerServer: csiCommon.NewDefaultControllerServer(driver.csiDriver),

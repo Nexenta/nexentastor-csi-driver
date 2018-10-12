@@ -117,9 +117,15 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	}
 
 	if !filesystem.SharedOverNfs {
+		// create share
 		err = nsProvider.CreateNfsShare(filesystem.Path)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v'", filesystem.Path)
+			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v': %v", filesystem.Path, err)
+		}
+		// apply filesystem acl
+		err = nsProvider.SetFilesystemACL(filesystem.Path)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
 		}
 	}
 
@@ -272,7 +278,7 @@ func NewNodeServer(driver *Driver) *NodeServer {
 		"cmp": "NodeServer",
 	})
 
-	nodeServerLog.Info("New NodeServer is created")
+	nodeServerLog.Info("New NodeServer has been created")
 
 	return &NodeServer{
 		DefaultNodeServer: csiCommon.NewDefaultNodeServer(driver.csiDriver),

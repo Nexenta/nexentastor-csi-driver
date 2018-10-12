@@ -184,11 +184,25 @@ func (nsp *Provider) CreateNfsShare(path string) error {
 		return fmt.Errorf("Filesystem path is empty")
 	}
 
-	data := make(map[string]interface{})
-	data["filesystem"] = path
-	data["anon"] = "root" //TODO this should be configurable
+	type ParamsSecurityContext struct {
+		SecurityModes []string `json:"securityModes"`
+	}
 
-	//TODO add host access options
+	type Params struct {
+		Filesystem       string                   `json:"filesystem"`
+		Anon             string                   `json:"anon"`
+		SecurityContexts []*ParamsSecurityContext `json:"securityContexts"`
+	}
+
+	data := &Params{
+		Filesystem: path,
+		Anon:       "root",
+		SecurityContexts: []*ParamsSecurityContext{
+			&ParamsSecurityContext{
+				SecurityModes: []string{"sys"},
+			},
+		},
+	}
 
 	_, err := nsp.doAuthRequest("POST", "nas/nfs", data)
 
@@ -211,9 +225,51 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 	return err
 }
 
-// GetRsfClusters - get SRF cluster from NexentaStor
-func (nsp *Provider) GetRsfClusters() (string, error) {
-	return "", nil
+// SetFilesystemACL - set filesystem ACL, so NFS share can allow user to write w/o checking UNIX user uid
+func (nsp *Provider) SetFilesystemACL(path string) error {
+	if len(path) == 0 {
+		return fmt.Errorf("Filesystem path is empty")
+	}
+
+	type Params struct {
+		Type        string   `json:"type"`
+		Principal   string   `json:"principal"`
+		Flags       []string `json:"flags"`
+		Permissions []string `json:"permissions"`
+	}
+
+	data := &Params{
+		Type:      "allow",
+		Principal: "everyone@",
+		Flags: []string{
+			"file_inherit",
+			"dir_inherit",
+		},
+		Permissions: []string{
+			"list_directory",
+			"read_data",
+			"add_file",
+			"write_data",
+			"add_subdirectory",
+			"append_data",
+			"read_xattr",
+			"write_xattr",
+			"execute",
+			"delete_child",
+			"read_attributes",
+			"write_attributes",
+			"delete",
+			"read_acl",
+			"write_acl",
+			"write_owner",
+			"synchronize",
+		},
+	}
+
+	uri := fmt.Sprintf("/storage/filesystems/%v/acl", url.PathEscape(path))
+	_, err := nsp.doAuthRequest("POST", uri, data)
+
+	return err
 }
 
 // IsJobDone - check if job is done by jobId

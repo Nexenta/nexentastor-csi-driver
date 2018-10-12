@@ -25,7 +25,7 @@ type ProviderInterface interface {
 	DestroyFilesystem(string) error
 	CreateNfsShare(string) error
 	DeleteNfsShare(string) error
-	SetFilesystemACL(path string) error
+	SetFilesystemACL(string, ACLRuleSet) error
 	IsJobDone(string) (bool, error)
 }
 

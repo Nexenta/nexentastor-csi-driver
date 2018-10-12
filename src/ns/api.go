@@ -225,10 +225,28 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 	return err
 }
 
+// ACLRuleSet - filesystem ACL rule set
+type ACLRuleSet int64
+
+const (
+	// ACLReadOnly - apply read only set of rules to filesystem
+	ACLReadOnly ACLRuleSet = iota
+
+	// ACLReadWrite - apply full access set of rules to filesystem
+	ACLReadWrite ACLRuleSet = iota
+)
+
 // SetFilesystemACL - set filesystem ACL, so NFS share can allow user to write w/o checking UNIX user uid
-func (nsp *Provider) SetFilesystemACL(path string) error {
+func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error {
 	if len(path) == 0 {
 		return fmt.Errorf("Filesystem path is empty")
+	}
+
+	permissions := []string{}
+	if aclRuleSet == ACLReadOnly {
+		permissions = append(permissions, "read_set")
+	} else {
+		permissions = append(permissions, "full_set")
 	}
 
 	type Params struct {
@@ -245,25 +263,7 @@ func (nsp *Provider) SetFilesystemACL(path string) error {
 			"file_inherit",
 			"dir_inherit",
 		},
-		Permissions: []string{
-			"list_directory",
-			"read_data",
-			"add_file",
-			"write_data",
-			"add_subdirectory",
-			"append_data",
-			"read_xattr",
-			"write_xattr",
-			"execute",
-			"delete_child",
-			"read_attributes",
-			"write_attributes",
-			"delete",
-			"read_acl",
-			"write_acl",
-			"write_owner",
-			"synchronize",
-		},
+		Permissions: permissions,
 	}
 
 	uri := fmt.Sprintf("/storage/filesystems/%v/acl", url.PathEscape(path))

@@ -94,6 +94,15 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Error(codes.InvalidArgument, "Target path must be provided")
 	}
 
+	aclRuleSet := ns.ACLReadWrite
+	mountOptions := []string{} //TODO look up config for NFS share options
+	if req.GetReadonly() {
+		aclRuleSet = ns.ACLReadOnly
+		if !arrays.StringsContains(mountOptions, "ro") {
+			mountOptions = append(mountOptions, "ro")
+		}
+	}
+
 	cfg, err := config.Get()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
@@ -123,7 +132,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v': %v", filesystem.Path, err)
 		}
 		// apply filesystem acl
-		err = nsProvider.SetFilesystemACL(filesystem.Path)
+		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
 		}
@@ -154,13 +163,6 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	if !notMountPoint { // already mounted
 		return nil, status.Errorf(codes.Internal, "Target path '%v' is already a mount point", targetPath)
-	}
-
-	mountOptions := []string{} //TODO look up config for NFS share options
-	if req.GetReadonly() {
-		if !arrays.StringsContains(mountOptions, "ro") {
-			mountOptions = append(mountOptions, "ro")
-		}
 	}
 
 	nfsEndpoint := fmt.Sprintf("%v:%v", cfg.DefaultDataIP, filesystem.MountPoint)

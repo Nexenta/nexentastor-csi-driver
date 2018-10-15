@@ -70,6 +70,8 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 	map[string]interface{},
 	error,
 ) {
+	l := nsp.Log.WithField("func", "doAuthRequest()")
+
 	statusCode, resJSON, err := nsp.RestClient.Send(method, path, data)
 	if err != nil {
 		return resJSON, err
@@ -78,7 +80,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 	// log in again if user is not logged in
 	if statusCode == 401 && resJSON["code"] == "EAUTH" {
 		// do login call if used is not authorized in api
-		nsp.Log.Infof("Log in as '%v'...", nsp.Username)
+		l.Debugf("log in as '%v'...", nsp.Username)
 
 		err = nsp.LogIn()
 		if err != nil {
@@ -102,7 +104,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 
 		err = nsp.waitForAsyncJob(strings.TrimPrefix(href, "/jobStatus/"))
 		if err != nil {
-			nsp.Log.Debug(err)
+			l.Error(err)
 		}
 	} else if statusCode >= 300 {
 		restError := nsp.parseNefError(resJSON, "request error")
@@ -110,7 +112,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 			err = restError
 		} else {
 			err = fmt.Errorf(
-				"request returned %v code, but response body doesn't contain explanation: %v",
+				"Request returned %v code, but response body doesn't contain explanation: %v",
 				statusCode,
 				resJSON)
 		}
@@ -122,7 +124,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 func (nsp *Provider) getAsyncJobHref(resJSON map[string]interface{}) (string, error) {
 	noFieldError := func(field string) error {
 		return fmt.Errorf(
-			"request return an async job, but links response doesn't contain '%v' field: %v",
+			"Request return an async job, but links response doesn't contain '%v' field: %v",
 			field,
 			resJSON)
 	}
@@ -139,15 +141,13 @@ func (nsp *Provider) getAsyncJobHref(resJSON map[string]interface{}) (string, er
 	}
 
 	return "", fmt.Errorf(
-		"request return an async job, but response doesn't contain any links: %v",
+		"Request return an async job, but response doesn't contain any links: %v",
 		resJSON)
 }
 
 // waitForAsyncJob - keep asking for job status while it's not completed, return an error if timeout exceeded
 func (nsp *Provider) waitForAsyncJob(jobID string) (err error) {
-	jobLog := nsp.Log.WithFields(logrus.Fields{
-		"job": jobID,
-	})
+	l := nsp.Log.WithField("job", jobID)
 
 	done := make(chan error)
 	timer := time.NewTimer(0)
@@ -166,11 +166,14 @@ func (nsp *Provider) waitForAsyncJob(jobID string) (err error) {
 					done <- nil
 					return
 				}
-				jobLog.Infof("Waiting job for %.0fs...", time.Since(startTime).Seconds())
+				waitingTimeSeconds := time.Since(startTime).Seconds()
+				if waitingTimeSeconds >= float64(checkJobStatusInterval) {
+					l.Warnf("waiting job for %.0fs...", waitingTimeSeconds)
+				}
 				timer = time.NewTimer(checkJobStatusInterval)
 			case <-timeout:
 				timer.Stop()
-				done <- fmt.Errorf("Exceeded timeout for checking job status")
+				done <- fmt.Errorf("Checking job status timeout exceeded")
 				return
 			}
 		}
@@ -189,19 +192,19 @@ type ProviderArgs struct {
 
 // NewProvider - create NexentaStor provider instance
 func NewProvider(args ProviderArgs) (nsp ProviderInterface, err error) {
-	providerLog := args.Log.WithFields(logrus.Fields{
+	l := args.Log.WithFields(logrus.Fields{
 		"cmp": "NSProvider",
 		"ns":  fmt.Sprint(args.Address),
 	})
 
-	providerLog.Debugf("Create for %v", args.Address)
+	l.Debugf("created for %v", args.Address)
 
 	restClient, err := rest.NewClient(rest.ClientArgs{
 		Address: args.Address,
-		Log:     providerLog,
+		Log:     l,
 	})
 	if err != nil {
-		providerLog.Errorf("Cannot create REST client for: %v", args.Address)
+		l.Errorf("cannot create REST client for: %v", args.Address)
 	}
 
 	nsp = &Provider{
@@ -209,7 +212,7 @@ func NewProvider(args ProviderArgs) (nsp ProviderInterface, err error) {
 		Username:   args.Username,
 		Password:   args.Password,
 		RestClient: restClient,
-		Log:        providerLog,
+		Log:        l,
 	}
 
 	return nsp, nil

@@ -38,7 +38,7 @@ type Driver struct {
 
 // Run - run the driver
 func (d *Driver) Run() {
-	d.Log.Info("Run driver")
+	d.Log.Info("run")
 
 	csiCommon.RunControllerandNodePublishServer(
 		d.Endpoint,
@@ -57,11 +57,8 @@ type Args struct {
 
 // NewDriver - new driver instance
 func NewDriver(args Args) *Driver {
-	driverLog := args.Log.WithFields(logrus.Fields{
-		"cmp": "Driver",
-	})
-
-	driverLog.Infof("New %v@%v-%v (%v) driver created", Name, Version, Commit, DateTime)
+	l := args.Log.WithField("cmp", "Driver")
+	l.Infof("new %v@%v-%v (%v) driver has been created", Name, Version, Commit, DateTime)
 
 	csiDriver := csiCommon.NewCSIDriver(Name, Version, args.NodeID)
 
@@ -78,7 +75,7 @@ func NewDriver(args Args) *Driver {
 
 	d := &Driver{
 		Endpoint:  args.Endpoint,
-		Log:       driverLog,
+		Log:       l,
 		csiDriver: csiDriver,
 	}
 

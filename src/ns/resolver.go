@@ -15,6 +15,8 @@ type Resolver struct {
 
 // Resolve - get one NS from the pool of NSs by provided pool or dataset path
 func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastError error) {
+	l := nsr.Log.WithField("func", "Resolve()")
+
 	if path == "" {
 		return nil, fmt.Errorf("Resolved was called with empty pool/dataset path")
 	}
@@ -30,7 +32,7 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 	}
 
 	if resolvedNS != nil {
-		nsr.Log.Debugf("Resolve '%v' to %v", path, resolvedNS)
+		l.Debugf("resolve '%v' to '%v'", path, resolvedNS)
 		return resolvedNS, nil
 	}
 
@@ -55,12 +57,12 @@ func NewResolver(args ResolverArgs) (nsr *Resolver, err error) {
 		return nil, fmt.Errorf("NexentaStor address not specified: %v", args.Address)
 	}
 
-	resolverLog := args.Log.WithFields(logrus.Fields{
+	l := args.Log.WithFields(logrus.Fields{
 		"cmp": "NSResolver",
 		"ns":  args.Address,
 	})
 
-	resolverLog.Debugf("Create for %v", args.Address)
+	l.Debugf("created for %v", args.Address)
 
 	var nodes []ProviderInterface
 	addressList := strings.Split(args.Address, ",")
@@ -69,7 +71,7 @@ func NewResolver(args ResolverArgs) (nsr *Resolver, err error) {
 			Address:  address,
 			Username: args.Username,
 			Password: args.Password,
-			Log:      resolverLog,
+			Log:      l,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("Cannot create provider for %v NexentaStor: %v", address, err)
@@ -79,7 +81,7 @@ func NewResolver(args ResolverArgs) (nsr *Resolver, err error) {
 
 	nsr = &Resolver{
 		Nodes: nodes,
-		Log:   resolverLog,
+		Log:   l,
 	}
 
 	return nsr, nil

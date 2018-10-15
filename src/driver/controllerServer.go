@@ -56,7 +56,8 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	*csi.ListVolumesResponse,
 	error,
 ) {
-	s.Log.Infof("ListVolumes(): %+v", req)
+	l := s.Log.WithField("func", "ListVolumes()")
+	l.Infof("request: %+v", req)
 
 	cfg, err := config.Get()
 	if err != nil {
@@ -67,6 +68,8 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	if err != nil {
 		return nil, err
 	}
+
+	l.Infof("resolved NS: %v, %v", nsProvider, cfg.DefaultDataset)
 
 	filesystems, err := nsProvider.GetFilesystems(cfg.DefaultDataset)
 	if err != nil {
@@ -80,6 +83,8 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 		}
 	}
 
+	l.Infof("found %v entries(s)", len(entries))
+
 	return &csi.ListVolumesResponse{
 		Entries: entries,
 	}, nil
@@ -90,7 +95,8 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	*csi.CreateVolumeResponse,
 	error,
 ) {
-	s.Log.Infof("CreateVolume(): %+v", req)
+	l := s.Log.WithField("func", "CreateVolume()")
+	l.Infof("request: %+v", req)
 
 	cfg, err := config.Get()
 	if err != nil {
@@ -132,6 +138,8 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		return nil, err
 	}
 
+	l.Infof("resolved NS: %v, %v", nsProvider, datasetPath)
+
 	res := &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volumePath,
@@ -141,7 +149,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	err = nsProvider.CreateFilesystem(volumePath, nefParams)
 	if err == nil {
-		s.Log.Infof("Volume '%v' has been created", volumePath)
+		l.Infof("volume '%v' has been created", volumePath)
 		return res, nil
 	} else if ns.IsAlreadyExistNefError(err) {
 		existingVolume, err := nsProvider.GetFilesystem(volumePath)
@@ -161,7 +169,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 				existingVolume.QuotaSize,
 			)
 		}
-		s.Log.Infof("Volume '%v' already exists and can be used", volumePath)
+		l.Infof("volume '%v' already exists and can be used", volumePath)
 		return res, nil
 	}
 
@@ -173,7 +181,8 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	*csi.DeleteVolumeResponse,
 	error,
 ) {
-	s.Log.Infof("DeleteVolume(): %+v", req)
+	l := s.Log.WithField("func", "DeleteVolume()")
+	l.Infof("request: %+v", req)
 
 	cfg, err := config.Get()
 	if err != nil {
@@ -185,12 +194,20 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
-	nsPorvider, err := s.resolveNS(cfg, volumePath)
+	nsProvider, err := s.resolveNS(cfg, volumePath)
 	if err != nil {
+		// codes.FailedPrecondition error means no NS found with this volumePath - that's OK
+		if status.Code(err) == codes.FailedPrecondition {
+			l.Infof("volume '%v' not found, that's OK for deletion request", volumePath)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
 		return nil, err
 	}
 
-	err = nsPorvider.DestroyFilesystem(volumePath)
+	l.Infof("resolved NS: %v, %v", nsProvider, volumePath)
+
+	// if here, than volumePath exists on some NS
+	err = nsProvider.DestroyFilesystem(volumePath)
 	if err != nil && !ns.IsNotExistNefError(err) {
 		return nil, status.Errorf(
 			codes.Internal,
@@ -200,7 +217,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 		)
 	}
 
-	s.Log.Infof("Volume '%v' has been deleted", volumePath)
+	l.Infof("volume '%v' has been deleted", volumePath)
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
@@ -209,7 +226,7 @@ func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi
 	*csi.ControllerPublishVolumeResponse,
 	error,
 ) {
-	s.Log.Infof("ControllerPublishVolume(): %+v", req)
+	s.Log.WithField("func", "ControllerPublishVolume()").Infof("request: %+v", req)
 	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
@@ -218,7 +235,7 @@ func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *c
 	*csi.ControllerUnpublishVolumeResponse,
 	error,
 ) {
-	s.Log.Infof("ControllerUnpublishVolume(): %+v", req)
+	s.Log.WithField("func", "ControllerUnpublishVolume()").Infof("request: %+v", req)
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
@@ -238,14 +255,12 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 
 // NewControllerServer - create an instance of controller service
 func NewControllerServer(driver *Driver) *ControllerServer {
-	nodeServerLog := driver.Log.WithFields(logrus.Fields{
-		"cmp": "ControllerServer",
-	})
+	l := driver.Log.WithField("cmp", "ControllerServer")
 
-	nodeServerLog.Info("New ControllerServer has been created")
+	l.Info("new ControllerServer has been created")
 
 	return &ControllerServer{
 		DefaultControllerServer: csiCommon.NewDefaultControllerServer(driver.csiDriver),
-		Log:                     nodeServerLog,
+		Log:                     l,
 	}
 }

@@ -16,6 +16,7 @@ type Config struct {
 	Password       string `yaml:"password"`
 	DefaultDataset string `yaml:"defaultDataset,omitempty"`
 	DefaultDataIP  string `yaml:"defaultDataIp,omitempty"`
+	Debug          bool   `yaml:"debug,omitempty"`
 }
 
 // Validate - validate current config

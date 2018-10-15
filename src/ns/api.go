@@ -16,6 +16,8 @@ type Filesystem struct {
 
 // LogIn - log in to NexentaStor API and get auth token
 func (nsp *Provider) LogIn() error {
+	l := nsp.Log.WithField("func", "LogIn()")
+
 	data := make(map[string]interface{})
 	data["username"] = nsp.Username
 	data["password"] = nsp.Password
@@ -27,7 +29,7 @@ func (nsp *Provider) LogIn() error {
 
 	if token, ok := resJSON["token"]; ok {
 		nsp.RestClient.SetAuthToken(fmt.Sprint(token))
-		nsp.Log.Info("Login token has been updated")
+		l.Debugf("login token has been updated")
 		return nil
 	}
 
@@ -36,8 +38,8 @@ func (nsp *Provider) LogIn() error {
 	if restError != nil {
 		code := restError.(*NefError).Code
 		if code == "EAUTH" {
-			nsp.Log.Errorf(
-				"Login to NexentaStor %v failed (username: '%v'), "+
+			l.Errorf(
+				"login to NexentaStor %v failed (username: '%v'), "+
 					"please make sure to use correct address and password",
 				nsp.Address,
 				nsp.Username)

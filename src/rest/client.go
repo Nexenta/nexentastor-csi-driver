@@ -45,13 +45,17 @@ func (client *Client) Send(method, path string, data interface{}) (
 	map[string]interface{},
 	error,
 ) {
-	uri := fmt.Sprintf("%v/%v", client.address, path)
 	requestID++
-	requestLog := client.log.WithFields(logrus.Fields{
+
+	l := client.log.WithFields(logrus.Fields{
+		"func":  "Send()",
 		"req":   fmt.Sprintf("%v %v", method, path),
-		"reqId": requestID,
+		"reqID": requestID,
 	})
-	requestLog.Info("Send request")
+
+	uri := fmt.Sprintf("%v/%v", client.address, path)
+
+	l.Debug("send request")
 
 	// send request data as json
 	var jsonDataReader io.Reader
@@ -63,12 +67,12 @@ func (client *Client) Send(method, path string, data interface{}) (
 			return 0, nil, err
 		}
 		jsonDataReader = strings.NewReader(string(jsonData))
-		requestLog.Infof("Data: %v", data) //TODO hide passwords
+		l.Debugf("data: %v", data) //TODO hide passwords
 	}
 
 	req, err := http.NewRequest(method, uri, jsonDataReader)
 	if err != nil {
-		requestLog.Errorf("Request creation error: %v", err)
+		l.Errorf("request creation error: %v", err)
 		return 0, nil, err
 	}
 
@@ -79,7 +83,7 @@ func (client *Client) Send(method, path string, data interface{}) (
 
 	res, err := client.httpClient.Do(req)
 	if err != nil {
-		requestLog.Errorf("Request error: %v", err)
+		l.Errorf("request error: %v", err)
 		return 0, nil, err
 	}
 
@@ -87,11 +91,11 @@ func (client *Client) Send(method, path string, data interface{}) (
 
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		requestLog.Errorf("Cannot read body: %v", err)
+		l.Errorf("cannot read body: %v", err)
 		return res.StatusCode, nil, err
 	}
 
-	requestLog.Infof("Response status code: %v", res.StatusCode)
+	l.Debugf("response status code: %v", res.StatusCode)
 
 	jsonRes := make(map[string]interface{})
 
@@ -133,11 +137,9 @@ type ClientArgs struct {
 
 // NewClient - create new REST client
 func NewClient(args ClientArgs) (client ClientInterface, err error) {
-	clientLog := args.Log.WithFields(logrus.Fields{
-		"cmp": "RestClient",
-	})
+	l := args.Log.WithField("cmp", "RestClient")
 
-	clientLog.Debugf("Create for %v", args.Address)
+	l.Debugf("created for %v", args.Address)
 
 	tr := &http.Transport{
 		IdleConnTimeout: 60 * time.Second,
@@ -155,7 +157,7 @@ func NewClient(args ClientArgs) (client ClientInterface, err error) {
 		address:    args.Address,
 		authToken:  "",
 		httpClient: httpClient,
-		log:        clientLog,
+		log:        l,
 	}
 
 	return client, nil

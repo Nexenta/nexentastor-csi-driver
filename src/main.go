@@ -30,35 +30,40 @@ func main() {
 	}
 
 	// init logger
-	log := logrus.New().WithFields(logrus.Fields{
+	l := logrus.New().WithFields(logrus.Fields{
 		//"nodeId":    *nodeID,
 		"cmp": "Main",
 	})
 
-	// logger config
-	//log.Logger.SetFormatter()
-	log.Logger.SetLevel(logrus.DebugLevel)
+	// logger formater
 
-	log.Info("Start driver with CLI options:")
-	log.Infof("- CSI endpoint:    '%v'", *endpoint)
-	log.Infof("- Node ID:         '%v'", *nodeID)
+	l.Info("Start driver with CLI options:")
+	l.Infof("- CSI endpoint:    '%v'", *endpoint)
+	l.Infof("- Node ID:         '%v'", *nodeID)
 
 	// initial config file validation
 	cfg, err := config.Get()
 	if err != nil {
-		log.Fatalf("Cannot use config file: %v", err)
+		l.Fatalf("Cannot use config file: %v", err)
 	}
 
-	log.Info("Config file options:")
-	log.Infof("- NexentaStor address: %v", cfg.Address)
-	log.Infof("- NexentaStor username: %v", cfg.Username)
-	log.Infof("- Default dataset: %v", cfg.DefaultDataset)
-	log.Infof("- Default data IP: %v", cfg.DefaultDataIP)
+	// logger level
+	if cfg.Debug {
+		l.Logger.SetLevel(logrus.DebugLevel)
+	} else {
+		l.Logger.SetLevel(logrus.InfoLevel)
+	}
+
+	l.Info("Config file options:")
+	l.Infof("- NexentaStor address: %v", cfg.Address)
+	l.Infof("- NexentaStor username: %v", cfg.Username)
+	l.Infof("- Default dataset: %v", cfg.DefaultDataset)
+	l.Infof("- Default data IP: %v", cfg.DefaultDataIP)
 
 	d := driver.NewDriver(driver.Args{
 		NodeID:   *nodeID,
 		Endpoint: *endpoint,
-		Log:      log,
+		Log:      l,
 	})
 
 	d.Run()

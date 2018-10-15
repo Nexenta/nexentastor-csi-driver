@@ -33,7 +33,7 @@ kubectl delete -f ./kubernetes
 ```bash
 kubectl apply -f ./examples/nginx-dynamic.yaml
 
-# to delete a pod:
+# to delete this pod:
 kubectl delete -f ./examples/nginx-dynamic.yaml
 ```
 
@@ -48,7 +48,7 @@ make
 
 ### Run
 
-Without installation to k8s cluster the only only command works:
+Without installation to k8s cluster only version command works:
 ```bash
 ./bin/nexentastor-csi-plugin --version
 ```

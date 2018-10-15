@@ -19,12 +19,22 @@ NexentaStor CSI driver for Kubernetes.
    kubectl apply -f ./kubernetes
    ```
 
+## Uninstall
+
+Using the same files as for installation:
+```bash
+kubectl delete -f ./kubernetes
+```
+
 ## Examples
 
 ### Run nginx server with PersistentVolumeClaim
 
 ```bash
 kubectl apply -f ./examples/nginx-dynamic.yaml
+
+# to delete a pod:
+kubectl delete -f ./examples/nginx-dynamic.yaml
 ```
 
 ## Development
@@ -38,8 +48,9 @@ make
 
 ### Run
 
+Without installation to k8s cluster the only only command works:
 ```bash
-make && ./bin/nexentastor-csi-plugin --rest-ip="https://10.3.199.253:8443,https://10.3.199.252:8443" --username="admin" --password="Nexenta@1"
+./bin/nexentastor-csi-plugin --version
 ```
 
 ### Tests

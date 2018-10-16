@@ -21,7 +21,6 @@ NexentaStor CSI driver for Kubernetes.
     ```
 4. Create Kubernetes secret from file:
     ```bash
-    # edit `./kubernetes/nexentastor-csi-driver-config.yaml` file
     kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/secret/nexentastor-csi-driver-config.yaml
     ```
 5. Register plugin to Kubernetes:

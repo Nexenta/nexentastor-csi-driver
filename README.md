@@ -4,17 +4,27 @@ NexentaStor CSI driver for Kubernetes.
 
 ## Installation
 
-1. Clone driver repository
+1. Create NexentaStor dataset for driver. Example: `csiDriverPool/csiDriverDataset`
+2. Clone driver repository
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
    ```
-2. Create Kubernetes secret
-   ```bash
-   # edit `./kubernetes/nexentastor-csi-driver-config.yaml` file
-   kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/secret/nexentastor-csi-driver-config.yaml
-   ```
-3. Register plugin to Kubernetes
+3. Edit `./kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
+    ```yaml
+    restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)
+    username: admin                                             # [required] NexentaStor REST API username
+    password: p@ssword                                          # [required] NexentaStor REST API password
+    defaultDataset: csiDriverPool/csiDriverDataset              # default parent dataset for creating fs/volume
+    defaultDataIp: 20.20.20.252                                 # default NexentaStor data IP or HA VIP
+    debug: true                                                 # more logs
+    ```
+4. Create Kubernetes secret from file:
+    ```bash
+    # edit `./kubernetes/nexentastor-csi-driver-config.yaml` file
+    kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/secret/nexentastor-csi-driver-config.yaml
+    ```
+5. Register plugin to Kubernetes:
    ```bash
    kubectl apply -f ./kubernetes
    ```
@@ -24,6 +34,7 @@ NexentaStor CSI driver for Kubernetes.
 Using the same files as for installation:
 ```bash
 kubectl delete -f ./kubernetes
+kubectl delete secret nexentastor-csi-driver-config
 ```
 
 ## Examples

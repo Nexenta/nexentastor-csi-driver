@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultEndpoint = "unix:///var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-plugin/csi.sock"
+	defaultEndpoint = "unix:///var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock"
 )
 
 func main() {

@@ -21,11 +21,11 @@ NexentaStor CSI driver for Kubernetes.
     ```
 4. Create Kubernetes secret from file:
     ```bash
-    kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/secret/nexentastor-csi-driver-config.yaml
+    kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/nexentastor-csi-driver-config.yaml
     ```
-5. Register plugin to Kubernetes:
+5. Register driver to Kubernetes:
    ```bash
-   kubectl apply -f ./kubernetes
+   kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
    ```
 
 ## Usage examples
@@ -43,7 +43,7 @@ kubectl delete -f ./examples/nginx-dynamic.yaml
 
 Using the same files as for installation:
 ```bash
-kubectl delete -f ./kubernetes
+kubectl delete -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
 kubectl delete secret nexentastor-csi-driver-config
 ```
 
@@ -60,7 +60,7 @@ make
 
 Without installation to k8s cluster only version command works:
 ```bash
-./bin/nexentastor-csi-plugin --version
+./bin/nexentastor-csi-driver --version
 ```
 
 ### Tests

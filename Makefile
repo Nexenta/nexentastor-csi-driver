@@ -1,9 +1,8 @@
-DRIVER_NAME=nexentastor-csi-plugin
+DRIVER_NAME=nexentastor-csi-driver
 IMAGE_NAME=$(DRIVER_NAME)
 DOCKER_FILE=Dockerfile
 REGISTRY=nexenta
 REGISTRY_LOCAL=10.3.199.92:5000
-IMAGE_TAG=latest
 VERSION ?= $(shell git rev-parse --abbrev-ref HEAD)
 COMMIT ?= $(shell git rev-parse HEAD | cut -c 1-7)
 DATETIME ?= $(shell date +'%F_%T')
@@ -33,13 +32,13 @@ container-build: build
 
 .PHONY: container-push
 container-push: container-build
-	docker tag  $(IMAGE_NAME) $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+	docker tag  $(IMAGE_NAME) $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
+	docker push $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
 
 .PHONY: container-push-local
 container-push-local: container-build
-	docker tag  $(IMAGE_NAME) $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(IMAGE_TAG)
+	docker tag  $(IMAGE_NAME) $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(VERSION)
+	docker push $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(VERSION)
 
 .PHONY: clean
 clean:

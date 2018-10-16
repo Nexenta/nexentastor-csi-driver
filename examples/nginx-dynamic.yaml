@@ -3,22 +3,22 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: nexentastor-csi-plugin-cs-nginx-dynamic
-provisioner: nexentastor-csi-plugin
+  name: nexentastor-csi-driver-cs-nginx-dynamic
+provisioner: nexentastor-csi-driver
 parameters:
 
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: nexentastor-csi-plugin-pvc-nginx-dynamic
+  name: nexentastor-csi-driver-pvc-nginx-dynamic
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  storageClassName: nexentastor-csi-plugin-cs-nginx-dynamic
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
 
 ---
 apiVersion: v1
@@ -35,9 +35,9 @@ spec:
       protocol: TCP
     volumeMounts:
       - mountPath: /usr/share/nginx/html
-        name: nexentastor-csi-plugin-data
+        name: nexentastor-csi-driver-data
   volumes:
-  - name: nexentastor-csi-plugin-data
+  - name: nexentastor-csi-driver-data
     persistentVolumeClaim:
-      claimName: nexentastor-csi-plugin-pvc-nginx-dynamic
+      claimName: nexentastor-csi-driver-pvc-nginx-dynamic
       readOnly: false

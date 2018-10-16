@@ -1,9 +1,0 @@
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: csi-sc-nexentastor
-provisioner: nexentastor-csi-driver
-parameters:
-  type: nfs                         # [nfs|iscsi] mount type
-  dataset: poolA/datasetA           # parent dataset for creating fs/volumes
-  dataIp: 10.1.1.12                 # single NexentaStor IP or HA VIP

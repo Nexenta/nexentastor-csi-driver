@@ -76,3 +76,5 @@ go test ./tests/ns_provider -v -count 1 \
     --filesystem="myFs" \
     --log="true"
 ```
+
+See `Makefile` for more examples.

@@ -8,6 +8,7 @@ import (
 	"github.com/Nexenta/nexentastor-csi-driver/src/config"
 	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
 
+	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,12 +31,13 @@ func main() {
 	}
 
 	// init logger
-	l := logrus.New().WithFields(logrus.Fields{
-		//"nodeId":    *nodeID,
-		"cmp": "Main",
-	})
+	l := logrus.New().WithField("cmp", "Main")
 
 	// logger formater
+	l.Logger.SetFormatter(&nested.Formatter{
+		HideKeys:    true,
+		FieldsOrder: []string{"cmp", "ns", "func", "req", "reqID", "job"},
+	})
 
 	l.Info("Start driver with CLI options:")
 	l.Infof("- CSI endpoint:    '%v'", *endpoint)

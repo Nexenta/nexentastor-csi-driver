@@ -16,7 +16,11 @@ LDFLAGS ?= \
 all: build
 
 test:
-	go test ./tests/* -v -count 1
+	go test ./tests/rest -v -count 1
+	go test ./tests/config -v -count 1
+	go test ./tests/ns_provider -v -count 1 --address="https://10.3.199.254:8443"
+	go test ./tests/ns_resolver -v -count 1 --address="https://10.3.199.254:8443"
+	go test ./tests/ns_resolver -v -count 1 --address="https://10.3.199.252:8443,https://10.3.199.253:8443"
 
 build:
 	env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(DRIVER_NAME) -ldflags "$(LDFLAGS)" ./src

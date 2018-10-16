@@ -56,9 +56,7 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
-	logger = logrus.New().WithFields(logrus.Fields{
-		"ns": *address,
-	})
+	logger = logrus.New().WithField("ns", *address)
 	logger.Logger.SetLevel(logrus.PanicLevel)
 	if *log {
 		logger.Logger.SetLevel(logrus.DebugLevel)

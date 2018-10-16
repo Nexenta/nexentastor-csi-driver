@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:00316e9ff9151afd8152febfc0b4c01c99957e613cb9e4ca50e7c446f7211005"
+  name = "github.com/antonfisher/nested-logrus-formatter"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "43364c99d52bea9390f3e370dc41d7f3b6fe7cce"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:a54dc69ec3668e0e57ad159a0a8c0ce1ec571174bb4eb6b3915833a8c21d40f3"
   name = "github.com/container-storage-interface/spec"
   packages = ["lib/go/csi/v0"]
@@ -214,6 +222,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/antonfisher/nested-logrus-formatter",
     "github.com/container-storage-interface/spec/lib/go/csi/v0",
     "github.com/kubernetes-csi/drivers/pkg/csi-common",
     "github.com/pborman/uuid",

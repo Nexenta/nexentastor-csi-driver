@@ -28,15 +28,7 @@ NexentaStor CSI driver for Kubernetes.
    kubectl apply -f ./kubernetes
    ```
 
-## Uninstall
-
-Using the same files as for installation:
-```bash
-kubectl delete -f ./kubernetes
-kubectl delete secret nexentastor-csi-driver-config
-```
-
-## Examples
+## Usage examples
 
 ### Run nginx server with PersistentVolumeClaim
 
@@ -45,6 +37,14 @@ kubectl apply -f ./examples/nginx-dynamic.yaml
 
 # to delete this pod:
 kubectl delete -f ./examples/nginx-dynamic.yaml
+```
+
+## Uninstall
+
+Using the same files as for installation:
+```bash
+kubectl delete -f ./kubernetes
+kubectl delete secret nexentastor-csi-driver-config
 ```
 
 ## Development

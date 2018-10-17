@@ -50,6 +50,19 @@ kubectl apply -f ./examples/nginx-pesistent-volume.yaml
 kubectl delete -f ./examples/nginx-pesistent-volume.yaml
 ```
 
+### Overwrite default config in StorageClass definition
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-driver-dynamic-provisioning
+provisioner: nexentastor-csi-driver
+parameters:
+  dataset: customPool/customDataset # to overwrite "defaultDataset" config property
+  dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
+```
+
 ## Uninstall
 
 Using the same files as for installation:

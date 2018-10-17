@@ -112,8 +112,8 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	// get dataset path from runtime params, set default if not specified
 	datasetPath := ""
-	if dataset, ok := reqParams["dataset"]; ok {
-		datasetPath = dataset
+	if v, ok := reqParams["dataset"]; ok {
+		datasetPath = v
 	} else {
 		datasetPath = cfg.DefaultDataset
 	}
@@ -144,6 +144,9 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		Volume: &csi.Volume{
 			Id:            volumePath,
 			CapacityBytes: capacityBytes,
+			Attributes: map[string]string{
+				"dataIp": reqParams["dataIp"],
+			},
 		},
 	}
 

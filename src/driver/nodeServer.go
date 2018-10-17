@@ -169,7 +169,20 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Errorf(codes.Internal, "Target path '%v' is already a mount point", targetPath)
 	}
 
-	nfsEndpoint := fmt.Sprintf("%v:%v", cfg.DefaultDataIP, filesystem.MountPoint)
+	volumeAttributes := req.GetVolumeAttributes()
+	if volumeAttributes == nil {
+		volumeAttributes = make(map[string]string)
+	}
+
+	// get dataIP from runtime params, set default if not specified
+	dataIP := ""
+	if v, ok := volumeAttributes["dataIP"]; ok {
+		dataIP = v
+	} else {
+		dataIP = cfg.DefaultDataIP
+	}
+
+	nfsEndpoint := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
 
 	l.Infof(
 		"mount params: targetPath: '%v', nfsEndpoint: '%v', fsType: '%v', "+

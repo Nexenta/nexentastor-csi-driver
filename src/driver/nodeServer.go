@@ -134,11 +134,12 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v': %v", filesystem.Path, err)
 		}
-		// apply filesystem acl
-		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
-		}
+	}
+
+	// apply filesystem acl (overwrites every time)
+	err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
 	}
 
 	mounter := mount.New("")

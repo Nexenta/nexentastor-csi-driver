@@ -19,7 +19,7 @@ NexentaStor CSI driver for Kubernetes.
     defaultDataIp: 20.20.20.252                                 # default NexentaStor data IP or HA VIP
     debug: true                                                 # more logs
     ```
-4. Create Kubernetes secret from file:
+4. Create Kubernetes secret from the file:
     ```bash
     kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/nexentastor-csi-driver-config.yaml
     ```

@@ -1,0 +1,69 @@
+# Nginx pod with pre provisioned storage using NexentaStor CSI driver
+
+
+# -----------------------------------------
+# NexentaStor CSI Driver - Peristens Volume
+# -----------------------------------------
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nexentastor-csi-driver-nginx-pv
+  labels:
+    name: nexentastor-csi-driver-nginx-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  csi:
+    driver: nexentastor-csi-driver
+    volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+---
+
+
+# -----------------------------------------------
+# NexentaStor CSI Driver - Peristens Volume Claim
+# -----------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-nginx-pvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchExpressions:
+    - key: name
+      operator: In
+      values: ["nexentastor-csi-driver-nginx-pv"]
+---
+
+
+# ---------
+# Nginx pod
+# ---------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-presistent-volume
+spec:
+  containers:
+  - image: maersk/nginx
+    imagePullPolicy: Always
+    name: nginx
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    volumeMounts:
+      - mountPath: /usr/share/nginx/html
+        name: nexentastor-csi-driver-data
+  volumes:
+  - name: nexentastor-csi-driver-data
+    persistentVolumeClaim:
+      claimName: nexentastor-csi-driver-nginx-pvc

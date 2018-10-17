@@ -1,4 +1,9 @@
-# Nginx pod with storage provided by NexentaStor CSI driver
+# Nginx pod with dynamically storage creation using NexentaStor CSI driver
+
+
+# --------------------------------------
+# NexentaStor CSI Driver - Storage Class
+# --------------------------------------
 
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -6,8 +11,13 @@ metadata:
   name: nexentastor-csi-driver-cs-nginx-dynamic
 provisioner: nexentastor-csi-driver
 parameters:
-
 ---
+
+
+# ------------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume Claim
+# ------------------------------------------------
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -19,12 +29,17 @@ spec:
     requests:
       storage: 1Gi
   storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
-
 ---
+
+
+# ---------
+# Nginx pod
+# ---------
+
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx
+  name: nginx-storage-class
 spec:
   containers:
   - image: nginx

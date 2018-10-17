@@ -30,13 +30,24 @@ NexentaStor CSI driver for Kubernetes.
 
 ## Usage examples
 
-### Run nginx server with PersistentVolumeClaim
+### Run nginx server using StorageClass (dynamic provisioning)
 
 ```bash
-kubectl apply -f ./examples/nginx-dynamic.yaml
+kubectl apply -f ./examples/nginx-storage-class.yaml
 
 # to delete this pod:
-kubectl delete -f ./examples/nginx-dynamic.yaml
+kubectl delete -f ./examples/nginx-storage-class.yaml
+```
+
+### Run nginx server using PersistenVolume (pre provisioning)
+
+Pre configured filesystem should exist on NexentaStor: `csiDriverPool/csiDriverDataset/nginx-persistent`
+
+```bash
+kubectl apply -f ./examples/nginx-pesistent-volume.yaml
+
+# to delete this pod:
+kubectl delete -f ./examples/nginx-pesistent-volume.yaml
 ```
 
 ## Uninstall

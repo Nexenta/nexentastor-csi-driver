@@ -64,8 +64,11 @@ func NewDriver(args Args) *Driver {
 
 	csiDriver.AddControllerServiceCapabilities(
 		[]csi.ControllerServiceCapability_RPC_Type{
-			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 			csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+			//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
+			//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
+			//csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT, //TODO
 		},
 	)
 

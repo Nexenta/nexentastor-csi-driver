@@ -224,37 +224,37 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-// ControllerPublishVolume - publish volume
-func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (
-	*csi.ControllerPublishVolumeResponse,
-	error,
-) {
-	s.Log.WithField("func", "ControllerPublishVolume()").Infof("request: %+v", req)
-	return &csi.ControllerPublishVolumeResponse{}, nil
-}
+// // ControllerPublishVolume - publish volume
+// func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (
+// 	*csi.ControllerPublishVolumeResponse,
+// 	error,
+// ) {
+// 	s.Log.WithField("func", "ControllerPublishVolume()").Infof("request: %+v", req)
+// 	return &csi.ControllerPublishVolumeResponse{}, nil
+// }
 
-// ControllerUnpublishVolume - unpublish volume
-func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (
-	*csi.ControllerUnpublishVolumeResponse,
-	error,
-) {
-	s.Log.WithField("func", "ControllerUnpublishVolume()").Infof("request: %+v", req)
-	return &csi.ControllerUnpublishVolumeResponse{}, nil
-}
+// // ControllerUnpublishVolume - unpublish volume
+// func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (
+// 	*csi.ControllerUnpublishVolumeResponse,
+// 	error,
+// ) {
+// 	s.Log.WithField("func", "ControllerUnpublishVolume()").Infof("request: %+v", req)
+// 	return &csi.ControllerUnpublishVolumeResponse{}, nil
+// }
 
-// ValidateVolumeCapabilities - validate volume capabilities (only mount is supported)
-func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
-	*csi.ValidateVolumeCapabilitiesResponse,
-	error,
-) {
-	supported := true
-	for _, cap := range req.VolumeCapabilities {
-		if cap.GetBlock() != nil {
-			supported = false
-		}
-	}
-	return &csi.ValidateVolumeCapabilitiesResponse{Supported: supported}, nil
-}
+// // ValidateVolumeCapabilities - validate volume capabilities (only mount is supported)
+// func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
+// 	*csi.ValidateVolumeCapabilitiesResponse,
+// 	error,
+// ) {
+// 	supported := true
+// 	for _, cap := range req.VolumeCapabilities {
+// 		if cap.GetBlock() != nil {
+// 			supported = false
+// 		}
+// 	}
+// 	return &csi.ValidateVolumeCapabilitiesResponse{Supported: supported}, nil
+// }
 
 // NewControllerServer - create an instance of controller service
 func NewControllerServer(driver *Driver) *ControllerServer {

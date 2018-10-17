@@ -1,6 +1,6 @@
 restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)
 username: admin                                             # [required] NexentaStor REST API username
 password: Nexenta@1                                         # [required] NexentaStor REST API password
-defaultDataset: csiDriverPool/csiDriverDataset              # default parent dataset for creating fs/volume
-defaultDataIp: 20.20.20.252                                 # default NexentaStor IP or HA VIP
+defaultDataset: csiDriverPool/csiDriverDataset              # default dataset for driver's fs/volume [pool/dataset]
+defaultDataIp: 20.20.20.252                                 # default NexentaStor data IP or HA VIP
 debug: true                                                 # more logs

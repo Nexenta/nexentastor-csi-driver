@@ -15,7 +15,7 @@
     restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)
     username: admin                                             # [required] NexentaStor REST API username
     password: p@ssword                                          # [required] NexentaStor REST API password
-    defaultDataset: csiDriverPool/csiDriverDataset              # default parent dataset for creating fs/volume
+    defaultDataset: csiDriverPool/csiDriverDataset              # default dataset for driver's fs/volume [pool/dataset]
     defaultDataIp: 20.20.20.252                                 # default NexentaStor data IP or HA VIP
     debug: true                                                 # more logs
     ```
@@ -39,7 +39,7 @@ kubectl apply -f ./examples/nginx-storage-class.yaml
 kubectl delete -f ./examples/nginx-storage-class.yaml
 ```
 
-### Run nginx server using PersistenVolume (pre provisioning)
+### Run nginx server using PersistentVolume (pre provisioning)
 
 Pre configured filesystem should exist on NexentaStor: `csiDriverPool/csiDriverDataset/nginx-persistent`
 
@@ -59,7 +59,7 @@ metadata:
   name: nexentastor-csi-driver-dynamic-provisioning
 provisioner: nexentastor-csi-driver
 parameters:
-  dataset: customPool/customDataset # to overwrite "defaultDataset" config property
+  dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
 ```
 

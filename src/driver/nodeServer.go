@@ -49,14 +49,14 @@ func (s *NodeServer) resolveNS(cfg *config.Config, datasetPath string) (ns.Provi
 	return nsProvider, nil
 }
 
-// NodeGetId - returns node id where pod is running
-func (s *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (
-	*csi.NodeGetIdResponse,
-	error,
-) {
-	s.Log.WithField("func", "NodeGetId()").Infof("request: %+v", req)
-	return s.DefaultNodeServer.NodeGetId(ctx, req)
-}
+// // NodeGetId - returns node id where pod is running
+// func (s *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (
+// 	*csi.NodeGetIdResponse,
+// 	error,
+// ) {
+// 	s.Log.WithField("func", "NodeGetId()").Infof("request: %+v", req)
+// 	return s.DefaultNodeServer.NodeGetId(ctx, req)
+// }
 
 // NodeGetCapabilities - get node capabilities
 func (s *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (

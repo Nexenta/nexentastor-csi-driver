@@ -167,13 +167,13 @@ func (nsp *Provider) waitForAsyncJob(jobID string) (err error) {
 					return
 				}
 				waitingTimeSeconds := time.Since(startTime).Seconds()
-				if waitingTimeSeconds >= float64(checkJobStatusInterval) {
+				if waitingTimeSeconds >= checkJobStatusInterval.Seconds() {
 					l.Warnf("waiting job for %.0fs...", waitingTimeSeconds)
 				}
 				timer = time.NewTimer(checkJobStatusInterval)
 			case <-timeout:
 				timer.Stop()
-				done <- fmt.Errorf("Checking job status timeout exceeded")
+				done <- fmt.Errorf("Checking job status timeout exceeded (%vs)", checkJobStatusTimeout)
 				return
 			}
 		}

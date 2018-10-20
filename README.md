@@ -95,14 +95,11 @@ make test
 # or
 make test | grep --color 'FAIL\|$'
 
-# with options
+# Unit tests with options
 go test ./tests/unit/rest -v -count 1
 go test ./tests/unit/config -v -count 1
-go test ./tests/e2e/ns_provider -v -count 1 --address="https://10.3.199.254:8443"
-go test ./tests/e2e/ns_resolver -v -count 1 --address="https://10.3.199.254:8443"
-go test ./tests/e2e/ns_resolver -v -count 1 --address="https://10.3.199.252:8443,https://10.3.199.253:8443"
 
-# NexentaStor provider test options
+# Tests check NexentaStor API provider
 go test ./tests/e2e/ns_provider -v -count 1 \
     --address="https://10.3.199.254:8443" \
     --username="admin" \
@@ -111,6 +108,12 @@ go test ./tests/e2e/ns_provider -v -count 1 \
     --dataset="myDataset" \
     --filesystem="myFs" \
     --log="true"
+
+# Tests install driver to k8s and run nginx pod with mounted volume
+go test tests/e2e/deploy/driver_test.go -v -count 1 \
+    --k8sConnectionString="root@10.3.199.250" \
+    --k8sDeploymentFile="./_configs/nexentastor-csi-driver-master-local.yaml" \
+    --k8sSecretFile="./_configs/nexentastor-csi-driver-config-single.yaml"
 ```
 
 See `Makefile` for more examples.

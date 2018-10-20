@@ -7,16 +7,24 @@ import (
 	"time"
 )
 
+const (
+	// default wait timeout
+	defaultWaitTimeout = 30 * time.Second
+
+	// default wait interval
+	defaultWaitInterval = 2 * time.Second
+)
+
 // Client - wrapper to run bash commands over ssh
 type Client struct {
 	// ConnectionString - user@host for ssh command
 	ConnectionString string
 
-	// CMDWaitInterval - run command every N seconds to check the output
-	CMDWaitInterval time.Duration
+	// WaitInterval - run command every N seconds to check the output
+	WaitInterval time.Duration
 
-	// CMDWaitTimeout - consider command to fail after this timeout exceeded
-	CMDWaitTimeout time.Duration
+	// WaitTimeout - consider command to fail after this timeout exceeded
+	WaitTimeout time.Duration
 }
 
 func (c *Client) String() string {
@@ -37,7 +45,7 @@ func (c *Client) Exec(cmd string) (string, error) {
 func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool) error {
 	done := make(chan error)
 	timer := time.NewTimer(0)
-	timeout := time.After(c.CMDWaitTimeout)
+	timeout := time.After(c.WaitTimeout)
 	lastOutput := ""
 
 	go func() {
@@ -56,17 +64,17 @@ func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool)
 
 				lastOutput = out
 				waitingTimeSeconds := time.Since(startTime).Seconds()
-				if waitingTimeSeconds >= c.CMDWaitInterval.Seconds() {
+				if waitingTimeSeconds >= c.WaitInterval.Seconds() {
 					fmt.Printf("...waiting cmd for %.0fs\n", waitingTimeSeconds)
 				}
-				timer = time.NewTimer(c.CMDWaitInterval)
+				timer = time.NewTimer(c.WaitInterval)
 			case <-timeout:
 				timer.Stop()
 				done <- fmt.Errorf(
 					"Checking cmd output timeout exceeded (%v), "+
 						"cmd: '%v', regexp: '%v', inverted: %v, last output:\n"+
 						"---\n%v\n---\n",
-					c.CMDWaitTimeout,
+					c.WaitTimeout,
 					cmd,
 					re,
 					inverted,
@@ -84,11 +92,27 @@ func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool)
 func (c *Client) CopyFiles(from, to string) error {
 	toAddress := fmt.Sprintf("%v:%v", c.ConnectionString, to)
 
-	fmt.Printf("%v SCP from: %v, to %v\n", c.ConnectionString, from, toAddress)
+	fmt.Printf("%v SCP: scp %v %v\n", c.ConnectionString, from, toAddress)
 
 	if _, err := exec.Command("scp", from, toAddress).Output(); err != nil {
 		return fmt.Errorf("Command 'scp %v %v' error: %v", from, toAddress, err)
 	}
 
 	return nil
+}
+
+// NewClient - create new SSH remote client
+func NewClient(connectionString string) (*Client, error) {
+	client := &Client{
+		ConnectionString: connectionString,
+		WaitInterval:     defaultWaitInterval,
+		WaitTimeout:      defaultWaitTimeout,
+	}
+
+	_, err := client.Exec("date")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to validate %v connection: %v", connectionString, err)
+	}
+
+	return client, nil
 }

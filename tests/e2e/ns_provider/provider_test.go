@@ -13,6 +13,7 @@ import (
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
+// defaults
 const (
 	defaultAddress         = "https://10.3.199.254:8443"
 	defaultUsername        = "admin"

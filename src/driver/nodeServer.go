@@ -182,6 +182,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		dataIP = cfg.DefaultDataIP
 	}
 
+	//check if dataIP is provided
 	nfsEndpoint := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
 
 	l.Infof(

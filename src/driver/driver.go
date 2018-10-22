@@ -1,6 +1,8 @@
 package driver
 
 import (
+	"github.com/Nexenta/nexentastor-csi-driver/src/config"
+
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
@@ -24,6 +26,7 @@ var DateTime string
 // Driver - K8s CSI driver for NexentaStor
 type Driver struct {
 	Endpoint string
+	Config   *config.Config
 	Log      *logrus.Entry
 
 	csiDriver *csiCommon.CSIDriver
@@ -43,8 +46,8 @@ func (d *Driver) Run() {
 	csiCommon.RunControllerandNodePublishServer(
 		d.Endpoint,
 		d.csiDriver,
-		NewControllerServer(d),
-		NewNodeServer(d),
+		NewControllerServer(d, d.Config),
+		NewNodeServer(d, d.Config),
 	)
 }
 
@@ -52,12 +55,20 @@ func (d *Driver) Run() {
 type Args struct {
 	NodeID   string
 	Endpoint string
+	Config   *config.Config
 	Log      *logrus.Entry
 }
 
 // NewDriver - new driver instance
 func NewDriver(args Args) *Driver {
 	l := args.Log.WithField("cmp", "Driver")
+
+	if args.Config == nil {
+		l.Fatal("args.Config is required")
+	} else if args.Log == nil {
+		l.Fatal("args.Log is required")
+	}
+
 	l.Infof("new %v@%v-%v (%v) driver has been created", Name, Version, Commit, DateTime)
 
 	csiDriver := csiCommon.NewCSIDriver(Name, Version, args.NodeID)
@@ -78,6 +89,7 @@ func NewDriver(args Args) *Driver {
 
 	d := &Driver{
 		Endpoint:  args.Endpoint,
+		Config:    args.Config,
 		Log:       l,
 		csiDriver: csiDriver,
 	}

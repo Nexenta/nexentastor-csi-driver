@@ -8,7 +8,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: nexentastor-csi-driver-cs-nginx-dynamic
+  name: nexentastor-csi-driver-cs-nginx-test-rw
 provisioner: nexentastor-csi-driver
 parameters:
   # dataset: csiDriverPool/test   # to overwrite "defaultDataset" in config secret
@@ -23,14 +23,14 @@ parameters:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: nexentastor-csi-driver-pvc-nginx-dynamic
+  name: nexentastor-csi-driver-pvc-nginx-test-rw
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
+  storageClassName: nexentastor-csi-driver-cs-nginx-test-rw
 ---
 
 
@@ -41,7 +41,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-storage-class
+  name: nginx-storage-class-test-rw
 spec:
   containers:
   - image: nginx
@@ -56,5 +56,5 @@ spec:
   volumes:
   - name: nexentastor-csi-driver-data
     persistentVolumeClaim:
-      claimName: nexentastor-csi-driver-pvc-nginx-dynamic
+      claimName: nexentastor-csi-driver-pvc-nginx-test-rw
       readOnly: false

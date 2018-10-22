@@ -128,7 +128,7 @@ spec:
           ? emptyDir
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config
+            secretName: nexentastor-csi-driver-config-tests
 ---
 
 
@@ -251,7 +251,7 @@ spec:
           ? emptyDir
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config
+            secretName: nexentastor-csi-driver-config-tests
 ---
 
 
@@ -370,5 +370,5 @@ spec:
             type: Directory
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config
+            secretName: nexentastor-csi-driver-config-tests
 ---

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Nexenta/nexentastor-csi-driver/tests/utils/k8s"
@@ -60,7 +61,7 @@ func TestDriver_deploy(t *testing.T) {
 		return
 	}
 
-	t.Run("install driver", func(t *testing.T) {
+	installed := t.Run("install driver", func(t *testing.T) {
 		if err := k8sDriver.CreateSecret(); err != nil {
 			t.Fatal(err)
 		}
@@ -75,25 +76,75 @@ func TestDriver_deploy(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+	if !installed {
+		k8sDriver.CleanUp()
+		t.Fatal()
+	}
 
 	t.Run("install nginx with dynamic volume provisioning", func(t *testing.T) {
-		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class.yaml", "")
+		getNginxRunCommnad := func(cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%v\"", cmd)
+		}
+
+		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-rw.yaml", "")
 		if err != nil {
 			t.Errorf("Cannot create K8s nginx deployment: %v", err)
 			return
 		}
 
-		if err := k8sNginx.Apply([]string{"nginx-storage-class.*Running"}); err != nil {
+		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-rw.*Running"}); err != nil {
 			k8sNginx.CleanUp()
 			t.Fatal(err)
 		}
 
-		// validate volume on nginx
+		// write data to nginx container
+		if _, err := rc.Exec(getNginxRunCommnad("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
+			k8sNginx.CleanUp()
+			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %v", err))
+		}
 
-		if err := k8sNginx.Delete([]string{"nginx-storage-class"}); err != nil {
+		// check if data has been written
+		if _, err := rc.Exec(getNginxRunCommnad("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
+			k8sNginx.CleanUp()
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %v", err))
+		}
+
+		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-rw"}); err != nil {
+			t.Fatal(err)
+		}
+
+		k8sNginx.CleanUp()
+	})
+
+	t.Run("install nginx with dynamic volume provisioning [read only]", func(t *testing.T) {
+		getNginxRunCommnad := func(cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%v\"", cmd)
+		}
+
+		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-ro.yaml", "")
+		if err != nil {
+			t.Errorf("Cannot create K8s nginx deployment: %v", err)
+			return
+		}
+
+		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-ro.*Running"}); err != nil {
 			k8sNginx.CleanUp()
 			t.Fatal(err)
 		}
+
+		// writing data to read-only nginx container should failed
+		if _, err := rc.Exec(getNginxRunCommnad("echo 'test' > /usr/share/nginx/html/data.txt")); err == nil {
+			k8sNginx.CleanUp()
+			t.Fatal("Writing data to read-only volume on nginx container should failed, but it's not")
+		} else if !strings.Contains(fmt.Sprint(err), "Read-only file system") {
+			t.Fatalf("Error doesn't contain 'Read-only file system' rmessage")
+		}
+
+		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-ro"}); err != nil {
+			t.Fatal(err)
+		}
+
+		k8sNginx.CleanUp()
 	})
 
 	t.Run("uninstall driver", func(t *testing.T) {
@@ -106,5 +157,6 @@ func TestDriver_deploy(t *testing.T) {
 		}
 	})
 
+	//TODO use defer
 	k8sDriver.CleanUp()
 }

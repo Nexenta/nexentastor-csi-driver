@@ -21,9 +21,9 @@ func testParam(t *testing.T, name, expected, given string) {
 }
 
 func TestConfig_Full(t *testing.T) {
-	path := "./_fixtures/test-config-full.yaml"
+	path := "./_fixtures/test-config-full"
 
-	c, err := config.ReadFromFile(path)
+	c, err := config.New(path)
 	if err != nil {
 		t.Errorf("cannot read config file '%v': %v", path, err)
 		return
@@ -37,9 +37,9 @@ func TestConfig_Full(t *testing.T) {
 }
 
 func TestConfig_Short(t *testing.T) {
-	path := "./_fixtures/test-config-short.yaml"
+	path := "./_fixtures/test-config-short"
 
-	c, err := config.ReadFromFile(path)
+	c, err := config.New(path)
 	if err != nil {
 		t.Errorf("cannot read config file '%v': %v", path, err)
 		return
@@ -55,8 +55,8 @@ func TestConfig_Short(t *testing.T) {
 func TestConfig_Not_Valid(t *testing.T) {
 
 	t.Run("should return an error if config file if not valid", func(t *testing.T) {
-		path := "./_fixtures/test-config-not-valid.yaml"
-		c, err := config.ReadFromFile(path)
+		path := "./_fixtures/test-config-not-valid"
+		c, err := config.New(path)
 		if err == nil {
 			t.Errorf("not valid '%v' config file should return an error, but got this: %v", path, c)
 			return
@@ -64,8 +64,8 @@ func TestConfig_Not_Valid(t *testing.T) {
 	})
 
 	t.Run("should return nan error if file not exists", func(t *testing.T) {
-		path := "./_fixtures/not-existing-test-config.yaml"
-		c, err := config.ReadFromFile(path)
+		path := "./_fixtures/dir-without-config"
+		c, err := config.New(path)
 		if err == nil {
 			t.Errorf("not existing config file '%v' returns config: %v", path, c)
 			return

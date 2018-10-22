@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
-	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
-
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Nexenta/nexentastor-csi-driver/src/config"
+	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
 )
 
 const (
-	defaultEndpoint = "unix:///var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock"
+	defaultEndpoint  = "unix:///var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock"
+	defaultConfigDir = "/config"
 )
 
 func main() {
@@ -43,11 +44,12 @@ func main() {
 	l.Infof("- CSI endpoint:    '%v'", *endpoint)
 	l.Infof("- Node ID:         '%v'", *nodeID)
 
-	// initial config file validation
-	cfg, err := config.Get()
+	// initial read and validate config file
+	cfg, err := config.New(defaultConfigDir)
 	if err != nil {
 		l.Fatalf("Cannot use config file: %v", err)
 	}
+	l.Infof("Config file: '%v'", cfg.GetFilePath())
 
 	// logger level
 	if cfg.Debug {
@@ -65,6 +67,7 @@ func main() {
 	d := driver.NewDriver(driver.Args{
 		NodeID:   *nodeID,
 		Endpoint: *endpoint,
+		Config:   cfg,
 		Log:      l,
 	})
 

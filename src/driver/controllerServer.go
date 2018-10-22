@@ -24,14 +24,15 @@ const (
 type ControllerServer struct {
 	*csiCommon.DefaultControllerServer
 
-	Log *logrus.Entry
+	Config *config.Config
+	Log    *logrus.Entry
 }
 
-func (s *ControllerServer) resolveNS(cfg *config.Config, datasetPath string) (ns.ProviderInterface, error) {
+func (s *ControllerServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  cfg.Address,
-		Username: cfg.Username,
-		Password: cfg.Password,
+		Address:  s.Config.Address,
+		Username: s.Config.Username,
+		Password: s.Config.Password,
 		Log:      s.Log,
 	})
 	if err != nil {
@@ -59,19 +60,19 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	l := s.Log.WithField("func", "ListVolumes()")
 	l.Infof("request: %+v", req)
 
-	cfg, err := config.Get()
+	err := s.Config.Refresh()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
 
-	nsProvider, err := s.resolveNS(cfg, cfg.DefaultDataset)
+	nsProvider, err := s.resolveNS(s.Config.DefaultDataset)
 	if err != nil {
 		return nil, err
 	}
 
-	l.Infof("resolved NS: %v, %v", nsProvider, cfg.DefaultDataset)
+	l.Infof("resolved NS: %v, %v", nsProvider, s.Config.DefaultDataset)
 
-	filesystems, err := nsProvider.GetFilesystems(cfg.DefaultDataset)
+	filesystems, err := nsProvider.GetFilesystems(s.Config.DefaultDataset)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot get filesystems: %v", err)
 	}
@@ -98,7 +99,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	l := s.Log.WithField("func", "CreateVolume()")
 	l.Infof("request: %+v", req)
 
-	cfg, err := config.Get()
+	err := s.Config.Refresh()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
@@ -115,7 +116,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if v, ok := reqParams["dataset"]; ok {
 		datasetPath = v
 	} else {
-		datasetPath = cfg.DefaultDataset
+		datasetPath = s.Config.DefaultDataset
 	}
 
 	// get volume name from runtime params, generate uuid if not specified
@@ -133,7 +134,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	}
 	nefParams["quotaSize"] = capacityBytes
 
-	nsProvider, err := s.resolveNS(cfg, datasetPath)
+	nsProvider, err := s.resolveNS(datasetPath)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +188,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	l := s.Log.WithField("func", "DeleteVolume()")
 	l.Infof("request: %+v", req)
 
-	cfg, err := config.Get()
+	err := s.Config.Refresh()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
@@ -197,7 +198,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
-	nsProvider, err := s.resolveNS(cfg, volumePath)
+	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
 		// codes.FailedPrecondition error means no NS found with this volumePath - that's OK
 		if status.Code(err) == codes.FailedPrecondition {
@@ -257,13 +258,18 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 // }
 
 // NewControllerServer - create an instance of controller service
-func NewControllerServer(driver *Driver) *ControllerServer {
+func NewControllerServer(driver *Driver, cfg *config.Config) *ControllerServer {
 	l := driver.Log.WithField("cmp", "ControllerServer")
+
+	if cfg == nil {
+		l.Fatal("cfg is required")
+	}
 
 	l.Info("new ControllerServer has been created")
 
 	return &ControllerServer{
 		DefaultControllerServer: csiCommon.NewDefaultControllerServer(driver.csiDriver),
+		Config:                  cfg,
 		Log:                     l,
 	}
 }

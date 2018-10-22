@@ -22,14 +22,15 @@ import (
 type NodeServer struct {
 	*csiCommon.DefaultNodeServer
 
-	Log *logrus.Entry
+	Config *config.Config
+	Log    *logrus.Entry
 }
 
-func (s *NodeServer) resolveNS(cfg *config.Config, datasetPath string) (ns.ProviderInterface, error) {
+func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  cfg.Address,
-		Username: cfg.Username,
-		Password: cfg.Password,
+		Address:  s.Config.Address,
+		Username: s.Config.Username,
+		Password: s.Config.Password,
 		Log:      s.Log,
 	})
 	if err != nil {
@@ -104,12 +105,12 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		}
 	}
 
-	cfg, err := config.Get()
+	err := s.Config.Refresh()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
 
-	nsProvider, err := s.resolveNS(cfg, volumeID)
+	nsProvider, err := s.resolveNS(volumeID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +180,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	if v, ok := volumeAttributes["dataIP"]; ok {
 		dataIP = v
 	} else {
-		dataIP = cfg.DefaultDataIP
+		dataIP = s.Config.DefaultDataIP
 	}
 
 	//check if dataIP is provided
@@ -295,13 +296,18 @@ func (s *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 }
 
 // NewNodeServer - create an instance of node service
-func NewNodeServer(driver *Driver) *NodeServer {
+func NewNodeServer(driver *Driver, cfg *config.Config) *NodeServer {
 	l := driver.Log.WithField("cmp", "NodeServer")
+
+	if cfg == nil {
+		l.Fatal("cfg is required")
+	}
 
 	l.Info("new NodeServer has been created")
 
 	return &NodeServer{
 		DefaultNodeServer: csiCommon.NewDefaultNodeServer(driver.csiDriver),
+		Config:            cfg,
 		Log:               l,
 	}
 }

@@ -9,7 +9,7 @@ import (
 
 const (
 	// default wait timeout
-	defaultWaitTimeout = 30 * time.Second
+	defaultWaitTimeout = 60 * time.Second
 
 	// default wait interval
 	defaultWaitInterval = 2 * time.Second
@@ -34,9 +34,9 @@ func (c *Client) String() string {
 // Exec - run command over ssh
 func (c *Client) Exec(cmd string) (string, error) {
 	fmt.Printf("%v SSH exec: %v\n", c.ConnectionString, cmd)
-	out, err := exec.Command("ssh", c.ConnectionString, cmd).Output()
+	out, err := exec.Command("ssh", c.ConnectionString, cmd).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("Command 'ssh %v, %v' error: %v", c.ConnectionString, cmd, err)
+		return "", fmt.Errorf("Command 'ssh %v, %v' error: %v; out: %s", c.ConnectionString, cmd, err, out)
 	}
 	return fmt.Sprintf("%s", out), nil
 }
@@ -94,8 +94,8 @@ func (c *Client) CopyFiles(from, to string) error {
 
 	fmt.Printf("%v SCP: scp %v %v\n", c.ConnectionString, from, toAddress)
 
-	if _, err := exec.Command("scp", from, toAddress).Output(); err != nil {
-		return fmt.Errorf("Command 'scp %v %v' error: %v", from, toAddress, err)
+	if out, err := exec.Command("scp", from, toAddress).CombinedOutput(); err != nil {
+		return fmt.Errorf("Command 'scp %v %v' error: %v; out: %s", from, toAddress, err, out)
 	}
 
 	return nil

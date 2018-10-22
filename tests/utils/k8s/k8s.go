@@ -11,7 +11,7 @@ import (
 
 const (
 	// default wait timeout
-	defaultWaitTimeout = 30 * time.Second
+	defaultWaitTimeout = 60 * time.Second
 
 	// default wait interval
 	defaultWaitInterval = 2 * time.Second
@@ -210,6 +210,10 @@ func (d *Deployment) CreateSecret() error {
 
 	log("run...")
 
+	if d.SecretFile == "" {
+		return fail(fmt.Errorf("an attempt to create secret without config Deployment.SecretFile configured"))
+	}
+
 	if err := d.RemoteClient.CopyFiles(d.SecretFile, d.deploymentTmpDir); err != nil {
 		return fail(err)
 	}
@@ -223,6 +227,12 @@ func (d *Deployment) CreateSecret() error {
 	if _, err := d.RemoteClient.Exec(applyCommand); err != nil {
 		return fail(err)
 	}
+
+	out, err := d.RemoteClient.Exec("kubectl get secrets")
+	if err != nil {
+		return fail(err)
+	}
+	log(fmt.Sprintf("kubernetis secrets:\n---\n%v---", out))
 
 	log("secret has been successfully created")
 
@@ -252,6 +262,13 @@ func (d *Deployment) CleanUp() {
 		fmt.Printf("CleanUp(): failed to delete pods: %v\n", err)
 	}
 
+	// wait all pods to be terminated
+	time.Sleep(3 * time.Second)
+	re := regexp.MustCompile(`.*Terminating.*`)
+	if err := d.RemoteClient.ExecAndWaitRegExp("kubectl get pods", re, true); err != nil {
+		fmt.Printf("CleanUp(): failed to shutdown pods: %v\n", err)
+	}
+
 	if d.secretName != "" {
 		deleteCommand = fmt.Sprintf("kubectl delete secret %v | true", d.secretName)
 		if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
@@ -261,7 +278,12 @@ func (d *Deployment) CleanUp() {
 
 	deleteCommand = fmt.Sprintf("rm -f %v/%v | true", d.deploymentTmpDir, d.getConfigFileName())
 	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		fmt.Printf("CleanUp(): failed to remove tmp directory: %v\n", err)
+		fmt.Printf("CleanUp(): failed to remove config from tmp directory: %v\n", err)
+	}
+
+	deleteCommand = fmt.Sprintf("rm -f %v/%v | true", d.deploymentTmpDir, d.getSecretFileName())
+	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
+		fmt.Printf("CleanUp(): failed to remove secret from tmp directory: %v\n", err)
 	}
 }
 
@@ -273,6 +295,11 @@ func NewDeployment(remoteClient *remote.Client, configFile string, secretFile st
 		return nil, fmt.Errorf("NewDeployment(): cannot create '%v' directory on %v", deploymentTmpDir, remoteClient)
 	}
 
+	secretName := ""
+	if secretFile != "" {
+		secretName = defaultSecretName
+	}
+
 	return &Deployment{
 		RemoteClient:     remoteClient,
 		ConfigFile:       configFile,
@@ -280,6 +307,6 @@ func NewDeployment(remoteClient *remote.Client, configFile string, secretFile st
 		WaitTimeout:      defaultWaitTimeout,
 		WaitInterval:     defaultWaitInterval,
 		deploymentTmpDir: deploymentTmpDir,
-		secretName:       defaultSecretName,
+		secretName:       secretName,
 	}, nil
 }

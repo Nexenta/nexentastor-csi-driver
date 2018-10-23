@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 	// logger formatter
 	l.Logger.SetFormatter(&nested.Formatter{
 		HideKeys:    true,
-		FieldsOrder: []string{"title", "address", "cmp", "func", "opt"},
+		FieldsOrder: []string{"title", "address", "cmp", "func"},
 	})
 
 	l.Info("run...")

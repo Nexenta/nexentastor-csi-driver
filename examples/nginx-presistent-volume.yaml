@@ -1,4 +1,7 @@
 # Nginx pod with pre provisioned storage using NexentaStor CSI driver
+#
+# $ kubectl apply -f ./examples/nginx-presistent-volume.yaml
+#
 
 
 # -----------------------------------------

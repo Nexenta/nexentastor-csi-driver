@@ -1,5 +1,8 @@
-# nexentastor-csi-driver
+# nexentastor-csi-driver (v1.0.0)
+#
 # $ kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
+#
+
 
 # ---------------------------
 # NexentaStor CSI Provisioner

@@ -1,16 +1,22 @@
 # nested-logrus-formatter
 
 [![Build Status](https://travis-ci.org/antonfisher/nested-logrus-formatter.svg?branch=master)](https://travis-ci.org/antonfisher/nested-logrus-formatter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/antonfisher/nested-logrus-formatter)](https://goreportcard.com/report/github.com/antonfisher/nested-logrus-formatter)
+
+Human-readable log formatter, converts _logrus_ fields to a nested structure:
+
+![Screenshot](https://raw.githubusercontent.com/antonfisher/nested-logrus-formatter/docs/images/demo.png)
 
 ## Configuration:
 
 ```go
 type Formatter struct {
+	FieldsOrder     []string // default: fields sorted alphabetically
 	TimestampFormat string   // default: time.StampMilli = "Jan _2 15:04:05.000"
 	HideKeys        bool     // show [fieldValue] instead of [fieldKey:fieldValue]
 	NoColors        bool     // disable colors
-	ShowFullLevel   bool     // true to show full level [WARNING] instead of [WARN]
-	FieldsOrder     []string // default: fields sorted alphabetically
+	NoFieldsColors  bool     // color only level, default is level + fields
+	ShowFullLevel   bool     // true to show full level [WARNING] instead [WARN]
 }
 ```
 

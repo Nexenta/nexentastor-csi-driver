@@ -24,20 +24,20 @@ test-unit:
 
 .PHONY: test-e2e-ns
 test-e2e-ns:
-	go test ./tests/e2e/ns_provider -v -count 1 --address="https://10.3.199.254:8443" &&\
-	go test ./tests/e2e/ns_resolver -v -count 1 --address="https://10.3.199.254:8443" &&\
-	go test ./tests/e2e/ns_resolver -v -count 1 --address="https://10.3.199.252:8443,https://10.3.199.253:8443"
+	go test ./tests/e2e/ns/provider_test.go -v -count 1 --address="https://10.3.199.254:8443" &&\
+	go test ./tests/e2e/ns/resolver_test.go -v -count 1 --address="https://10.3.199.254:8443" &&\
+	go test ./tests/e2e/ns/resolver_test.go -v -count 1 --address="https://10.3.199.252:8443,https://10.3.199.253:8443"
 
 .PHONY: test-e2e-k8s
 test-e2e-k8s:
-	go test tests/e2e/deploy/driver_test.go -v -count 1 \
+	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.199.250" \
-		--k8sDeploymentFile="./_configs/nexentastor-csi-driver-master-local.yaml" \
-		--k8sSecretFile="./_configs/nexentastor-csi-driver-config-single.yaml" &&\
-	go test tests/e2e/deploy/driver_test.go -v -count 1 \
+		--k8sDeploymentFile="./_configs/driver-master-local.yaml" \
+		--k8sSecretFile="./_configs/driver-config-single.yaml" &&\
+	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.199.250" \
-		--k8sDeploymentFile="./_configs/nexentastor-csi-driver-master-local.yaml" \
-		--k8sSecretFile="./_configs/nexentastor-csi-driver-config-cluster.yaml"
+		--k8sDeploymentFile="./_configs/driver-master-local.yaml" \
+		--k8sSecretFile="./_configs/driver-config-cluster.yaml"
 
 .PHONY: build
 build:

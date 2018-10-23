@@ -93,7 +93,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		pools, err := nsp.GetPools()
 		if err != nil {
 			t.Error(err)
-		} else if !arrays.StringsContains(pools, c.pool) {
+		} else if !arrays.ContainsString(pools, c.pool) {
 			t.Errorf("Pool %v doesn't exist on NS %v", c.pool, c.address)
 		}
 	})

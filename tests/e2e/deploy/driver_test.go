@@ -56,6 +56,7 @@ func TestDriver_deploy(t *testing.T) {
 	}
 
 	k8sDriver, err := k8s.NewDeployment(rc, c.k8sDeploymentFile, c.k8sSecretFile)
+	defer k8sDriver.CleanUp()
 	if err != nil {
 		t.Errorf("Cannot create K8s deployment: %v", err)
 		return
@@ -77,7 +78,6 @@ func TestDriver_deploy(t *testing.T) {
 		}
 	})
 	if !installed {
-		k8sDriver.CleanUp()
 		t.Fatal()
 	}
 
@@ -87,33 +87,28 @@ func TestDriver_deploy(t *testing.T) {
 		}
 
 		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-rw.yaml", "")
+		defer k8sNginx.CleanUp()
 		if err != nil {
-			t.Errorf("Cannot create K8s nginx deployment: %v", err)
-			return
+			t.Fatalf("Cannot create K8s nginx deployment: %v", err)
 		}
 
 		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-rw.*Running"}); err != nil {
-			k8sNginx.CleanUp()
 			t.Fatal(err)
 		}
 
 		// write data to nginx container
 		if _, err := rc.Exec(getNginxRunCommnad("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
-			k8sNginx.CleanUp()
 			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %v", err))
 		}
 
 		// check if data has been written
 		if _, err := rc.Exec(getNginxRunCommnad("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
-			k8sNginx.CleanUp()
 			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %v", err))
 		}
 
 		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-rw"}); err != nil {
 			t.Fatal(err)
 		}
-
-		k8sNginx.CleanUp()
 	})
 
 	t.Run("install nginx with dynamic volume provisioning [read only]", func(t *testing.T) {
@@ -122,19 +117,17 @@ func TestDriver_deploy(t *testing.T) {
 		}
 
 		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-ro.yaml", "")
+		defer k8sNginx.CleanUp()
 		if err != nil {
-			t.Errorf("Cannot create K8s nginx deployment: %v", err)
-			return
+			t.Fatalf("Cannot create K8s nginx deployment: %v", err)
 		}
 
 		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-ro.*Running"}); err != nil {
-			k8sNginx.CleanUp()
 			t.Fatal(err)
 		}
 
 		// writing data to read-only nginx container should failed
 		if _, err := rc.Exec(getNginxRunCommnad("echo 'test' > /usr/share/nginx/html/data.txt")); err == nil {
-			k8sNginx.CleanUp()
 			t.Fatal("Writing data to read-only volume on nginx container should failed, but it's not")
 		} else if !strings.Contains(fmt.Sprint(err), "Read-only file system") {
 			t.Fatalf("Error doesn't contain 'Read-only file system' rmessage")
@@ -143,8 +136,6 @@ func TestDriver_deploy(t *testing.T) {
 		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-ro"}); err != nil {
 			t.Fatal(err)
 		}
-
-		k8sNginx.CleanUp()
 	})
 
 	t.Run("uninstall driver", func(t *testing.T) {
@@ -156,7 +147,4 @@ func TestDriver_deploy(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-
-	//TODO use defer
-	k8sDriver.CleanUp()
 }

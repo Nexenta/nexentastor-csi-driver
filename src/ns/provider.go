@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/rest"
-
 	"github.com/sirupsen/logrus"
+
+	"github.com/Nexenta/nexentastor-csi-driver/src/rest"
 )
 
 const (

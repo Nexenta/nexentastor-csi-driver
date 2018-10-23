@@ -25,8 +25,7 @@ func TestConfig_Full(t *testing.T) {
 
 	c, err := config.New(path)
 	if err != nil {
-		t.Errorf("cannot read config file '%v': %v", path, err)
-		return
+		t.Fatalf("cannot read config file '%v': %v", path, err)
 	}
 
 	testParam(t, "Address", testConfigParams["Address"], c.Address)
@@ -41,8 +40,7 @@ func TestConfig_Short(t *testing.T) {
 
 	c, err := config.New(path)
 	if err != nil {
-		t.Errorf("cannot read config file '%v': %v", path, err)
-		return
+		t.Fatalf("cannot read config file '%v': %v", path, err)
 	}
 
 	testParam(t, "Address", testConfigParams["Address"], c.Address)
@@ -58,8 +56,7 @@ func TestConfig_Not_Valid(t *testing.T) {
 		path := "./_fixtures/test-config-not-valid"
 		c, err := config.New(path)
 		if err == nil {
-			t.Errorf("not valid '%v' config file should return an error, but got this: %v", path, c)
-			return
+			t.Fatalf("not valid '%v' config file should return an error, but got this: %v", path, c)
 		}
 	})
 
@@ -67,8 +64,7 @@ func TestConfig_Not_Valid(t *testing.T) {
 		path := "./_fixtures/dir-without-config"
 		c, err := config.New(path)
 		if err == nil {
-			t.Errorf("not existing config file '%v' returns config: %v", path, c)
-			return
+			t.Fatalf("not existing config file '%v' returns config: %v", path, c)
 		}
 	})
 }

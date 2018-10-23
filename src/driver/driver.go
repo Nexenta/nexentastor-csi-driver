@@ -1,11 +1,11 @@
 package driver
 
 import (
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
-
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Nexenta/nexentastor-csi-driver/src/config"
 )
 
 // Name - driver name

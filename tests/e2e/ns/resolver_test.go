@@ -3,9 +3,10 @@ package resolver_test
 import (
 	"flag"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )

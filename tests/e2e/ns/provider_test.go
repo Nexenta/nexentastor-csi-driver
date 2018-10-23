@@ -3,11 +3,12 @@ package provider_test
 import (
 	"flag"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"

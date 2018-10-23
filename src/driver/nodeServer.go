@@ -5,10 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
-	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
-
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
@@ -16,6 +12,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
+
+	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
+	"github.com/Nexenta/nexentastor-csi-driver/src/config"
+	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
 // NodeServer - k8s csi driver node server
@@ -49,15 +49,6 @@ func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error)
 
 	return nsProvider, nil
 }
-
-// // NodeGetId - returns node id where pod is running
-// func (s *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (
-// 	*csi.NodeGetIdResponse,
-// 	error,
-// ) {
-// 	s.Log.WithField("func", "NodeGetId()").Infof("request: %+v", req)
-// 	return s.DefaultNodeServer.NodeGetId(ctx, req)
-// }
 
 // NodeGetCapabilities - get node capabilities
 func (s *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (
@@ -100,7 +91,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	mountOptions := []string{} //TODO look up config for NFS share options
 	if req.GetReadonly() {
 		aclRuleSet = ns.ACLReadOnly
-		if !arrays.StringsContains(mountOptions, "ro") {
+		if !arrays.ContainsString(mountOptions, "ro") {
 			mountOptions = append(mountOptions, "ro")
 		}
 	}

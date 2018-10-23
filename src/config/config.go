@@ -2,11 +2,12 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Config - driver config from file

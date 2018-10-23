@@ -34,7 +34,7 @@ func main() {
 	// init logger
 	l := logrus.New().WithField("cmp", "Main")
 
-	// logger formater
+	// logger formatter
 	l.Logger.SetFormatter(&nested.Formatter{
 		HideKeys:    true,
 		FieldsOrder: []string{"cmp", "ns", "func", "req", "reqID", "job"},

@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/Nexenta/nexentastor-csi-driver/tests/utils/remote"
 )
 
@@ -42,12 +44,7 @@ type Deployment struct {
 
 	deploymentTmpDir string
 	secretName       string
-}
-
-func (d *Deployment) createFormattedLog(prefix string) func(string) {
-	return func(message string) {
-		fmt.Printf("%v %v: %v: %v\n", d.RemoteClient, d.ConfigFile, prefix, message)
-	}
+	log              *logrus.Entry
 }
 
 func (d *Deployment) createFormattedError(message string) func(error) error {
@@ -77,6 +74,9 @@ const (
 
 // WaitForPods - wait for pods to be presented
 func (d *Deployment) WaitForPods(pods []string, mode WaitForPodsMode) (string, error) {
+	l := d.log.WithField("func", "WaitForPods()")
+	l.Infof("pods: %v, mode: %v", pods, mode)
+
 	done := make(chan error)
 	timer := time.NewTimer(0)
 	timeout := time.After(d.WaitTimeout)
@@ -124,7 +124,12 @@ func (d *Deployment) WaitForPods(pods []string, mode WaitForPodsMode) (string, e
 
 				waitingTimeSeconds := time.Since(startTime).Seconds()
 				if waitingTimeSeconds >= d.WaitInterval.Seconds() {
-					fmt.Printf("...waiting cmd for %.0fs\n", waitingTimeSeconds)
+					msg := fmt.Sprintf("waiting for %.0fs...", waitingTimeSeconds)
+					if waitingTimeSeconds > d.WaitTimeout.Seconds()/2 {
+						l.Warn(msg)
+					} else {
+						l.Infof(msg)
+					}
 				}
 				timer = time.NewTimer(d.WaitInterval)
 			case <-timeout:
@@ -149,10 +154,10 @@ func (d *Deployment) WaitForPods(pods []string, mode WaitForPodsMode) (string, e
 // Apply - run 'kubectl apply' for current deployment
 // pods - wait for pods to be running, nil to skip this step
 func (d *Deployment) Apply(pods []string) error {
-	log := d.createFormattedLog("Apply()")
+	l := d.log.WithField("func", "Apply()")
 	fail := d.createFormattedError("Apply()")
 
-	log("run...")
+	l.Info("run...")
 
 	if err := d.RemoteClient.CopyFiles(d.ConfigFile, d.deploymentTmpDir); err != nil {
 		return fail(err)
@@ -168,13 +173,10 @@ func (d *Deployment) Apply(pods []string) error {
 		if err != nil {
 			return fail(err)
 		}
-
-		log(fmt.Sprintf("deployment file has been successfully deployed, pods are running:\n---\n%v---", out))
-
-		return nil
+		l.Infof("pods are running:\n---\n%v---", out)
 	}
 
-	log("deployment file has been successfully deployed")
+	l.Info("deployment file has been successfully deployed")
 
 	return nil
 }
@@ -182,12 +184,12 @@ func (d *Deployment) Apply(pods []string) error {
 // Delete - run 'kubectl delete' for current deployment
 // pods - wait for pods to be shutted down, nil to skip this step
 func (d *Deployment) Delete(pods []string) error {
-	log := d.createFormattedLog("Delete()")
+	l := d.log.WithField("func", "Delete()")
 	fail := d.createFormattedError("Delete()")
 
-	log("run...")
+	l.Info("run...")
 
-	deleteCommand := fmt.Sprintf("cd %v; kubectl delete  -f %v", d.deploymentTmpDir, d.getConfigFileName())
+	deleteCommand := fmt.Sprintf("cd %v; kubectl delete -f %v", d.deploymentTmpDir, d.getConfigFileName())
 	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
 		return fail(fmt.Errorf("Failed to delete k8s deployment: %v", err))
 	}
@@ -197,18 +199,20 @@ func (d *Deployment) Delete(pods []string) error {
 		if err != nil {
 			return fail(fmt.Errorf("Failed to wait for pods to be shutted down: %v", err))
 		}
-		log(fmt.Sprintf("pods after deletion:\n---\n%v---", out))
+		l.Infof("pods after deletion:\n---\n%v---", out)
 	}
+
+	l.Info("deployment has beed successfully deleted")
 
 	return nil
 }
 
 // CreateSecret - run 'kubectl create secret' for current deployment
 func (d *Deployment) CreateSecret() error {
-	log := d.createFormattedLog("CreateSecret()")
+	l := d.log.WithField("func", "CreateSecret()")
 	fail := d.createFormattedError("CreateSecret()")
 
-	log("run...")
+	l.Info("run...")
 
 	if d.SecretFile == "" {
 		return fail(fmt.Errorf("an attempt to create secret without config Deployment.SecretFile configured"))
@@ -232,63 +236,78 @@ func (d *Deployment) CreateSecret() error {
 	if err != nil {
 		return fail(err)
 	}
-	log(fmt.Sprintf("kubernetis secrets:\n---\n%v---", out))
 
-	log("secret has been successfully created")
+	l.Infof("kubernetis secrets:\n---\n%v---", out)
+	l.Info("secret has been successfully created")
 
 	return nil
 }
 
 // DeleteSecret - run 'kubectl delete secret' for current deployment
 func (d *Deployment) DeleteSecret() error {
-	log := d.createFormattedLog("DeleteSecret()")
+	l := d.log.WithField("func", "DeleteSecret()")
 	fail := d.createFormattedError("DeleteSecret()")
 
-	log("run...")
+	l.Info("run...")
 
 	if _, err := d.RemoteClient.Exec(fmt.Sprintf("kubectl delete secret %v", d.secretName)); err != nil {
 		return fail(err)
 	}
 
-	log("secret has been successfully deleted")
+	l.Info("secret has been successfully deleted")
 
 	return nil
 }
 
 // CleanUp - silently delete k8s deployment and tmp folder
 func (d *Deployment) CleanUp() {
+	l := d.log.WithField("func", "CleanUp()")
+	l.Info("run...")
+
 	deleteCommand := fmt.Sprintf("cd %v; kubectl delete -f %v | true", d.deploymentTmpDir, d.getConfigFileName())
 	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		fmt.Printf("CleanUp(): failed to delete pods: %v\n", err)
+		l.Errorf("failed to delete pods: %v\n", err)
 	}
 
 	// wait all pods to be terminated
-	time.Sleep(3 * time.Second)
+	t := 3 * time.Second
+	d.log.Infof("sleep for %.0fs...", t.Seconds())
+	time.Sleep(t)
 	re := regexp.MustCompile(`.*Terminating.*`)
 	if err := d.RemoteClient.ExecAndWaitRegExp("kubectl get pods", re, true); err != nil {
-		fmt.Printf("CleanUp(): failed to shutdown pods: %v\n", err)
+		l.Errorf("failed to shutdown pods: %v\n", err)
 	}
 
 	if d.secretName != "" {
 		deleteCommand = fmt.Sprintf("kubectl delete secret %v | true", d.secretName)
 		if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-			fmt.Printf("CleanUp(): failed to delete secret: %v\n", err)
+			l.Errorf("failed to delete secret: %v\n", err)
+		}
+
+		deleteCommand = fmt.Sprintf("rm -f %v/%v | true", d.deploymentTmpDir, d.getSecretFileName())
+		if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
+			l.Errorf("failed to remove secret from tmp directory: %v\n", err)
 		}
 	}
 
 	deleteCommand = fmt.Sprintf("rm -f %v/%v | true", d.deploymentTmpDir, d.getConfigFileName())
 	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		fmt.Printf("CleanUp(): failed to remove config from tmp directory: %v\n", err)
+		l.Errorf("failed to remove config from tmp directory: %v\n", err)
 	}
 
-	deleteCommand = fmt.Sprintf("rm -f %v/%v | true", d.deploymentTmpDir, d.getSecretFileName())
-	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		fmt.Printf("CleanUp(): failed to remove secret from tmp directory: %v\n", err)
-	}
+	l.Info("done.")
 }
 
 // NewDeployment - create new k8s deployment
-func NewDeployment(remoteClient *remote.Client, configFile string, secretFile string) (*Deployment, error) {
+func NewDeployment(remoteClient *remote.Client, configFile string, secretFile string, log *logrus.Entry) (
+	*Deployment,
+	error,
+) {
+	l := log.WithFields(logrus.Fields{
+		"address": remoteClient.ConnectionString,
+		"cmp":     "k8s",
+	})
+
 	deploymentTmpDir := filepath.Join("/tmp", defaultDeploymentTmpDirName)
 
 	if _, err := remoteClient.Exec(fmt.Sprintf("mkdir -p %v", deploymentTmpDir)); err != nil {
@@ -308,5 +327,6 @@ func NewDeployment(remoteClient *remote.Client, configFile string, secretFile st
 		WaitInterval:     defaultWaitInterval,
 		deploymentTmpDir: deploymentTmpDir,
 		secretName:       secretName,
+		log:              l,
 	}, nil
 }

@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"regexp"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -25,6 +27,8 @@ type Client struct {
 
 	// WaitTimeout - consider command to fail after this timeout exceeded
 	WaitTimeout time.Duration
+
+	log *logrus.Entry
 }
 
 func (c *Client) String() string {
@@ -33,7 +37,9 @@ func (c *Client) String() string {
 
 // Exec - run command over ssh
 func (c *Client) Exec(cmd string) (string, error) {
-	fmt.Printf("%v SSH exec: %v\n", c.ConnectionString, cmd)
+	l := c.log.WithField("func", "Exec()")
+	l.Info(cmd)
+
 	out, err := exec.Command("ssh", c.ConnectionString, cmd).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("Command 'ssh %v, %v' error: %v; out: %s", c.ConnectionString, cmd, err, out)
@@ -43,6 +49,9 @@ func (c *Client) Exec(cmd string) (string, error) {
 
 // ExecAndWaitRegExp - wait command output to to satisfy regex or return error on timeout
 func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool) error {
+	l := c.log.WithField("func", "ExecAndWaitRegExp()")
+	l.Infof("%v # wait: '%v'", cmd, re)
+
 	done := make(chan error)
 	timer := time.NewTimer(0)
 	timeout := time.After(c.WaitTimeout)
@@ -65,7 +74,12 @@ func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool)
 				lastOutput = out
 				waitingTimeSeconds := time.Since(startTime).Seconds()
 				if waitingTimeSeconds >= c.WaitInterval.Seconds() {
-					fmt.Printf("...waiting cmd for %.0fs\n", waitingTimeSeconds)
+					msg := fmt.Sprintf("waiting for %.0fs...", waitingTimeSeconds)
+					if waitingTimeSeconds >= c.WaitTimeout.Seconds()/2 {
+						l.Warn(msg)
+					} else {
+						l.Infof(msg)
+					}
 				}
 				timer = time.NewTimer(c.WaitInterval)
 			case <-timeout:
@@ -90,9 +104,11 @@ func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool)
 
 // CopyFiles - copy local files to remote server
 func (c *Client) CopyFiles(from, to string) error {
+	l := c.log.WithField("func", "CopyFiles()")
+
 	toAddress := fmt.Sprintf("%v:%v", c.ConnectionString, to)
 
-	fmt.Printf("%v SCP: scp %v %v\n", c.ConnectionString, from, toAddress)
+	l.Infof("scp %v %v\n", from, toAddress)
 
 	if out, err := exec.Command("scp", from, toAddress).CombinedOutput(); err != nil {
 		return fmt.Errorf("Command 'scp %v %v' error: %v; out: %s", from, toAddress, err, out)
@@ -102,11 +118,17 @@ func (c *Client) CopyFiles(from, to string) error {
 }
 
 // NewClient - create new SSH remote client
-func NewClient(connectionString string) (*Client, error) {
+func NewClient(connectionString string, log *logrus.Entry) (*Client, error) {
+	l := log.WithFields(logrus.Fields{
+		"address": connectionString,
+		"cmp":     "remote",
+	})
+
 	client := &Client{
 		ConnectionString: connectionString,
 		WaitInterval:     defaultWaitInterval,
 		WaitTimeout:      defaultWaitTimeout,
+		log:              l,
 	}
 
 	_, err := client.Exec("date")

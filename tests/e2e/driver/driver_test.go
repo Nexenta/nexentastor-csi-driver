@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	nested "github.com/antonfisher/nested-logrus-formatter"
+	"github.com/sirupsen/logrus"
+
 	"github.com/Nexenta/nexentastor-csi-driver/tests/utils/k8s"
 	"github.com/Nexenta/nexentastor-csi-driver/tests/utils/remote"
 )
@@ -18,6 +21,7 @@ type config struct {
 }
 
 var c *config
+var l *logrus.Entry
 
 func TestMain(m *testing.M) {
 	var (
@@ -45,17 +49,28 @@ func TestMain(m *testing.M) {
 		k8sSecretFile:       *k8sSecretFile,
 	}
 
+	// init logger
+	l = logrus.New().WithField("title", "tests")
+
+	// logger formatter
+	l.Logger.SetFormatter(&nested.Formatter{
+		HideKeys:    true,
+		FieldsOrder: []string{"title", "address", "cmp", "func", "opt"},
+	})
+
+	l.Info("run...")
+
 	os.Exit(m.Run())
 }
 
 func TestDriver_deploy(t *testing.T) {
-	rc, err := remote.NewClient(c.k8sConnectionString)
+	rc, err := remote.NewClient(c.k8sConnectionString, l)
 	if err != nil {
 		t.Errorf("Cannot create connection: %v", err)
 		return
 	}
 
-	k8sDriver, err := k8s.NewDeployment(rc, c.k8sDeploymentFile, c.k8sSecretFile)
+	k8sDriver, err := k8s.NewDeployment(rc, c.k8sDeploymentFile, c.k8sSecretFile, l)
 	defer k8sDriver.CleanUp()
 	if err != nil {
 		t.Errorf("Cannot create K8s deployment: %v", err)
@@ -86,7 +101,7 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%v\"", cmd)
 		}
 
-		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-rw.yaml", "")
+		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-rw.yaml", "", l)
 		defer k8sNginx.CleanUp()
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %v", err)
@@ -116,7 +131,7 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%v\"", cmd)
 		}
 
-		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-ro.yaml", "")
+		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-ro.yaml", "", l)
 		defer k8sNginx.CleanUp()
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %v", err)

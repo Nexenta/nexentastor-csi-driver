@@ -16,7 +16,6 @@ import (
 
 // defaults
 const (
-	defaultAddress         = "https://10.3.199.254:8443"
 	defaultUsername        = "admin"
 	defaultPassword        = "Nexenta@1"
 	defaultPoolName        = "csiDriverPool"
@@ -34,7 +33,7 @@ type config struct {
 }
 
 var c *config
-var logger *logrus.Entry
+var l *logrus.Entry
 
 func filesystemArrayContains(array []*ns.Filesystem, value string) bool {
 	for _, v := range array {
@@ -47,7 +46,7 @@ func filesystemArrayContains(array []*ns.Filesystem, value string) bool {
 
 func TestMain(m *testing.M) {
 	var (
-		address    = flag.String("address", defaultAddress, "NS API [schema://host:port,...]")
+		address    = flag.String("address", "", "NS API [schema://host:port,...]")
 		username   = flag.String("username", defaultUsername, "overwrite NS API username from config")
 		password   = flag.String("password", defaultPassword, "overwrite NS API password from config")
 		pool       = flag.String("pool", defaultPoolName, "pool on NS")
@@ -58,10 +57,14 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
-	logger = logrus.New().WithField("ns", *address)
-	logger.Logger.SetLevel(logrus.PanicLevel)
+	l = logrus.New().WithField("ns", *address)
+	l.Logger.SetLevel(logrus.PanicLevel)
 	if *log {
-		logger.Logger.SetLevel(logrus.DebugLevel)
+		l.Logger.SetLevel(logrus.DebugLevel)
+	}
+
+	if *address == "" {
+		l.Fatal("--address=[schema://host:port,...] flag cannot be empty")
 	}
 
 	c = &config{
@@ -83,7 +86,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		Address:  c.address,
 		Username: c.username,
 		Password: c.password,
-		Log:      logger,
+		Log:      l,
 	})
 	if err != nil {
 		t.Error(err)

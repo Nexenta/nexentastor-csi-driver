@@ -2,9 +2,11 @@
 
 [NexentaStor](https://nexenta.com/products/nexentastor) CSI driver for Kubernetes.
 
+Full documentation: [https://nexenta.github.io/nexentastor-csi-driver/](https://nexenta.github.io/nexentastor-csi-driver/)
+
 ## Installation
 
-1. Create default NexentaStor dataset for driver. Example: `csiDriverPool/csiDriverDataset`
+1. Create NexentaStor dataset for driver. Example: `csiDriverPool/csiDriverDataset`
 2. Clone driver repository
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
@@ -47,15 +49,14 @@ parameters:
 
 #### Parameters:
 
-|---|---|---|
-|Name|Description|Example|
-|---|---|---|
-|dataset|parent dataset for driver's filesystems|customPool/customDataset|
-|dataIp|NexentaStor data IP or HA VIP for mounting NFS shares [pool/dataset]|20.20.20.253|
+| Name | Description | Example |
+| --- | --- | --- |
+| `dataset` | parent dataset for driver's filesystems | `customPool/customDataset` |
+| `dataIp` | NexentaStor data IP or HA VIP for mounting NFS shares [pool/dataset] | `20.20.20.253` |
 
 #### Example
 
-Run nginx server using _StorageClass_ (dynamic provisioning):
+Run nginx server using _StorageClass_:
 
 ```bash
 kubectl apply -f ./examples/nginx-storage-class.yaml
@@ -88,13 +89,12 @@ spec:
     volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
 ```
 
-CSI Parameters:
+**CSI Parameters:**
 
-|---|---|---|
-|Name|Description|Example|
-|---|---|---|
-|driver|installed driver name "nexentastor-csi-driver"|"nexentastor-csi-driver"|
-|volumeHandle|path to NexentaStor filesystem [pool/dataset/filesystem]|csiDriverPool/csiDriverDataset/nginx-persistent|
+| Name | Description | Example |
+| --- | --- | --- |
+| `driver` | installed driver name "nexentastor-csi-driver" | `nexentastor-csi-driver` |
+| `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `csiDriverPool/csiDriverDataset/nginx-persistent` |
 
 _PersistentVolumeClaim_ to use created _PersistentVolume_:
 
@@ -118,7 +118,8 @@ spec:
 
 #### Example
 
-Run nginx server using PersistentVolume (pre-provisioning).
+Run nginx server using PersistentVolume.
+
 **Note:** Pre-configured filesystem should exist on the NexentaStor: `csiDriverPool/csiDriverDataset/nginx-persistent`.
 
 ```bash

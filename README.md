@@ -5,6 +5,10 @@ NexentaStor CSI driver for Kubernetes.
 - [Full driver documentation](https://nexenta.github.io/nexentastor-csi-driver/)
 - [NexentaStor product page](https://nexenta.com/products/nexentastor)
 
+Supported versions:
+- NexentaStor 5.x
+- Kubernetes 1.12
+
 ## Installation
 
 1. Create NexentaStor dataset for driver. Example: `csiDriverPool/csiDriverDataset`
@@ -15,12 +19,11 @@ NexentaStor CSI driver for Kubernetes.
    ```
 3. Edit `./kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
     ```yaml
-    restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)
-    username: admin                                             # [required] NexentaStor REST API username
-    password: p@ssword                                          # [required] NexentaStor REST API password
-    defaultDataset: csiDriverPool/csiDriverDataset              # default dataset for driver's fs/volume [pool/dataset]
-    defaultDataIp: 20.20.20.252                                 # default NexentaStor data IP or HA VIP
-    debug: true                                                 # show more logs
+    restIp: https://10.3.3.4:8443,https://10.3.3.5:8443 # [required] NexentaStor REST API endpoint(s)
+    username: admin                                     # [required] NexentaStor REST API username
+    password: p@ssword                                  # [required] NexentaStor REST API password
+    defaultDataset: csiDriverPool/csiDriverDataset      # default dataset to create driver volumes in [pool/dataset]
+    defaultDataIp: 20.20.20.21                          # default NexentaStor data IP or HA VIP
     ```
 4. Create Kubernetes secret from the file:
     ```bash
@@ -38,8 +41,8 @@ NexentaStor CSI driver for Kubernetes.
 | `restIp`         | NexentaStor REST API endpoint(s)                       | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
 | `username`       | NexentaStor REST API username                          | yes        | `admin`                                       |
 | `password`       | NexentaStor REST API password                          | yes        | `p@ssword`                                    |
-| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset] | no         | `poolA/datasetA`                              |
-| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | yes for PV | `20.20.20.253`                                |
+| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset] | no         | `csiDriverPool/csiDriverDataset`              |
+| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | yes for PV | `20.20.20.21`                                 |
 | `debug`          | print more logs (default: false)                       | no         | `true`                                        |
 
 **Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,

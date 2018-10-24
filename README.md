@@ -15,7 +15,8 @@ NexentaStor CSI driver for Kubernetes.
 
 ## Installation
 
-1. Create NexentaStor dataset for the driver, example: `csiDriverPool/csiDriverDataset`
+1. Create NexentaStor dataset for the driver, example: `csiDriverPool/csiDriverDataset`.
+    By default driver will create filesystems in this dataset, and share them to create Kubernetes volumes.
 2. Clone driver repository
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git

@@ -6,5 +6,5 @@ go:
   - master
 
 script:
-  make test-unit
-  make build
+  - make test-unit
+  - make build

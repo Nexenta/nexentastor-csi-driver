@@ -1,5 +1,7 @@
 # nexentastor-csi-driver
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
+
 NexentaStor CSI driver for Kubernetes.
 
 - [Full driver documentation](https://nexenta.github.io/nexentastor-csi-driver/)

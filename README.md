@@ -19,7 +19,7 @@ Full documentation: [https://nexenta.github.io/nexentastor-csi-driver/](https://
     password: p@ssword                                          # [required] NexentaStor REST API password
     defaultDataset: csiDriverPool/csiDriverDataset              # default dataset for driver's fs/volume [pool/dataset]
     defaultDataIp: 20.20.20.252                                 # default NexentaStor data IP or HA VIP
-    debug: true                                                 # more logs
+    debug: true                                                 # show more logs
     ```
 4. Create Kubernetes secret from the file:
     ```bash
@@ -29,6 +29,17 @@ Full documentation: [https://nexenta.github.io/nexentastor-csi-driver/](https://
    ```bash
    kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
    ```
+
+#### Driver configuration options:
+
+| Name             | Description                                            | Example                                       |
+| ---------------- | ------------------------------------------------------ | --------------------------------------------- |
+| `restIp`         | [required] NexentaStor REST API endpoint(s)            | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
+| `username`       | [required] NexentaStor REST API username               | `admin`                                       |
+| `password`       | [required] NexentaStor REST API password               | `p@ssword`                                    |
+| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset] | `poolA/datasetA`                              |
+| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | `20.20.20.253`                                |
+| `debug`          | print more logs (default: false)                       | `true`                                       |
 
 ## Usage
 
@@ -49,10 +60,10 @@ parameters:
 
 #### Parameters:
 
-| Name      | Description                                                          | Example                    |
-| --------- | -------------------------------------------------------------------- | -------------------------- |
-| `dataset` | parent dataset for driver's filesystems                              | `customPool/customDataset` |
-| `dataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares [pool/dataset] | `20.20.20.253`             |
+| Name      | Description                                            | Example                    |
+| --------- | -------------------------------------------------------| -------------------------- |
+| `dataset` | parent dataset for driver's filesystems [pool/dataset] | `customPool/customDataset` |
+| `dataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | `20.20.20.253`             |
 
 #### Example
 

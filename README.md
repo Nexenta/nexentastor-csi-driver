@@ -32,14 +32,17 @@ Full documentation: [https://nexenta.github.io/nexentastor-csi-driver/](https://
 
 #### Driver configuration options:
 
-| Name             | Description                                            | Example                                       |
-| ---------------- | ------------------------------------------------------ | --------------------------------------------- |
-| `restIp`         | [required] NexentaStor REST API endpoint(s)            | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
-| `username`       | [required] NexentaStor REST API username               | `admin`                                       |
-| `password`       | [required] NexentaStor REST API password               | `p@ssword`                                    |
-| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset] | `poolA/datasetA`                              |
-| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | `20.20.20.253`                                |
-| `debug`          | print more logs (default: false)                       | `true`                                       |
+| Name             | Description                                            | Required   | Default | Example                                       |
+| ---------------- | ------------------------------------------------------ | ---------- | ------- | --------------------------------------------- |
+| `restIp`         | NexentaStor REST API endpoint(s)                       | yes        | ""      | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
+| `username`       | NexentaStor REST API username                          | yes        | ""      | `admin`                                       |
+| `password`       | NexentaStor REST API password                          | yes        | ""      | `p@ssword`                                    |
+| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset] | no         | ""      | `poolA/datasetA`                              |
+| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | yes for PV | ""      | `20.20.20.253`                                |
+| `debug`          | print more logs (default: false)                       | no         | `false` | `true`                                        |
+
+**Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,
+then parameters `dataset`/`dataIp` must be specified in _StorageClass_ configuration.
 
 ## Usage
 

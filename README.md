@@ -12,7 +12,7 @@ NexentaStor CSI driver for Kubernetes.
 
 ## Installation
 
-1. Create NexentaStor dataset for driver. Example: `csiDriverPool/csiDriverDataset`
+1. Create NexentaStor dataset for the driver, example: `csiDriverPool/csiDriverDataset`
 2. Clone driver repository
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
@@ -35,7 +35,7 @@ NexentaStor CSI driver for Kubernetes.
    kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
    ```
 
-#### Driver configuration options:
+#### Driver configuration options
 
 | Name             | Description                                                     | Required   | Example                                       |
 | ---------------- | --------------------------------------------------------------- | ---------- | --------------------------------------------- |
@@ -53,7 +53,7 @@ then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configur
 
 ### Dynamically provisioned volumes
 
-For dynamic volume provisioning, the administrator needs to setup a _StorageClass_ pointing to the driver.
+For dynamic volume provisioning, the administrator needs to set up a _StorageClass_ pointing to the driver.
 Default driver parameters may be overwritten in `parameters` section:
 
 ```yaml
@@ -67,7 +67,7 @@ parameters:
   dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
 ```
 
-#### Parameters:
+#### Parameters
 
 | Name      | Description                                            | Example                    |
 | --------- | -------------------------------------------------------| -------------------------- |
@@ -87,10 +87,10 @@ kubectl delete -f ./examples/nginx-storage-class.yaml
 
 ### Pre-provisioned volumes
 
-Driver can use already existing NexentaStor filesystem,
-in this case _PersistentVolume_ and _PersistentVolumeClaim_ should be configured.
+The driver can use already existing NexentaStor filesystem,
+in this case, _PersistentVolume_ and _PersistentVolumeClaim_ should be configured.
 
-#### _PersistentVolume_ configuration:
+#### _PersistentVolume_ configuration
 
 ```yaml
 apiVersion: v1
@@ -116,7 +116,7 @@ CSI Parameters:
 | `driver`       | installed driver name "nexentastor-csi-driver"                    | `nexentastor-csi-driver` |
 | `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `PoolA/datasetA/nginx`   |
 
-#### _PersistentVolumeClaim_ (pointed to created _PersistentVolume_):
+#### _PersistentVolumeClaim_ (pointed to created _PersistentVolume_)
 
 ```yaml
 apiVersion: v1

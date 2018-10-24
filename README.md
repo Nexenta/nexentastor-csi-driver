@@ -49,10 +49,10 @@ parameters:
 
 #### Parameters:
 
-| Name | Description | Example |
-| --- | --- | --- |
-| `dataset` | parent dataset for driver's filesystems | `customPool/customDataset` |
-| `dataIp` | NexentaStor data IP or HA VIP for mounting NFS shares [pool/dataset] | `20.20.20.253` |
+| Name      | Description                                                          | Example                    |
+| --------- | -------------------------------------------------------------------- | -------------------------- |
+| `dataset` | parent dataset for driver's filesystems                              | `customPool/customDataset` |
+| `dataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares [pool/dataset] | `20.20.20.253`             |
 
 #### Example
 

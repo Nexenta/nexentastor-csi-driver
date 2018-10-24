@@ -13,6 +13,7 @@ NexentaStor CSI driver for Kubernetes.
 - NexentaStor 5.x
 - Kubernetes 1.11
 
+
 ## Installation
 
 1. Create NexentaStor dataset for the driver, example: `csiDriverPool/csiDriverDataset`.
@@ -30,6 +31,19 @@ NexentaStor CSI driver for Kubernetes.
     defaultDataset: csiDriverPool/csiDriverDataset      # default 'pool/dataset' for driver's filesystems
     defaultDataIp: 20.20.20.21                          # default NexentaStor data IP or HA VIP
     ```
+    All driver configuration options:
+
+    | Name             | Description                                                     | Required   | Example                                       |
+    | ---------------- | --------------------------------------------------------------- | ---------- | --------------------------------------------- |
+    | `restIp`         | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
+    | `username`       | NexentaStor REST API username                                   | yes        | `admin`                                       |
+    | `password`       | NexentaStor REST API password                                   | yes        | `p@ssword`                                    |
+    | `defaultDataset` | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`              |
+    | `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares           | yes for PV | `20.20.20.21`                                 |
+    | `debug`          | print more logs (default: false)                                | no         | `true`                                        |
+
+    **Note**: if parameter `defaultDataset` (`defaultDataIp`) is not specified in driver configuration,
+    then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configuration.
 4. Create Kubernetes secret from the file:
     ```bash
     kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/nexentastor-csi-driver-config.yaml
@@ -39,19 +53,6 @@ NexentaStor CSI driver for Kubernetes.
    kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
    ```
 
-#### Driver configuration options
-
-| Name             | Description                                                     | Required   | Example                                       |
-| ---------------- | --------------------------------------------------------------- | ---------- | --------------------------------------------- |
-| `restIp`         | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
-| `username`       | NexentaStor REST API username                                   | yes        | `admin`                                       |
-| `password`       | NexentaStor REST API password                                   | yes        | `p@ssword`                                    |
-| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`              |
-| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares           | yes for PV | `20.20.20.21`                                 |
-| `debug`          | print more logs (default: false)                                | no         | `true`                                        |
-
-**Note**: if parameter `defaultDataset` (`defaultDataIp`) is not specified in driver configuration,
-then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configuration.
 
 ## Usage
 
@@ -154,6 +155,7 @@ kubectl apply -f ./examples/nginx-persistent-volume.yaml
 kubectl delete -f ./examples/nginx-persistent-volume.yaml
 ```
 
+
 ## Uninstall
 
 Using the same files as for installation:
@@ -161,6 +163,7 @@ Using the same files as for installation:
 kubectl delete -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
 kubectl delete secret nexentastor-csi-driver-config
 ```
+
 
 ## Development
 

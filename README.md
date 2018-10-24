@@ -110,10 +110,10 @@ spec:
 
 CSI Parameters:
 
-| Name | Description | Example |
-| --- | --- | --- |
-| `driver` | installed driver name "nexentastor-csi-driver" | `nexentastor-csi-driver` |
-| `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `csiDriverPool/csiDriverDataset/nginx-persistent` |
+| Name           | Description                                                       | Example                  |
+| -------------- | ----------------------------------------------------------------- | ------------------------ |
+| `driver`       | installed driver name "nexentastor-csi-driver"                    | `nexentastor-csi-driver` |
+| `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `PoolA/datasetA/nginx`   |
 
 #### _PersistentVolumeClaim_ (pointed to created _PersistentVolume_):
 
@@ -139,7 +139,8 @@ spec:
 
 Run nginx server using PersistentVolume.
 
-**Note:** Pre-configured filesystem should exist on the NexentaStor: `csiDriverPool/csiDriverDataset/nginx-persistent`.
+**Note:** Pre-configured filesystem should exist on the NexentaStor:
+`csiDriverPool/csiDriverDataset/nginx-persistent`.
 
 ```bash
 kubectl apply -f ./examples/nginx-persistent-volume.yaml

@@ -22,7 +22,7 @@ Supported versions:
     restIp: https://10.3.3.4:8443,https://10.3.3.5:8443 # [required] NexentaStor REST API endpoint(s)
     username: admin                                     # [required] NexentaStor REST API username
     password: p@ssword                                  # [required] NexentaStor REST API password
-    defaultDataset: csiDriverPool/csiDriverDataset      # default parent dataset for driver's filesystems [pool/dataset]
+    defaultDataset: csiDriverPool/csiDriverDataset      # default 'pool/dataset' for driver's filesystems
     defaultDataIp: 20.20.20.21                          # default NexentaStor data IP or HA VIP
     ```
 4. Create Kubernetes secret from the file:

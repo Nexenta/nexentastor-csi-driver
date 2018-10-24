@@ -7,7 +7,7 @@ NexentaStor CSI driver for Kubernetes.
 
 Supported versions:
 - NexentaStor 5.x
-- Kubernetes 1.12
+- Kubernetes 1.11
 
 ## Installation
 
@@ -22,7 +22,7 @@ Supported versions:
     restIp: https://10.3.3.4:8443,https://10.3.3.5:8443 # [required] NexentaStor REST API endpoint(s)
     username: admin                                     # [required] NexentaStor REST API username
     password: p@ssword                                  # [required] NexentaStor REST API password
-    defaultDataset: csiDriverPool/csiDriverDataset      # default dataset to create driver volumes in [pool/dataset]
+    defaultDataset: csiDriverPool/csiDriverDataset      # default parent dataset for driver's filesystems [pool/dataset]
     defaultDataIp: 20.20.20.21                          # default NexentaStor data IP or HA VIP
     ```
 4. Create Kubernetes secret from the file:
@@ -36,23 +36,24 @@ Supported versions:
 
 #### Driver configuration options:
 
-| Name             | Description                                            | Required   | Example                                       |
-| ---------------- | ------------------------------------------------------ | ---------- | --------------------------------------------- |
-| `restIp`         | NexentaStor REST API endpoint(s)                       | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
-| `username`       | NexentaStor REST API username                          | yes        | `admin`                                       |
-| `password`       | NexentaStor REST API password                          | yes        | `p@ssword`                                    |
-| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset] | no         | `csiDriverPool/csiDriverDataset`              |
-| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | yes for PV | `20.20.20.21`                                 |
-| `debug`          | print more logs (default: false)                       | no         | `true`                                        |
+| Name             | Description                                                     | Required   | Example                                       |
+| ---------------- | --------------------------------------------------------------- | ---------- | --------------------------------------------- |
+| `restIp`         | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
+| `username`       | NexentaStor REST API username                                   | yes        | `admin`                                       |
+| `password`       | NexentaStor REST API password                                   | yes        | `p@ssword`                                    |
+| `defaultDataset` | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`              |
+| `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares           | yes for PV | `20.20.20.21`                                 |
+| `debug`          | print more logs (default: false)                                | no         | `true`                                        |
 
-**Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,
-then parameters `dataset`/`dataIp` must be specified in _StorageClass_ configuration.
+**Note**: if parameter `defaultDataset` (`defaultDataIp`) is not specified in driver configuration,
+then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configuration.
 
 ## Usage
 
 ### Dynamically provisioned volumes
 
-For dynamic volume provisioning, the administrator needs to setup a _StorageClass_ pointing to the CSI driver, default driver parameters may be overwritten in `parameters` section:
+For dynamic volume provisioning, the administrator needs to setup a _StorageClass_ pointing to the driver.
+Default driver parameters may be overwritten in `parameters` section:
 
 ```yaml
 apiVersion: storage.k8s.io/v1
@@ -74,7 +75,7 @@ parameters:
 
 #### Example
 
-Run nginx server using _StorageClass_:
+Run Nginx server using _StorageClass_:
 
 ```bash
 kubectl apply -f ./examples/nginx-storage-class.yaml
@@ -85,10 +86,10 @@ kubectl delete -f ./examples/nginx-storage-class.yaml
 
 ### Pre-provisioned volumes
 
-Driver can use already existing NexentaStor filesystem.
-_PersistentVolume_ and _PersistentVolumeClaim_ should be configured.
+Driver can use already existing NexentaStor filesystem,
+in this case _PersistentVolume_ and _PersistentVolumeClaim_ should be configured.
 
-_PersistentVolume_ configuration:
+#### _PersistentVolume_ configuration:
 
 ```yaml
 apiVersion: v1
@@ -107,14 +108,14 @@ spec:
     volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
 ```
 
-**CSI Parameters:**
+CSI Parameters:
 
 | Name | Description | Example |
 | --- | --- | --- |
 | `driver` | installed driver name "nexentastor-csi-driver" | `nexentastor-csi-driver` |
 | `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `csiDriverPool/csiDriverDataset/nginx-persistent` |
 
-_PersistentVolumeClaim_ to use created _PersistentVolume_:
+#### _PersistentVolumeClaim_ (pointed to created _PersistentVolume_):
 
 ```yaml
 apiVersion: v1

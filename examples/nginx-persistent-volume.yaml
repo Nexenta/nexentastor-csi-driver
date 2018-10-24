@@ -1,6 +1,6 @@
 # Nginx pod with pre provisioned storage using NexentaStor CSI driver
 #
-# $ kubectl apply -f ./examples/nginx-presistent-volume.yaml
+# $ kubectl apply -f ./examples/nginx-persistent-volume.yaml
 #
 
 
@@ -54,7 +54,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-presistent-volume
+  name: nginx-persistent-volume
 spec:
   containers:
   - image: maersk/nginx

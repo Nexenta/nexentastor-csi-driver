@@ -28,29 +28,11 @@
    kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
    ```
 
-## Usage examples
+## Usage
 
-### Run nginx server using StorageClass (dynamic provisioning)
+### Dynamically provisioned volumes
 
-```bash
-kubectl apply -f ./examples/nginx-storage-class.yaml
-
-# to delete this pod:
-kubectl delete -f ./examples/nginx-storage-class.yaml
-```
-
-### Run nginx server using PersistentVolume (pre provisioning)
-
-Pre configured filesystem should exist on NexentaStor: `csiDriverPool/csiDriverDataset/nginx-persistent`
-
-```bash
-kubectl apply -f ./examples/nginx-pesistent-volume.yaml
-
-# to delete this pod:
-kubectl delete -f ./examples/nginx-pesistent-volume.yaml
-```
-
-### Overwrite default config in StorageClass definition
+For dynamic volume provisioning, the administrator needs to setup a _StorageClass_ pointing to the CSI driver, default driver parameters may be overwritten in `parameters` section:
 
 ```yaml
 apiVersion: storage.k8s.io/v1
@@ -61,6 +43,89 @@ provisioner: nexentastor-csi-driver
 parameters:
   dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
+```
+
+#### Parameters:
+
+|---|---|---|
+|Name|Description|Example|
+|---|---|---|
+|dataset|parent dataset for driver's filesystems|customPool/customDataset|
+|dataIp|NexentaStor data IP or HA VIP for mounting NFS shares [pool/dataset]|20.20.20.253|
+
+#### Example
+
+Run nginx server using _StorageClass_ (dynamic provisioning):
+
+```bash
+kubectl apply -f ./examples/nginx-storage-class.yaml
+
+# to delete this pod:
+kubectl delete -f ./examples/nginx-storage-class.yaml
+```
+
+### Pre-provisioned volumes
+
+Driver can use already existing NexentaStor filesystem.
+_PersistentVolume_ and _PersistentVolumeClaim_ should be configured.
+
+_PersistentVolume_ configuration:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nexentastor-csi-driver-nginx-pv
+  labels:
+    name: nexentastor-csi-driver-nginx-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  csi:
+    driver: nexentastor-csi-driver
+    volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+```
+
+CSI Parameters:
+
+|---|---|---|
+|Name|Description|Example|
+|---|---|---|
+|driver|installed driver name "nexentastor-csi-driver"|"nexentastor-csi-driver"|
+|volumeHandle|path to NexentaStor filesystem [pool/dataset/filesystem]|csiDriverPool/csiDriverDataset/nginx-persistent|
+
+_PersistentVolumeClaim_ to use created _PersistentVolume_:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-nginx-pvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchExpressions:
+    - key: name
+      operator: In
+      values: ["nexentastor-csi-driver-nginx-pv"]
+```
+
+#### Example
+
+Run nginx server using PersistentVolume (pre-provisioning).
+**Note:** Pre-configured filesystem should exist on the NexentaStor: `csiDriverPool/csiDriverDataset/nginx-persistent`.
+
+```bash
+kubectl apply -f ./examples/nginx-persistent-volume.yaml
+
+# to delete this pod:
+kubectl delete -f ./examples/nginx-persistent-volume.yaml
 ```
 
 ## Uninstall

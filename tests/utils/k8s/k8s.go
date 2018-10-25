@@ -13,13 +13,13 @@ import (
 
 const (
 	// default wait timeout
-	defaultWaitTimeout = 60 * time.Second
+	defaultWaitTimeout = 90 * time.Second
 
 	// default wait interval
 	defaultWaitInterval = 2 * time.Second
 
 	// default deployment tmp directory name (will be created in /tmp directory)
-	defaultDeploymentTmpDirName = "deploment-files"
+	defaultDeploymentTmpDirName = "deployment-files"
 
 	// default k8s secret name
 	defaultSecretName = "nexentastor-csi-driver-config-tests"
@@ -237,7 +237,7 @@ func (d *Deployment) CreateSecret() error {
 		return fail(err)
 	}
 
-	l.Infof("kubernetis secrets:\n---\n%v---", out)
+	l.Infof("kubernetes secrets:\n---\n%v---", out)
 	l.Info("secret has been successfully created")
 
 	return nil

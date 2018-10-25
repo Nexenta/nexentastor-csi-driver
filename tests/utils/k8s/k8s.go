@@ -178,6 +178,14 @@ func (d *Deployment) Apply(pods []string) error {
 
 	l.Info("deployment file has been successfully deployed")
 
+	grepCommand := fmt.Sprintf("cd %v; grep \"image:\" %v", d.deploymentTmpDir, d.getConfigFileName())
+	out, err := d.RemoteClient.Exec(grepCommand)
+	if err != nil {
+		l.Warnf("cannot get list of used images: %v; out: %v", err, out)
+	} else {
+		l.Infof("used images:\n---\n%v---", out)
+	}
+
 	return nil
 }
 

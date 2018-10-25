@@ -42,7 +42,7 @@ func (c *Client) Exec(cmd string) (string, error) {
 
 	out, err := exec.Command("ssh", c.ConnectionString, cmd).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("Command 'ssh %v, %v' error: %v; out: %s", c.ConnectionString, cmd, err, out)
+		return "", fmt.Errorf("Command 'ssh %v %v' error: %v; out: %s", c.ConnectionString, cmd, err, out)
 	}
 	return fmt.Sprintf("%s", out), nil
 }

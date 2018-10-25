@@ -97,7 +97,7 @@ func TestDriver_deploy(t *testing.T) {
 	}
 
 	t.Run("install nginx with dynamic volume provisioning", func(t *testing.T) {
-		getNginxRunCommnad := func(cmd string) string {
+		getNginxRunCommand := func(cmd string) string {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%v\"", cmd)
 		}
 
@@ -112,12 +112,12 @@ func TestDriver_deploy(t *testing.T) {
 		}
 
 		// write data to nginx container
-		if _, err := rc.Exec(getNginxRunCommnad("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
+		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
 			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %v", err))
 		}
 
 		// check if data has been written
-		if _, err := rc.Exec(getNginxRunCommnad("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
+		if _, err := rc.Exec(getNginxRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
 			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %v", err))
 		}
 
@@ -127,7 +127,7 @@ func TestDriver_deploy(t *testing.T) {
 	})
 
 	t.Run("install nginx with dynamic volume provisioning [read only]", func(t *testing.T) {
-		getNginxRunCommnad := func(cmd string) string {
+		getNginxRunCommand := func(cmd string) string {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%v\"", cmd)
 		}
 
@@ -142,10 +142,10 @@ func TestDriver_deploy(t *testing.T) {
 		}
 
 		// writing data to read-only nginx container should failed
-		if _, err := rc.Exec(getNginxRunCommnad("echo 'test' > /usr/share/nginx/html/data.txt")); err == nil {
+		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err == nil {
 			t.Fatal("Writing data to read-only volume on nginx container should failed, but it's not")
 		} else if !strings.Contains(fmt.Sprint(err), "Read-only file system") {
-			t.Fatalf("Error doesn't contain 'Read-only file system' rmessage")
+			t.Fatalf("Error doesn't contain 'Read-only file system' message")
 		}
 
 		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-ro"}); err != nil {

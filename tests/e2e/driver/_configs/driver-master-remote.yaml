@@ -1,0 +1,374 @@
+# $ kubectl apply -f ./tests/e2e/driver/_configs/nexentastor-csi-driver-master-local.yaml
+
+
+# ---------------------------
+# NexentaStor CSI Provisioner
+# ---------------------------
+
+# Provisioner RBAC roles
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nexentastor-csi-provisioner
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-provisioner-runner
+rules:
+  - apiGroups: ['']
+    resources: ['secrets']
+    verbs: ['get', 'list']
+  - apiGroups: ['']
+    resources: ['persistentvolumes']
+    verbs: ['get', 'list', 'watch', 'create', 'delete', 'update']
+  - apiGroups: ['']
+    resources: ['persistentvolumeclaims']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['storage.k8s.io']
+    resources: ['storageclasses']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['list', 'watch', 'create', 'update', 'patch']
+  - apiGroups: ['']
+    resources: ['services']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['nodes']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['storage.k8s.io']
+    resources: ['volumeattachments']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['endpoints']
+    verbs: ['create', 'get', 'list', 'watch', 'update']
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-provisioner-role
+subjects:
+  - kind: ServiceAccount
+    name: nexentastor-csi-provisioner
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-provisioner-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+
+# Provisioner
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: nexentastor-csi-provisioner
+  labels:
+    app: nexentastor-csi-provisioner
+spec:
+  selector:
+    app: nexentastor-csi-provisioner
+  ports:
+    - name: dummy
+      port: 12345
+---
+
+kind: StatefulSet
+apiVersion: apps/v1beta1
+metadata:
+  name: nexentastor-csi-provisioner
+spec:
+  serviceName: 'nexentastor-csi-provisioner'
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nexentastor-csi-provisioner
+    spec:
+      serviceAccount: nexentastor-csi-provisioner
+      containers:
+        - name: csi-provisioner
+          image: quay.io/k8scsi/csi-provisioner:v0.4.0
+          args:
+            - '--connection-timeout=25s'
+            - '--provisioner=nexentastor-csi-driver'
+            - '--csi-address=$(ADDRESS)'
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: 'Always'
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: driver
+          image: nexenta/nexentastor-csi-driver:master
+          args:
+            - '--nodeid=$(NODE_ID)'
+            - '--endpoint=$(CSI_ENDPOINT)'
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://plugin/csi.sock
+          imagePullPolicy: 'Always'
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /plugin
+            - name: secret
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: socket-dir
+          ? emptyDir
+        - name: secret
+          secret:
+            secretName: nexentastor-csi-driver-config-tests
+---
+
+
+# ------------------------
+# NexentaStor CSI Attacher
+# ------------------------
+
+# Attacher RBAC roles
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nexentastor-csi-attacher
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-attacher-runner
+rules:
+  - apiGroups: ['']
+    resources: ['secrets']
+    verbs: ['get', 'list']
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['persistentvolumes']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['nodes']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['storage.k8s.io']
+    resources: ['volumeattachments']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['nodes']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['endpoints']
+    verbs: ['create', 'get', 'list', 'watch', 'update']
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-attacher-role
+subjects:
+  - kind: ServiceAccount
+    name: nexentastor-csi-attacher
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-attacher-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+
+# Attacher RBAC roles
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: nexentastor-csi-attacher
+  labels:
+    app: nexentastor-csi-attacher
+spec:
+  selector:
+    app: nexentastor-csi-attacher
+  ports:
+    - name: dummy
+      port: 12345
+---
+
+kind: StatefulSet
+apiVersion: apps/v1beta1
+metadata:
+  name: nexentastor-csi-attacher
+spec:
+  serviceName: 'nexentastor-csi-attacher'
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nexentastor-csi-attacher
+    spec:
+      serviceAccount: nexentastor-csi-attacher
+      containers:
+        - name: csi-attacher
+          image: quay.io/k8scsi/csi-attacher:v0.4.0
+          args:
+            - '--v=5'
+            - '--csi-address=$(ADDRESS)'
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: 'Always'
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: driver
+          image: nexenta/nexentastor-csi-driver:master
+          args:
+            - '--nodeid=$(NODE_ID)'
+            - '--endpoint=$(CSI_ENDPOINT)'
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://plugin/csi.sock
+          imagePullPolicy: 'Always'
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /plugin
+            - name: secret
+              mountPath: /config
+      volumes:
+        - name: socket-dir
+          ? emptyDir
+        - name: secret
+          secret:
+            secretName: nexentastor-csi-driver-config-tests
+---
+
+
+# ----------------------
+# NexentaStor CSI Plugin
+# ----------------------
+
+# NexentaStor Plugin RBAC Roles
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nexentastor-csi-driver
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-driver
+rules:
+  - apiGroups: ['']
+    resources: ['persistentvolumes']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['services']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['']
+    resources: ['nodes']
+    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: ['storage.k8s.io']
+    resources: ['volumeattachments']
+    verbs: ['get', 'list', 'watch', 'update']
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-driver
+subjects:
+  - kind: ServiceAccount
+    name: nexentastor-csi-driver
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: nexentastor-csi-driver
+  apiGroup: rbac.authorization.k8s.io
+---
+
+# NexentaStor Plugin
+
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: nexentastor-csi-driver
+spec:
+  selector:
+    matchLabels:
+      app: nexentastor-csi-driver
+  template:
+    metadata:
+      labels:
+        app: nexentastor-csi-driver
+    spec:
+      serviceAccount: nexentastor-csi-driver
+      hostNetwork: true
+      containers:
+        - name: driver-registrar
+          image: quay.io/k8scsi/driver-registrar:v0.4.0
+          args:
+            - '--v=5'
+            - '--csi-address=$(ADDRESS)'
+          env:
+            - name: ADDRESS
+              value: /plugin/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /plugin
+        - name: driver
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ['SYS_ADMIN']
+            allowPrivilegeEscalation: true
+          image: nexenta/nexentastor-csi-driver:master
+          args:
+            - '--nodeid=$(NODE_ID)'
+            - '--endpoint=$(CSI_ENDPOINT)'
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://plugin/csi.sock
+          imagePullPolicy: 'Always'
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /plugin
+            - name: secret
+              mountPath: /config
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: 'Bidirectional'
+      volumes:
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/nexentastor-csi-driver
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
+        - name: secret
+          secret:
+            secretName: nexentastor-csi-driver-config-tests
+---

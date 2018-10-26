@@ -239,3 +239,11 @@ go test tests/e2e/driver/driver_test.go -v -count 1 \
 ```
 
 See `Makefile` for more examples.
+
+## Troubleshooting
+
+- Configure Docker to trust insecure registries:
+  ```bash
+  echo "{\"insecure-registries\":[\"10.3.199.92:5000\"]}" > /etc/docker/daemon.json
+  service docker restart
+  ```

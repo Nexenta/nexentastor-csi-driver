@@ -81,7 +81,7 @@ test-e2e-k8s-remote:
 .PHONY: container-test-local
 container-test-local:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
-	docker run -it --rm -v ${HOME}/.ssh:/root/.ssh:ro $(IMAGE_NAME)-test test
+	docker run -it --rm -v ${HOME}/.ssh:/root/.ssh:ro $(IMAGE_NAME)-test test-local
 
 .PHONY: container-test-remote
 container-test-remote:

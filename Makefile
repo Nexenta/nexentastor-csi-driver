@@ -24,12 +24,12 @@ container-build:
 	docker build -f $(DOCKER_FILE) -t $(IMAGE_NAME) .
 
 .PHONY: container-push
-container-push-remote: container-build-remote
+container-push-remote:
 	docker tag  $(IMAGE_NAME) $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
 	docker push $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
 
 .PHONY: container-push-local
-container-push-local: container-build
+container-push-local:
 	docker tag  $(IMAGE_NAME) $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(VERSION)
 	docker push $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(VERSION)
 

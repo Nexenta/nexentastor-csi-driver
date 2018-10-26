@@ -31,12 +31,17 @@ func (c *Config) Refresh() error {
 	if c.filePath == "" {
 		return fmt.Errorf("Cannot read config file, filePath not specified")
 	}
+
 	content, err := ioutil.ReadFile(c.filePath)
 	if err != nil {
 		return fmt.Errorf("Cannot read '%v' config file: %v", c.filePath, err)
-	} else if err := yaml.Unmarshal(content, c); err != nil {
+	}
+
+	if err := yaml.Unmarshal(content, c); err != nil {
 		return fmt.Errorf("Cannot parse yaml in '%v' config file: %v", c.filePath, err)
-	} else if err := c.Validate(); err != nil {
+	}
+
+	if err := c.Validate(); err != nil {
 		return err
 	}
 
@@ -69,12 +74,10 @@ func (c *Config) Validate() error {
 func New(lookUpDir string) (*Config, error) {
 	// look up for config file
 	configFilePath := ""
-	fileList := []string{}
 	err := filepath.Walk(lookUpDir, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
-		fileList = append(fileList, path)
 		ext := filepath.Ext(path)
 		if ext == ".yaml" || ext == ".yml" {
 			configFilePath = path
@@ -85,7 +88,7 @@ func New(lookUpDir string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Cannot read config directory '%v'", lookUpDir)
 	} else if configFilePath == "" {
-		return nil, fmt.Errorf("Cannot find .yaml config file in '%v' directory, found: %v", lookUpDir, fileList)
+		return nil, fmt.Errorf("Cannot find .yaml config file in '%v' directory", lookUpDir)
 	}
 
 	// read config file

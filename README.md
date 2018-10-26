@@ -170,8 +170,14 @@ kubectl delete secret nexentastor-csi-driver-config
 ### Build
 
 ```bash
-~/go/bin/dep ensure
+# build locally
 make
+
+# build container (+ using build container)
+make container-build
+
+# update deps
+~/go/bin/dep ensure
 ```
 
 ### Run
@@ -181,12 +187,34 @@ Without installation to k8s cluster only version command works:
 ./bin/nexentastor-csi-driver --version
 ```
 
+### Publish
+
+```bash
+# push the latest built container to local registry (see `Makefile`)
+make container-push-local
+
+# push the latest built container to hub.docker.com
+make container-push-remote
+```
+
 ### Tests
 
 ```bash
-# run all tests
-make test
-# or
+# run all tests using local registry (`REGISTRY_LOCAL` in `Makefile`)
+make test-local
+# run all tests using hub.docker.com registry (`REGISTRY` in `Makefile`)
+make test-remote
+
+# run tests in container
+# RSA keys from host's ~/.ssh directory will be used by container.
+# Make sure all remote hosts used in tests have host's RSA key added as trusted
+# (ssh-copy-id -i ~/.ssh/id_rsa.pub user@host)
+# for local image
+make container-test-local
+# for remote image from hub.docker.com
+make container-test-remote
+
+# add red for fails
 make test | grep --color 'FAIL\|$'
 
 # Unit tests with options

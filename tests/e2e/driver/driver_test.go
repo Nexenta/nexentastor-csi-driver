@@ -52,10 +52,16 @@ func TestMain(m *testing.M) {
 	// init logger
 	l = logrus.New().WithField("title", "tests")
 
+	noColors := false
+	if v := os.Getenv("NOCOLORS"); v != "" && v != "false" {
+		noColors = true
+	}
+
 	// logger formatter
 	l.Logger.SetFormatter(&nested.Formatter{
 		HideKeys:    true,
 		FieldsOrder: []string{"title", "address", "cmp", "func"},
+		NoColors:    noColors,
 	})
 
 	l.Info("run...")

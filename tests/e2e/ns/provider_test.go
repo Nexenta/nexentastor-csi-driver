@@ -16,11 +16,11 @@ import (
 
 // defaults
 const (
-	defaultUsername        = "admin"
-	defaultPassword        = "Nexenta@1"
-	defaultPoolName        = "csiDriverPool"
-	defaultcDatasetName    = "csiDriverDataset"
-	defaultcFilesystemName = "csiDriverFs"
+	defaultUsername       = "admin"
+	defaultPassword       = "Nexenta@1"
+	defaultPoolName       = "csiDriverPool"
+	defaultDatasetName    = "csiDriverDataset"
+	defaultFilesystemName = "csiDriverFs"
 )
 
 type config struct {
@@ -50,8 +50,8 @@ func TestMain(m *testing.M) {
 		username   = flag.String("username", defaultUsername, "overwrite NS API username from config")
 		password   = flag.String("password", defaultPassword, "overwrite NS API password from config")
 		pool       = flag.String("pool", defaultPoolName, "pool on NS")
-		dataset    = flag.String("dataset", defaultcDatasetName, "dataset on NS")
-		filesystem = flag.String("filesystem", defaultcFilesystemName, "filesystem on NS")
+		dataset    = flag.String("dataset", defaultDatasetName, "dataset on NS")
+		filesystem = flag.String("filesystem", defaultFilesystemName, "filesystem on NS")
 		log        = flag.Bool("log", false, "show logs")
 	)
 
@@ -234,7 +234,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if !filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %v doens't exist on NS %v", c.filesystem, c.address)
+			t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
 			return
 		}
 

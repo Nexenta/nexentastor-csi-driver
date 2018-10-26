@@ -205,10 +205,12 @@ make test-local
 # run all tests using hub.docker.com registry (`REGISTRY` in `Makefile`)
 make test-remote
 
-# run tests in container
-# RSA keys from host's ~/.ssh directory will be used by container.
-# Make sure all remote hosts used in tests have host's RSA key added as trusted
-# (ssh-copy-id -i ~/.ssh/id_rsa.pub user@host)
+# run tests in container:
+# - RSA keys from host's ~/.ssh directory will be used by container.
+#   Make sure all remote hosts used in tests have host's RSA key added as trusted
+#   (ssh-copy-id -i ~/.ssh/id_rsa.pub user@host)
+# - "export NOCOLORS=true" to run w/o colors
+#
 # for local image
 make container-test-local
 # for remote image from hub.docker.com
@@ -232,6 +234,7 @@ go test ./tests/e2e/ns/provider_test.go -v -count 1 \
     --log="true"
 
 # Tests install driver to k8s and run nginx pod with mounted volume
+# "export NOCOLORS=true" to run w/o colors
 go test tests/e2e/driver/driver_test.go -v -count 1 \
     --k8sConnectionString="root@10.3.199.250" \
     --k8sDeploymentFile="./_configs/driver-master-local.yaml" \

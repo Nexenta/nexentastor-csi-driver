@@ -144,7 +144,7 @@ func NewClient(args ClientArgs) (client ClientInterface, err error) {
 	tr := &http.Transport{
 		IdleConnTimeout: 60 * time.Second,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, // don't check certivicate, fix this!
+			InsecureSkipVerify: true, // don't check certificate, fix this!
 		},
 	}
 

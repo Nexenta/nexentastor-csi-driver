@@ -2,6 +2,7 @@ package ns
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -94,7 +95,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 		}
 	}
 
-	if statusCode == 202 {
+	if statusCode == http.StatusAccepted {
 		// this is an async job
 		var href string
 		href, err = nsp.getAsyncJobHref(resJSON)
@@ -149,40 +150,33 @@ func (nsp *Provider) getAsyncJobHref(resJSON map[string]interface{}) (string, er
 func (nsp *Provider) waitForAsyncJob(jobID string) (err error) {
 	l := nsp.Log.WithField("job", jobID)
 
-	done := make(chan error)
 	timer := time.NewTimer(0)
 	timeout := time.After(checkJobStatusTimeout)
+	startTime := time.Now()
 
-	go func() {
-		startTime := time.Now()
-		for {
-			select {
-			case <-timer.C:
-				jobDone, err := nsp.IsJobDone(jobID)
-				if err != nil { // request failed
-					done <- err
-					return
-				} else if jobDone { // job is completed
-					done <- nil
-					return
-				}
+	for {
+		select {
+		case <-timer.C:
+			jobDone, err := nsp.IsJobDone(jobID)
+			if err != nil { // request failed
+				return err
+			} else if jobDone { // job is completed
+				return nil
+			} else {
 				waitingTimeSeconds := time.Since(startTime).Seconds()
 				if waitingTimeSeconds >= checkJobStatusInterval.Seconds() {
 					l.Warnf("waiting job for %.0fs...", waitingTimeSeconds)
 				}
 				timer = time.NewTimer(checkJobStatusInterval)
-			case <-timeout:
-				timer.Stop()
-				done <- fmt.Errorf("Checking job status timeout exceeded (%vs)", checkJobStatusTimeout)
-				return
 			}
+		case <-timeout:
+			timer.Stop()
+			return fmt.Errorf("Checking job status timeout exceeded (%vs)", checkJobStatusTimeout)
 		}
-	}()
-
-	return <-done
+	}
 }
 
-// ProviderArgs - params to create Provider instanse
+// ProviderArgs - params to create Provider instance
 type ProviderArgs struct {
 	Address  string
 	Username string

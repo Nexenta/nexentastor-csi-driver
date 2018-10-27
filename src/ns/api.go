@@ -2,6 +2,7 @@ package ns
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -235,7 +236,7 @@ const (
 	ACLReadOnly ACLRuleSet = iota
 
 	// ACLReadWrite - apply full access set of rules to filesystem
-	ACLReadWrite ACLRuleSet = iota
+	ACLReadWrite
 )
 
 // SetFilesystemACL - set filesystem ACL, so NFS share can allow user to write w/o checking UNIX user uid
@@ -281,9 +282,9 @@ func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 	statusCode, resJSON, err := nsp.RestClient.Send("GET", uri, nil)
 	if err != nil { // request failed
 		return false, err
-	} else if statusCode == 200 || statusCode == 201 { // job is completed
+	} else if statusCode == http.StatusOK || statusCode == http.StatusCreated { // job is completed
 		return true, nil
-	} else if statusCode == 202 { // job is in progress
+	} else if statusCode == http.StatusAccepted { // job is in progress (202)
 		return false, nil
 	}
 

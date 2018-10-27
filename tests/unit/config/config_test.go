@@ -10,7 +10,7 @@ var testConfigParams = map[string]string{
 	"Address":        "https://10.1.1.1:8443,https://10.1.1.2:8443",
 	"Username":       "usr",
 	"Password":       "pwd",
-	"DefaultDataset": "pl/dtst",
+	"DefaultDataset": "poolA/datasetA",
 	"DefaultDataIp":  "20.1.1.1",
 }
 

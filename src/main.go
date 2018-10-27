@@ -59,7 +59,7 @@ func main() {
 	}
 
 	l.Info("Config file options:")
-	l.Infof("- NexentaStor address: %v", cfg.Address)
+	l.Infof("- NexentaStor address(es): %v", cfg.Address)
 	l.Infof("- NexentaStor username: %v", cfg.Username)
 	l.Infof("- Default dataset: %v", cfg.DefaultDataset)
 	l.Infof("- Default data IP: %v", cfg.DefaultDataIP)

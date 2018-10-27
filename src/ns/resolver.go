@@ -36,7 +36,7 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 		return resolvedNS, nil
 	}
 
-	message := fmt.Sprintf("No NexentaStors found with pool/dataset: '%v'", path)
+	message := fmt.Sprintf("No NexentaStor(s) found with pool/dataset: '%v'", path)
 	if lastError != nil {
 		return nil, fmt.Errorf("%v, last error: %v", message, lastError)
 	}
@@ -51,7 +51,7 @@ type ResolverArgs struct {
 	Log      *logrus.Entry
 }
 
-// NewResolver - create NexentaStor resolver instance based on confiuration
+// NewResolver - create NexentaStor resolver instance based on configuration
 func NewResolver(args ResolverArgs) (nsr *Resolver, err error) {
 	if len(args.Address) == 0 {
 		return nil, fmt.Errorf("NexentaStor address not specified: %v", args.Address)

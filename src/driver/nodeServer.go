@@ -87,15 +87,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Error(codes.InvalidArgument, "Target path must be provided")
 	}
 
-	aclRuleSet := ns.ACLReadWrite
-	mountOptions := []string{} //TODO look up config for NFS share options
-	if req.GetReadonly() {
-		aclRuleSet = ns.ACLReadOnly
-		if !arrays.ContainsString(mountOptions, "ro") {
-			mountOptions = append(mountOptions, "ro")
-		}
-	}
-
+	// read and validate config
 	err := s.Config.Refresh()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
@@ -121,20 +113,49 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	}
 
 	if !filesystem.SharedOverNfs {
-		// create share
+		// create share if not exist
 		err = nsProvider.CreateNfsShare(filesystem.Path)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v': %v", filesystem.Path, err)
 		}
 	}
 
-	// apply filesystem acl (overwrites every time)
+	mountOptions := []string{}
+
+	// volume params passes from ControllerServer.CreateVolume()
+	volumeAttributes := req.GetVolumeAttributes()
+	if volumeAttributes == nil {
+		volumeAttributes = make(map[string]string)
+	}
+
+	// get nfsMountOptions from runtime volume creation params, use config's value if not specified
+	nfsMountOptions := s.Config.DefaultNfsMountOptions
+	if v, ok := volumeAttributes["nfsMountOptions"]; ok {
+		nfsMountOptions = v
+	}
+	nfsMountOptionsList := strings.Split(nfsMountOptions, ",")
+	for _, option := range nfsMountOptionsList {
+		mountOptions = append(mountOptions, option)
+	}
+
+	// select read-only or read-write mount options set
+	aclRuleSet := ns.ACLReadWrite
+	if req.GetReadonly() {
+		aclRuleSet = ns.ACLReadOnly
+		if !arrays.ContainsString(mountOptions, "ro") {
+			mountOptions = append(mountOptions, "ro")
+		}
+	}
+
+	// apply NS filesystem ACL (overwrites every time)
 	err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
 	}
 
 	mounter := mount.New("")
+
+	// check if mountpoint exists, create if there is no such directory
 	notMountPoint, err := mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -161,11 +182,6 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Errorf(codes.Internal, "Target path '%v' is already a mount point", targetPath)
 	}
 
-	volumeAttributes := req.GetVolumeAttributes()
-	if volumeAttributes == nil {
-		volumeAttributes = make(map[string]string)
-	}
-
 	// get dataIP from runtime params, set default if not specified
 	dataIP := ""
 	if v, ok := volumeAttributes["dataIP"]; ok {
@@ -174,27 +190,26 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		dataIP = s.Config.DefaultDataIP
 	}
 
-	//check if dataIP is provided
-	nfsEndpoint := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
+	mountSource := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
 
 	l.Infof(
-		"mount params: targetPath: '%v', nfsEndpoint: '%v', fsType: '%v', "+
+		"mount params: targetPath: '%v', mountSource: '%v', fsType: '%v', "+
 			"readOnly: '%v', volumeAttributes: '%v', mountFlags '%v'",
 		targetPath,
-		nfsEndpoint,
+		mountSource,
 		req.GetVolumeCapability().GetMount().GetFsType(),
 		req.GetReadonly(),
 		req.GetVolumeAttributes(),
 		req.GetVolumeCapability().GetMount().GetMountFlags(),
 	)
 
-	err = mounter.Mount(nfsEndpoint, targetPath, "nfs", mountOptions)
+	err = mounter.Mount(mountSource, targetPath, "nfs", mountOptions)
 	if err != nil {
 		if os.IsPermission(err) {
 			return nil, status.Errorf(
 				codes.PermissionDenied,
 				"Permission denied to mount '%v' to '%v': %v",
-				nfsEndpoint,
+				mountSource,
 				targetPath,
 				err,
 			)
@@ -202,7 +217,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 			return nil, status.Errorf(
 				codes.InvalidArgument,
 				"Cannot mount '%v' to '%v', invalid argument: %v",
-				nfsEndpoint,
+				mountSource,
 				targetPath,
 				err,
 			)
@@ -210,7 +225,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Errorf(
 			codes.Internal,
 			"Failed to mount '%v' to '%v': %v",
-			nfsEndpoint,
+			mountSource,
 			targetPath,
 			err,
 		)

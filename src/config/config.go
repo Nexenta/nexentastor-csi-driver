@@ -12,13 +12,14 @@ import (
 
 // Config - driver config from file
 type Config struct {
-	filePath       string
-	Address        string `yaml:"restIp"`
-	Username       string `yaml:"username"`
-	Password       string `yaml:"password"`
-	DefaultDataset string `yaml:"defaultDataset,omitempty"`
-	DefaultDataIP  string `yaml:"defaultDataIp,omitempty"`
-	Debug          bool   `yaml:"debug,omitempty"`
+	filePath               string
+	Address                string `yaml:"restIp"`
+	Username               string `yaml:"username"`
+	Password               string `yaml:"password"`
+	DefaultDataset         string `yaml:"defaultDataset,omitempty"`
+	DefaultDataIP          string `yaml:"defaultDataIp,omitempty"`
+	DefaultNfsMountOptions string `yaml:"defaultNfsMountOptions,omitempty"`
+	Debug                  bool   `yaml:"debug,omitempty"`
 }
 
 // GetFilePath - get filepath of found config file

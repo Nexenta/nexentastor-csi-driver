@@ -11,8 +11,9 @@ metadata:
   name: nexentastor-csi-driver-cs-nginx-test-rw
 provisioner: nexentastor-csi-driver
 parameters:
-  # dataset: csiDriverPool/test   # to overwrite "defaultDataset" in config secret
-  # dataIp: 10.3.199.252          # to overwrite "defaultDataIp" in config secret
+  #dataset: csiDriverPool/test # to overwrite "defaultDataset" in config secret
+  #dataIp: 10.3.199.252        # to overwrite "defaultDataIp" in config secret
+  #nfsMountOptions: noatime    # to overwrite "defaultNfsMountOptions" in config secret
 ---
 
 

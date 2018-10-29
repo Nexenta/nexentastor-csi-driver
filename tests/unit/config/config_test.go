@@ -7,11 +7,12 @@ import (
 )
 
 var testConfigParams = map[string]string{
-	"Address":        "https://10.1.1.1:8443,https://10.1.1.2:8443",
-	"Username":       "usr",
-	"Password":       "pwd",
-	"DefaultDataset": "poolA/datasetA",
-	"DefaultDataIp":  "20.1.1.1",
+	"Address":                "https://10.1.1.1:8443,https://10.1.1.2:8443",
+	"Username":               "usr",
+	"Password":               "pwd",
+	"DefaultDataset":         "poolA/datasetA",
+	"DefaultDataIp":          "20.1.1.1",
+	"DefaultNfsMountOptions": "noatime",
 }
 
 func testParam(t *testing.T, name, expected, given string) {
@@ -33,6 +34,7 @@ func TestConfig_Full(t *testing.T) {
 	testParam(t, "Password", testConfigParams["Password"], c.Password)
 	testParam(t, "DefaultDataset", testConfigParams["DefaultDataset"], c.DefaultDataset)
 	testParam(t, "DefaultDataIp", testConfigParams["DefaultDataIp"], c.DefaultDataIP)
+	testParam(t, "DefaultNfsMountOptions", testConfigParams["DefaultNfsMountOptions"], c.DefaultNfsMountOptions)
 }
 
 func TestConfig_Short(t *testing.T) {
@@ -48,6 +50,7 @@ func TestConfig_Short(t *testing.T) {
 	testParam(t, "Password", testConfigParams["Password"], c.Password)
 	testParam(t, "DefaultDataset", "", c.DefaultDataset)
 	testParam(t, "DefaultDataIp", "", c.DefaultDataIP)
+	testParam(t, "DefaultNfsMountOptions", "", c.DefaultNfsMountOptions)
 }
 
 func TestConfig_Not_Valid(t *testing.T) {

@@ -3,3 +3,4 @@ username: usr
 password: pwd
 defaultDataset: poolA/datasetA
 defaultDataIp: 20.1.1.1
+defaultNfsMountOptions: noatime

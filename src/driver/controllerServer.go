@@ -146,7 +146,8 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			Id:            volumePath,
 			CapacityBytes: capacityBytes,
 			Attributes: map[string]string{
-				"dataIp": reqParams["dataIp"],
+				"dataIp":          reqParams["dataIp"],
+				"nfsMountOptions": reqParams["nfsMountOptions"],
 			},
 		},
 	}

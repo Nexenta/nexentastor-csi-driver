@@ -30,17 +30,19 @@ NexentaStor CSI driver for Kubernetes.
     password: p@ssword                                  # [required] NexentaStor REST API password
     defaultDataset: csiDriverPool/csiDriverDataset      # default 'pool/dataset' for driver's filesystems
     defaultDataIp: 20.20.20.21                          # default NexentaStor data IP or HA VIP
+    defaultNfsMountOptions: noatime                     # default NFS mount options (mount -o ...)
     ```
     All driver configuration options:
 
-    | Name             | Description                                                     | Required   | Example                                       |
-    | ---------------- | --------------------------------------------------------------- | ---------- | --------------------------------------------- |
-    | `restIp`         | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
-    | `username`       | NexentaStor REST API username                                   | yes        | `admin`                                       |
-    | `password`       | NexentaStor REST API password                                   | yes        | `p@ssword`                                    |
-    | `defaultDataset` | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`              |
-    | `defaultDataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares           | yes for PV | `20.20.20.21`                                 |
-    | `debug`          | print more logs (default: false)                                | no         | `true`                                        |
+    | Name                     | Description                                                     | Required   | Example                                       |
+    | ------------------------ | --------------------------------------------------------------- | ---------- | --------------------------------------------- |
+    | `restIp`                 | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
+    | `username`               | NexentaStor REST API username                                   | yes        | `admin`                                       |
+    | `password`               | NexentaStor REST API password                                   | yes        | `p@ssword`                                    |
+    | `defaultDataset`         | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`              |
+    | `defaultDataIp`          | NexentaStor data IP or HA VIP for mounting NFS shares           | yes for PV | `20.20.20.21`                                 |
+    | `defaultNfsMountOptions` | NFS mount options for: `mount -o ...` (default: "")             | no         | `noatime,nosuid`                              |
+    | `debug`                  | print more logs (default: false)                                | no         | `true`                                        |
 
     **Note**: if parameter `defaultDataset` (`defaultDataIp`) is not specified in driver configuration,
     then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configuration.
@@ -68,16 +70,18 @@ metadata:
   name: nexentastor-csi-driver-dynamic-provisioning
 provisioner: nexentastor-csi-driver
 parameters:
-  dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
-  dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
+  #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
+  #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
+  #nfsMountOptions: noatime          # to overwrite "defaultNfsMountOptions" in config secret
 ```
 
 #### Parameters
 
-| Name      | Description                                            | Example                    |
-| --------- | -------------------------------------------------------| -------------------------- |
-| `dataset` | parent dataset for driver's filesystems [pool/dataset] | `customPool/customDataset` |
-| `dataIp`  | NexentaStor data IP or HA VIP for mounting NFS shares  | `20.20.20.253`             |
+| Name              | Description                                            | Example                    |
+| ----------------- | -------------------------------------------------------| -------------------------- |
+| `dataset`         | parent dataset for driver's filesystems [pool/dataset] | `customPool/customDataset` |
+| `dataIp`          | NexentaStor data IP or HA VIP for mounting NFS shares  | `20.20.20.253`             |
+| `nfsMountOptions` | nfs mount options (`mount -o ...`)                     | `noatime`                  |
 
 #### Example
 

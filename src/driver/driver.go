@@ -30,25 +30,22 @@ type Driver struct {
 	Log      *logrus.Entry
 
 	csiDriver *csiCommon.CSIDriver
-
-	ids *csiCommon.DefaultIdentityServer
-	cs  *ControllerServer
-	ns  *NodeServer
-
-	cap   []*csi.VolumeCapability_AccessMode
-	cscap []*csi.ControllerServiceCapability
 }
 
 // Run - run the driver
 func (d *Driver) Run() {
 	d.Log.Info("run")
 
-	csiCommon.RunControllerandNodePublishServer(
+	grpcServer := csiCommon.NewNonBlockingGRPCServer()
+
+	grpcServer.Start(
 		d.Endpoint,
-		d.csiDriver,
-		NewControllerServer(d, d.Config),
-		NewNodeServer(d, d.Config),
+		NewIdentityServer(d),
+		NewControllerServer(d),
+		NewNodeServer(d),
 	)
+
+	grpcServer.Wait()
 }
 
 // Args - params to crete new driver

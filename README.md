@@ -68,7 +68,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-dynamic-provisioning
-provisioner: nexentastor-csi-driver
+provisioner: com.nexenta.nexentastor-csi-driver
 parameters:
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property

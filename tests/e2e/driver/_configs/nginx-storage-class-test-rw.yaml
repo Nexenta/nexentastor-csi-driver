@@ -9,7 +9,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-cs-nginx-test-rw
-provisioner: nexentastor-csi-driver
+provisioner: com.nexenta.nexentastor-csi-driver
 parameters:
   #dataset: csiDriverPool/test # to overwrite "defaultDataset" in config secret
   #dataIp: 10.3.199.252        # to overwrite "defaultDataIp" in config secret

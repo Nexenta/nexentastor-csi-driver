@@ -95,7 +95,7 @@ spec:
           image: quay.io/k8scsi/csi-provisioner:v0.4.0
           args:
             - '--connection-timeout=25s'
-            - '--provisioner=nexentastor-csi-driver'
+            - '--provisioner=com.nexenta.nexentastor-csi-driver'
             - '--csi-address=$(ADDRESS)'
           env:
             - name: ADDRESS
@@ -362,7 +362,7 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/nexentastor-csi-driver
+            path: /var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver
             type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:

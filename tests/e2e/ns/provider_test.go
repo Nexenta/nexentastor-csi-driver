@@ -286,5 +286,8 @@ func TestProvider_NewProvider(t *testing.T) {
 				c.address,
 			)
 		}
+
+		// clean up
+		nsp.DestroyFilesystem(c.filesystem)
 	})
 }

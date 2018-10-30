@@ -21,6 +21,8 @@ type IdentityServer struct {
 
 // Probe - return driver status (ready or not)
 func (ids *IdentityServer) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
+	ids.Log.WithField("func", "Probe()").Infof("request: %+v", req)
+
 	// read and validate config
 	err := ids.Config.Refresh()
 	if err != nil {

@@ -10,8 +10,10 @@ NexentaStor CSI driver for Kubernetes.
 
 ## Supported versions
 
-- NexentaStor 5.x
-- Kubernetes 1.11+
+|                 | NexentaStor 5.1      | NexentaStor 5.2      |
+| --------------- | -------------------- | -------------------- |
+| Kubernetes 1.11 | 1.x.x                | 1.x.x                |
+| Kubernetes 1.12 | 2.x.x (not released) | 2.x.x (not released) |
 
 
 ## Installation

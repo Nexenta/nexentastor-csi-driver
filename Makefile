@@ -51,6 +51,10 @@ test-unit:
 test-e2e-ns:
 	go test ./tests/e2e/ns/provider_test.go -v -count 1 \
 		--address="https://10.3.199.254:8443" &&\
+	go test ./tests/e2e/ns/provider_test.go -v -count 1 \
+		--address="https://10.3.199.252:8443" &&\
+	go test ./tests/e2e/ns/provider_test.go -v -count 1 \
+		--address="https://10.3.199.253:8443" &&\
 	go test ./tests/e2e/ns/resolver_test.go -v -count 1 \
 		--address="https://10.3.199.254:8443" &&\
 	go test ./tests/e2e/ns/resolver_test.go -v -count 1 \

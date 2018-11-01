@@ -243,7 +243,7 @@ go test ./tests/e2e/ns/provider_test.go -v -count 1 \
 # "export NOCOLORS=true" to run w/o colors
 go test tests/e2e/driver/driver_test.go -v -count 1 \
     --k8sConnectionString="root@10.3.199.250" \
-    --k8sDeploymentFile="./_configs/driver-master-local.yaml" \
+    --k8sDeploymentFile="./_configs/driver-local.yaml" \
     --k8sSecretFile="./_configs/driver-config-single.yaml"
 ```
 
@@ -255,4 +255,10 @@ See `Makefile` for more examples.
   ```bash
   echo "{\"insecure-registries\":[\"10.3.199.92:5000\"]}" > /etc/docker/daemon.json
   service docker restart
+  ```
+- Driver logs
+  ```bash
+    kubectl logs -f nexentastor-csi-attacher-0 driver
+    kubectl logs -f nexentastor-csi-provisioner-0 driver
+    kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-driver/ {print $1;exit}') driver
   ```

@@ -13,7 +13,7 @@ import (
 
 const (
 	// default wait timeout
-	defaultWaitTimeout = 90 * time.Second
+	defaultWaitTimeout = 120 * time.Second
 
 	// default wait interval
 	defaultWaitInterval = 2 * time.Second

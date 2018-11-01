@@ -92,6 +92,17 @@ func TestProvider_NewProvider(t *testing.T) {
 		t.Error(err)
 	}
 
+	t.Run("GetLicense()", func(t *testing.T) {
+		license, err := nsp.GetLicense()
+		if err != nil {
+			t.Error(err)
+		} else if !license.Valid {
+			t.Errorf("License %v is not valid, on NS %v", license, c.address)
+		} else if license.Expires[0:2] != "20" {
+			t.Errorf("License expires date should starts with '20': %v, on NS %v", license, c.address)
+		}
+	})
+
 	t.Run("GetPools()", func(t *testing.T) {
 		pools, err := nsp.GetPools()
 		if err != nil {

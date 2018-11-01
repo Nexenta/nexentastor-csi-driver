@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+// License - NexentaStor license
+type License struct {
+	Valid   bool
+	Expires string
+}
+
 // Filesystem - NexentaStor filesystem
 type Filesystem struct {
 	Path          string
@@ -49,6 +55,23 @@ func (nsp *Provider) LogIn() error {
 	}
 
 	return fmt.Errorf("Login request: No token found in response: %v", resJSON)
+}
+
+// GetLicense - return NexentaStor license
+func (nsp *Provider) GetLicense() (*License, error) {
+	resJSON, err := nsp.doAuthRequest("GET", "/settings/license", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := mapHasProps(resJSON, []string{"expires", "valid"}); err != nil {
+		return nil, err
+	}
+
+	return &License{
+		Valid:   resJSON["valid"].(bool),
+		Expires: resJSON["expires"].(string),
+	}, nil
 }
 
 // GetPools - get NexentaStor pools

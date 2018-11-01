@@ -1,11 +1,14 @@
 package driver
 
 import (
+	"fmt"
+
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/config"
+	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
 // Name - driver name
@@ -48,6 +51,36 @@ func (d *Driver) Run() {
 	grpcServer.Wait()
 }
 
+// Validate - validate driver configuration:
+// - check NS connection
+// - check NS license
+func (d *Driver) Validate() error {
+	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
+		Address:  d.Config.Address,
+		Username: d.Config.Username,
+		Password: d.Config.Password,
+		Log:      d.Log,
+	})
+	if err != nil {
+		return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %v", err)
+	}
+
+	for _, nsProvider := range nsResolver.Nodes {
+		license, err := nsProvider.GetLicense()
+		if err != nil {
+			return fmt.Errorf("Driver validation failed: %v", err)
+		} else if !license.Valid {
+			return fmt.Errorf(
+				"Driver validation failed, NexentaStor %v has invalid license (expired: %v)",
+				nsProvider,
+				license.Expires,
+			)
+		}
+	}
+
+	return nil
+}
+
 // Args - params to crete new driver
 type Args struct {
 	NodeID   string
@@ -57,13 +90,13 @@ type Args struct {
 }
 
 // NewDriver - new driver instance
-func NewDriver(args Args) *Driver {
+func NewDriver(args Args) (*Driver, error) {
 	l := args.Log.WithField("cmp", "Driver")
 
 	if args.Config == nil {
-		l.Fatal("args.Config is required")
+		return nil, fmt.Errorf("args.Config is required")
 	} else if args.Log == nil {
-		l.Fatal("args.Log is required")
+		return nil, fmt.Errorf("args.Log is required")
 	}
 
 	l.Infof("new %v@%v-%v (%v) driver has been created", Name, Version, Commit, DateTime)
@@ -91,5 +124,5 @@ func NewDriver(args Args) *Driver {
 		csiDriver: csiDriver,
 	}
 
-	return d
+	return d, nil
 }

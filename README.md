@@ -258,7 +258,11 @@ See `Makefile` for more examples.
   ```
 - Driver logs
   ```bash
-    kubectl logs -f nexentastor-csi-attacher-0 driver
-    kubectl logs -f nexentastor-csi-provisioner-0 driver
-    kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-driver/ {print $1;exit}') driver
+  kubectl logs -f nexentastor-csi-attacher-0 driver
+  kubectl logs -f nexentastor-csi-provisioner-0 driver
+  kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-driver/ {print $1;exit}') driver
+  ```
+- Show termination message in case driver failed to run:
+  ```bash
+  kubectl get pod nexentastor-csi-attacher-0 -o go-template="{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}"
   ```

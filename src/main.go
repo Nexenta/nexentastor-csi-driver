@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
@@ -64,12 +65,31 @@ func main() {
 	l.Infof("- Default dataset: %v", cfg.DefaultDataset)
 	l.Infof("- Default data IP: %v", cfg.DefaultDataIP)
 
-	d := driver.NewDriver(driver.Args{
+	d, err := driver.NewDriver(driver.Args{
 		NodeID:   *nodeID,
 		Endpoint: *endpoint,
 		Config:   cfg,
 		Log:      l,
 	})
+	if err != nil {
+		writeTerminationMessage(err, l)
+		l.Fatal(err)
+	}
+
+	// validate driver configuration, NS licenses
+	if err := d.Validate(); err != nil {
+		writeTerminationMessage(err, l)
+		l.Fatal(err)
+	}
 
 	d.Run()
+}
+
+// Kubernetes retrieves termination messages from the termination message file of a Container,
+// which as a default value of /dev/termination-log
+func writeTerminationMessage(err error, l *logrus.Entry) {
+	writeErr := ioutil.WriteFile("/dev/termination-log", []byte(fmt.Sprintf("\n%v\n", err)), os.ModePerm)
+	if writeErr != nil {
+		l.Warnf("Failed to write termination message: %v", writeErr)
+	}
 }

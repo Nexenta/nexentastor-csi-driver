@@ -19,6 +19,7 @@ const (
 // ProviderInterface - NexentaStor provider interface
 type ProviderInterface interface {
 	LogIn() error
+	GetLicense() (*License, error)
 	GetPools() ([]string, error)
 	GetFilesystem(string) (*Filesystem, error)
 	GetFilesystems(string) ([]*Filesystem, error)

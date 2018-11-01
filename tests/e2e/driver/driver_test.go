@@ -107,7 +107,7 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%v\"", cmd)
 		}
 
-		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-rw.yaml", "", l)
+		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/pods/nginx-storage-class-test-rw.yaml", "", l)
 		defer k8sNginx.CleanUp()
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %v", err)
@@ -137,7 +137,7 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%v\"", cmd)
 		}
 
-		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/nginx-storage-class-test-ro.yaml", "", l)
+		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/pods/nginx-storage-class-test-ro.yaml", "", l)
 		defer k8sNginx.CleanUp()
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %v", err)

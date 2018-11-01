@@ -5,7 +5,7 @@ NexentaStor CSI driver for Kubernetes.
 [![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
 
-- [Full driver documentation](https://nexenta.github.io/nexentastor-csi-driver/)
+- [Stable version driver documentation](https://nexenta.github.io/nexentastor-csi-driver/)
 - [NexentaStor product page](https://nexenta.com/products/nexentastor)
 
 ## Supported versions
@@ -25,7 +25,7 @@ NexentaStor CSI driver for Kubernetes.
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
    ```
-3. Edit `./kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
+3. Edit `./kubernetes/master/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
     ```yaml
     restIp: https://10.3.3.4:8443,https://10.3.3.5:8443 # [required] NexentaStor REST API endpoint(s)
     username: admin                                     # [required] NexentaStor REST API username
@@ -50,11 +50,11 @@ NexentaStor CSI driver for Kubernetes.
     then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configuration.
 4. Create Kubernetes secret from the file:
     ```bash
-    kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/nexentastor-csi-driver-config.yaml
+    kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/master/nexentastor-csi-driver-config.yaml
     ```
 5. Register driver to Kubernetes:
    ```bash
-   kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
+   kubectl apply -f ./kubernetes/master/nexentastor-csi-driver-master.yaml
    ```
 
 
@@ -166,7 +166,7 @@ kubectl delete -f ./examples/nginx-persistent-volume.yaml
 
 Using the same files as for installation:
 ```bash
-kubectl delete -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
+kubectl delete -f ./kubernetes/master/nexentastor-csi-driver-master.yaml
 kubectl delete secret nexentastor-csi-driver-config
 ```
 

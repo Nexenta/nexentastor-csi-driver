@@ -1,9 +1,9 @@
 # nexentastor-csi-driver
 
+NexentaStor CSI driver for Kubernetes.
+
 [![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
-
-NexentaStor CSI driver for Kubernetes.
 
 This is a development branch, for the most recent stable version see
 [documentation](https://nexenta.github.io/nexentastor-csi-driver/).

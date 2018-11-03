@@ -72,11 +72,11 @@ test-e2e-k8s-local:
 .PHONY: test-e2e-k8s-remote
 test-e2e-k8s-remote:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.199.250" \
+		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="../../../kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single.yaml" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.199.250" \
+		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="../../../kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster.yaml"
 

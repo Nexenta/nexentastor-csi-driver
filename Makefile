@@ -61,11 +61,11 @@ test-e2e-ns:
 .PHONY: test-e2e-k8s-local
 test-e2e-k8s-local:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.199.250" \
+		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single.yaml" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.199.250" \
+		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster.yaml"
 

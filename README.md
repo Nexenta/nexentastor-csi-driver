@@ -12,11 +12,28 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 ## Supported versions
 
-|                     | NexentaStor 5.1      | NexentaStor 5.2      |
-| ------------------- | -------------------- | -------------------- |
-| Kubernetes <1.12.1  | 1.x.x                | 1.x.x                |
-| Kubernetes >=1.12.1 | 2.x.x (not released) | 2.x.x (not released) |
+|                             | NexentaStor 5.1      | NexentaStor 5.2      |
+| --------------------------- | -------------------- | -------------------- |
+| Kubernetes 1.10.5 to 1.12.0 | 1.x.x                | 1.x.x                |
+| Kubernetes >=1.12.1         | 2.x.x (not released) | 2.x.x (not released) |
 
+
+## Requirements
+
+- `nfs-common` and `rpcbind` must be installed on each Kubernetes node:
+  ```bash
+  apt install -y nfs-common rpcbind
+  ```
+- Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` custom definitions
+  [to be defined on the cluster](https://github.com/kubernetes-csi/docs/blob/460a49286fe164a78fde3114e893c48b572a36c8/book/src/Setup.md#csidriver-custom-resource-alpha).
+  Check if they already defined:
+  ```bash
+  kubectl get csidrivers.csi.storage.k8s.io
+  ```
+  If the cluster doesn't have a resource type "csidrivers", create them:
+  ```bash
+  kubectl apply -f ./kubernetes/master/csi-driver-definitions-master.yaml
+  ```
 
 ## Installation
 
@@ -267,4 +284,9 @@ See `Makefile` for more examples.
 - Show termination message in case driver failed to run:
   ```bash
   kubectl get pod nexentastor-csi-attacher-0 -o go-template="{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}"
+  ```
+- Show installed drivers:
+  ```bash
+  kubectl get csidrivers.csi.storage.k8s.io
+  kubectl describe csidrivers.csi.storage.k8s.io
   ```

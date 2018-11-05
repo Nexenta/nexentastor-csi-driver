@@ -18,6 +18,7 @@ type config struct {
 	k8sConnectionString string
 	k8sDeploymentFile   string
 	k8sSecretFile       string
+	k8sSecretName       string
 }
 
 var c *config
@@ -28,6 +29,7 @@ func TestMain(m *testing.M) {
 		k8sConnectionString = flag.String("k8sConnectionString", "", "K8s connection string [user@host]")
 		k8sDeploymentFile   = flag.String("k8sDeploymentFile", "", "path to driver deployment yaml file")
 		k8sSecretFile       = flag.String("k8sSecretFile", "", "path to yaml driver config file (for k8s secret)")
+		k8sSecretName       = flag.String("k8sSecretName", "", "k8s secret name")
 	)
 
 	flag.Parse()
@@ -47,6 +49,7 @@ func TestMain(m *testing.M) {
 		k8sConnectionString: *k8sConnectionString,
 		k8sDeploymentFile:   *k8sDeploymentFile,
 		k8sSecretFile:       *k8sSecretFile,
+		k8sSecretName:       *k8sSecretName,
 	}
 
 	// init logger
@@ -76,7 +79,13 @@ func TestDriver_deploy(t *testing.T) {
 		return
 	}
 
-	k8sDriver, err := k8s.NewDeployment(rc, c.k8sDeploymentFile, c.k8sSecretFile, l)
+	k8sDriver, err := k8s.NewDeployment(k8s.DeploymentArgs{
+		RemoteClient: rc,
+		ConfigFile:   c.k8sDeploymentFile,
+		SecretFile:   c.k8sSecretFile,
+		SecretName:   c.k8sSecretName,
+		Log:          l,
+	})
 	defer k8sDriver.CleanUp()
 	if err != nil {
 		t.Errorf("Cannot create K8s deployment: %v", err)
@@ -107,7 +116,11 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%v\"", cmd)
 		}
 
-		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/pods/nginx-storage-class-test-rw.yaml", "", l)
+		k8sNginx, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/pods/nginx-storage-class-test-rw.yaml",
+			Log:          l,
+		})
 		defer k8sNginx.CleanUp()
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %v", err)
@@ -137,7 +150,11 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%v\"", cmd)
 		}
 
-		k8sNginx, err := k8s.NewDeployment(rc, "./_configs/pods/nginx-storage-class-test-ro.yaml", "", l)
+		k8sNginx, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/pods/nginx-storage-class-test-ro.yaml",
+			Log:          l,
+		})
 		defer k8sNginx.CleanUp()
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %v", err)

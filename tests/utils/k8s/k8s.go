@@ -306,31 +306,53 @@ func (d *Deployment) CleanUp() {
 	l.Info("done.")
 }
 
+// DeploymentArgs - arguments for deployment
+type DeploymentArgs struct {
+	RemoteClient *remote.Client
+	ConfigFile   string
+	SecretFile   string
+	SecretName   string
+	Log          *logrus.Entry
+}
+
 // NewDeployment - create new k8s deployment
-func NewDeployment(remoteClient *remote.Client, configFile string, secretFile string, log *logrus.Entry) (
-	*Deployment,
-	error,
-) {
-	l := log.WithFields(logrus.Fields{
-		"address": remoteClient.ConnectionString,
+func NewDeployment(args DeploymentArgs) (*Deployment, error) {
+	if args.RemoteClient == nil {
+		return nil, fmt.Errorf("args.RemoteClient is required")
+	} else if args.ConfigFile == "" {
+		return nil, fmt.Errorf("args.ConfigFile is required")
+	} else if args.Log == nil {
+		return nil, fmt.Errorf("args.Log is required")
+	}
+
+	l := args.Log.WithFields(logrus.Fields{
+		"address": args.RemoteClient.ConnectionString,
 		"cmp":     "k8s",
 	})
 
 	deploymentTmpDir := filepath.Join("/tmp", defaultDeploymentTmpDirName)
 
-	if _, err := remoteClient.Exec(fmt.Sprintf("mkdir -p %v", deploymentTmpDir)); err != nil {
-		return nil, fmt.Errorf("NewDeployment(): cannot create '%v' directory on %v", deploymentTmpDir, remoteClient)
+	if _, err := args.RemoteClient.Exec(fmt.Sprintf("mkdir -p %v", deploymentTmpDir)); err != nil {
+		return nil, fmt.Errorf(
+			"NewDeployment(): cannot create '%v' directory on %v",
+			deploymentTmpDir,
+			args.RemoteClient,
+		)
 	}
 
 	secretName := ""
-	if secretFile != "" {
-		secretName = defaultSecretName
+	if args.SecretFile != "" {
+		if args.SecretName != "" {
+			secretName = args.SecretName
+		} else {
+			secretName = defaultSecretName
+		}
 	}
 
 	return &Deployment{
-		RemoteClient:     remoteClient,
-		ConfigFile:       configFile,
-		SecretFile:       secretFile,
+		RemoteClient:     args.RemoteClient,
+		ConfigFile:       args.ConfigFile,
+		SecretFile:       args.SecretFile,
 		WaitTimeout:      defaultWaitTimeout,
 		WaitInterval:     defaultWaitInterval,
 		deploymentTmpDir: deploymentTmpDir,

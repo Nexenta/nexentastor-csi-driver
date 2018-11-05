@@ -26,11 +26,12 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
   ```
 - Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` custom definitions
   [to be defined on the cluster](https://github.com/kubernetes-csi/docs/blob/460a49286fe164a78fde3114e893c48b572a36c8/book/src/Setup.md#csidriver-custom-resource-alpha).
-  Check if they already defined:
+  Check if they are already defined:
   ```bash
   kubectl get csidrivers.csi.storage.k8s.io
+  kubectl get csinodeinfos.csi.storage.k8s.io
   ```
-  If the cluster doesn't have a resource type "csidrivers", create them:
+  If the cluster doesn't have "csidrivers" and "csinodeinfos" resource types, create them:
   ```bash
   kubectl apply -f ./kubernetes/master/csi-driver-definitions-master.yaml
   ```

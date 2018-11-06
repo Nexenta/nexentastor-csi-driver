@@ -82,6 +82,7 @@ spec:
             - '--connection-timeout=25s'
             - '--provisioner=com.nexenta.nexentastor-csi-driver'
             - '--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock'
+            - '--volume-name-prefix=pvc-ns'
           imagePullPolicy: Always
           volumeMounts:
             - name: socket-dir

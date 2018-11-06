@@ -2,6 +2,7 @@ package ns
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -97,6 +98,39 @@ func (nsp *Provider) GetPools() ([]string, error) {
 	}
 
 	return pools, nil
+}
+
+// GetFilesystemAvailableCapacity - get NexentaStor filesystem available size by its path
+func (nsp *Provider) GetFilesystemAvailableCapacity(path string) (int64, error) {
+	fields := []string{"quotaSize", "bytesAvailable"}
+	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
+		"path":   path,
+		"fields": strings.Join(fields, ","),
+	})
+
+	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	if err = mapHasProps(resJSON, []string{"data"}); err != nil {
+		return 0, fmt.Errorf("/storage/filesystems response: %+v", err)
+	}
+
+	//TODO what is the right limit for fs?
+
+	var quotaSize, availableSize float64
+	if dataArray, ok := resJSON["data"].([]interface{}); ok && len(dataArray) != 0 {
+		filesystem := dataArray[0].(map[string]interface{})
+		if err := mapHasProps(filesystem, fields); err != nil {
+			return 0, fmt.Errorf("/storage/filesystems response: %+v", err)
+		}
+
+		quotaSize = filesystem["quotaSize"].(float64)
+		availableSize = filesystem["bytesAvailable"].(float64)
+	}
+
+	return int64(math.Min(availableSize, quotaSize)), nil
 }
 
 // GetFilesystem - get NexentaStor filesystem by its path

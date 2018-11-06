@@ -22,6 +22,7 @@ type ProviderInterface interface {
 	GetLicense() (*License, error)
 	GetPools() ([]string, error)
 	GetFilesystem(string) (*Filesystem, error)
+	GetFilesystemAvailableCapacity(string) (int64, error)
 	GetFilesystems(string) ([]*Filesystem, error)
 	CreateFilesystem(string, map[string]interface{}) error
 	DestroyFilesystem(string) error

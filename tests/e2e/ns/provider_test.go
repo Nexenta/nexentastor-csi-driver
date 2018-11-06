@@ -301,4 +301,45 @@ func TestProvider_NewProvider(t *testing.T) {
 		// clean up
 		nsp.DestroyFilesystem(c.filesystem)
 	})
+
+	t.Run("GetFilesystemAvailableCapacity()", func(t *testing.T) {
+		filesystems, err := nsp.GetFilesystems(c.dataset)
+		if err != nil {
+			t.Error(err)
+			return
+		} else if filesystemArrayContains(filesystems, c.filesystem) {
+			t.Skipf("Filesystem %v already exists on NS %v", c.filesystem, c.address)
+			return
+		}
+
+		var quotaSize int64 = 3 * 1024 * 1024 * 1024
+
+		params := make(map[string]interface{})
+		params["quotaSize"] = quotaSize
+
+		err = nsp.CreateFilesystem(c.filesystem, params)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		availableCapacity, err := nsp.GetFilesystemAvailableCapacity(c.filesystem)
+		if err != nil {
+			t.Error(err)
+			return
+		} else if availableCapacity == 0 {
+			t.Errorf("New filesystem %v indicates wrong available capacity (0), on: %v", c.filesystem, c.address)
+		} else if availableCapacity >= quotaSize {
+			t.Errorf(
+				"New filesystem %v available capacity expected to be more or equal to %v, but got %v (NS %v)",
+				c.filesystem,
+				quotaSize,
+				availableCapacity,
+				c.address,
+			)
+		}
+
+		// clean up
+		nsp.DestroyFilesystem(c.filesystem)
+	})
 }

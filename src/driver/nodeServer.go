@@ -1,3 +1,9 @@
+//TODO Consider to add NodeStageVolume() method:
+// - called by k8s to temporarily mount the volume to a staging path
+// - staging path is a global directory on the node
+// - k8s allows user to use a single volume by multiple pods (for NFS)
+// - if all pods run on the same node the single mount point will be used by all of them.
+
 package driver
 
 import (

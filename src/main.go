@@ -77,12 +77,18 @@ func main() {
 	}
 
 	// validate driver configuration, NS licenses
-	if err := d.Validate(); err != nil {
+	err = d.Validate()
+	if err != nil {
 		writeTerminationMessage(err, l)
 		l.Fatal(err)
 	}
 
-	d.Run()
+	// run driver
+	err = d.Run()
+	if err != nil {
+		writeTerminationMessage(err, l)
+		l.Fatal(err)
+	}
 }
 
 // Kubernetes retrieves termination messages from the termination message file of a Container,

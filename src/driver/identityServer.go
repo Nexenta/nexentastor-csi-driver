@@ -35,7 +35,7 @@ func (ids *IdentityServer) Probe(ctx context.Context, req *csi.ProbeRequest) (*c
 // NewIdentityServer - create an instance of identity server
 func NewIdentityServer(driver *Driver) *IdentityServer {
 	l := driver.Log.WithField("cmp", "IdentityServer")
-	l.Info("new IdentityServer has been created")
+	l.Info("create new IdentityServer...")
 
 	return &IdentityServer{
 		DefaultIdentityServer: csiCommon.NewDefaultIdentityServer(driver.csiDriver),

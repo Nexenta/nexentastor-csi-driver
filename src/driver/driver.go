@@ -1,11 +1,18 @@
 package driver
 
 import (
+	"context"
 	"fmt"
+	"net"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 
 	"github.com/Nexenta/nexentastor-csi-driver/src/config"
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
@@ -32,23 +39,50 @@ type Driver struct {
 	Config   *config.Config
 	Log      *logrus.Entry
 
+	server    *grpc.Server
 	csiDriver *csiCommon.CSIDriver
 }
 
 // Run - run the driver
-func (d *Driver) Run() {
+func (d *Driver) Run() error {
 	d.Log.Info("run")
 
-	grpcServer := csiCommon.NewNonBlockingGRPCServer()
+	parsedURL, err := url.Parse(d.Endpoint)
+	if err != nil {
+		return fmt.Errorf("Failed to parse endpoint: %s", d.Endpoint)
+	}
 
-	grpcServer.Start(
-		d.Endpoint,
-		NewIdentityServer(d),
-		NewControllerServer(d),
-		NewNodeServer(d),
-	)
+	if parsedURL.Scheme != "unix" {
+		return fmt.Errorf("Only unix domain sockets supported")
+	}
 
-	grpcServer.Wait()
+	socket := filepath.FromSlash(parsedURL.Path)
+	if parsedURL.Host != "" {
+		socket = path.Join(parsedURL.Host, socket)
+	}
+
+	d.Log.Infof("parsed unix domain socket: %s", socket)
+
+	//remove old socket file if exists
+	if err := os.Remove(socket); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Cannot remove unix domain socket: %s", socket)
+	}
+
+	listener, err := net.Listen(parsedURL.Scheme, socket)
+	if err != nil {
+		return fmt.Errorf("Failed to create socket listener: %v", err)
+	}
+
+	d.server = grpc.NewServer(grpc.UnaryInterceptor(d.grpcErrorHandler))
+
+	// IdentityServer - should be running on both controller and node pods
+	csi.RegisterIdentityServer(d.server, NewIdentityServer(d))
+
+	//TODO detect is it controller or node pod and don't start unnecessary servers?
+	csi.RegisterControllerServer(d.server, NewControllerServer(d))
+	csi.RegisterNodeServer(d.server, NewNodeServer(d))
+
+	return d.server.Serve(listener)
 }
 
 // Validate - validate driver configuration:
@@ -81,6 +115,19 @@ func (d *Driver) Validate() error {
 	return nil
 }
 
+func (d *Driver) grpcErrorHandler(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	resp, err := handler(ctx, req)
+	if err != nil {
+		d.Log.WithField("func", "grpc").Error(err)
+	}
+	return resp, err
+}
+
 // Args - params to crete new driver
 type Args struct {
 	NodeID   string
@@ -99,7 +146,7 @@ func NewDriver(args Args) (*Driver, error) {
 		return nil, fmt.Errorf("args.Log is required")
 	}
 
-	l.Infof("new %v@%v-%v (%v) driver has been created", Name, Version, Commit, DateTime)
+	l.Infof("create new driver: %v@%v-%v (%v)", Name, Version, Commit, DateTime)
 
 	csiDriver := csiCommon.NewCSIDriver(Name, Version, args.NodeID)
 

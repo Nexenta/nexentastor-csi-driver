@@ -310,7 +310,7 @@ func (s *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 // NewNodeServer - create an instance of node service
 func NewNodeServer(driver *Driver) *NodeServer {
 	l := driver.Log.WithField("cmp", "NodeServer")
-	l.Info("new NodeServer has been created")
+	l.Info("create new NodeServer...")
 
 	return &NodeServer{
 		DefaultNodeServer: csiCommon.NewDefaultNodeServer(driver.csiDriver),

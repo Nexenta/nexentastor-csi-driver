@@ -229,7 +229,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 // NewControllerServer - create an instance of controller service
 func NewControllerServer(driver *Driver) *ControllerServer {
 	l := driver.Log.WithField("cmp", "ControllerServer")
-	l.Info("new ControllerServer has been created")
+	l.Info("create new ControllerServer...")
 
 	return &ControllerServer{
 		DefaultControllerServer: csiCommon.NewDefaultControllerServer(driver.csiDriver),

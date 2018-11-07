@@ -20,6 +20,8 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 ## Requirements
 
+- [This page explains](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md)
+  how to configure Kubernetes for CSI drivers
 - `nfs-common` and `rpcbind` must be installed on each Kubernetes node:
   ```bash
   apt install -y nfs-common rpcbind
@@ -33,7 +35,8 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
   ```
   If the cluster doesn't have "csidrivers" and "csinodeinfos" resource types, create them:
   ```bash
-  kubectl apply -f ./kubernetes/master/csi-driver-definitions-master.yaml
+  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csidriver.yaml
+  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csinodeinfo.yaml
   ```
 
 ## Installation

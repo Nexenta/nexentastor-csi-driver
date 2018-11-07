@@ -210,7 +210,7 @@ func (d *Deployment) Delete(pods []string) error {
 		l.Infof("pods after deletion:\n---\n%v---", out)
 	}
 
-	l.Info("deployment has beed successfully deleted")
+	l.Info("deployment has been successfully deleted")
 
 	return nil
 }

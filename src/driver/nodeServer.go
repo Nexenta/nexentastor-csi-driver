@@ -237,7 +237,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		)
 	}
 
-	l.Infof("volume '%v' has beed published to '%v'", volumeID, targetPath)
+	l.Infof("volume '%v' has been published to '%v'", volumeID, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -285,7 +285,7 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 		return nil, status.Errorf(codes.Internal, "Cannot remove unmounted target path '%v': %v", targetPath, err)
 	}
 
-	l.Infof("volume '%v' has beed unpublished from '%v'", volumeID, targetPath)
+	l.Infof("volume '%v' has been unpublished from '%v'", volumeID, targetPath)
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 

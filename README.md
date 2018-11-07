@@ -284,6 +284,8 @@ See `Makefile` for more examples.
   kubectl logs -f nexentastor-csi-attacher-0 driver
   kubectl logs -f nexentastor-csi-provisioner-0 driver
   kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-driver/ {print $1;exit}') driver
+  # combine all pods:
+  kubectl get pods | awk '/nexentastor-csi-/ {system("kubectl logs " $1 " driver &")}'
   ```
 - Show termination message in case driver failed to run:
   ```bash

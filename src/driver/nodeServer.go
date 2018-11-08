@@ -126,7 +126,10 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		}
 	}
 
-	mountOptions := []string{}
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+	if mountOptions == nil {
+		mountOptions = []string{}
+	}
 
 	// volume params passes from ControllerServer.CreateVolume()
 	volumeAttributes := req.GetVolumeAttributes()
@@ -200,13 +203,13 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	l.Infof(
 		"mount params: targetPath: '%v', mountSource: '%v', fsType: '%v', "+
-			"readOnly: '%v', volumeAttributes: '%v', mountFlags '%v'",
+			"readOnly: '%v', volumeAttributes: '%v', mountFlags+mountOptions: '%v'",
 		targetPath,
 		mountSource,
 		req.GetVolumeCapability().GetMount().GetFsType(),
 		req.GetReadonly(),
 		req.GetVolumeAttributes(),
-		req.GetVolumeCapability().GetMount().GetMountFlags(),
+		mountOptions,
 	)
 
 	err = mounter.Mount(mountSource, targetPath, "nfs", mountOptions)

@@ -12,10 +12,10 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 ## Supported versions
 
-|                             | NexentaStor 5.1      | NexentaStor 5.2      |
-| --------------------------- | -------------------- | -------------------- |
-| Kubernetes 1.10.5 to 1.12.0 | 1.x.x                | 1.x.x                |
-| Kubernetes >=1.12.1         | 2.x.x (not released) | 2.x.x (not released) |
+|                             | NexentaStor 5.1 | NexentaStor 5.2 |
+| --------------------------- | --------------- | --------------- |
+| Kubernetes 1.10.5 to 1.12.0 | 0.1.x           | 0.1.x           |
+| Kubernetes >=1.12.1         | master          | master          |
 
 
 ## Requirements

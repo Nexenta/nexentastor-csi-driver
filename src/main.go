@@ -33,12 +33,15 @@ func main() {
 	}
 
 	// init logger
-	l := logrus.New().WithField("cmp", "Main")
+	l := logrus.New().WithFields(logrus.Fields{
+		"nodeID": *nodeID,
+		"cmp":    "Main",
+	})
 
 	// logger formatter
 	l.Logger.SetFormatter(&nested.Formatter{
 		HideKeys:    true,
-		FieldsOrder: []string{"cmp", "ns", "func", "req", "reqID", "job"},
+		FieldsOrder: []string{"nodeID", "cmp", "ns", "func", "req", "reqID", "job"},
 	})
 
 	l.Info("Start driver with CLI options:")

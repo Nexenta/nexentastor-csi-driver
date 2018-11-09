@@ -1,6 +1,6 @@
-# nexentastor-csi-driver (v1.0.0)
+# nexentastor-csi-driver (v0.1.0)
 #
-# $ kubectl apply -f ./kubernetes/nexentastor-csi-driver-1.0.0.yaml
+# $ kubectl apply -f ./kubernetes/nexentastor-csi-driver-0.1.0.yaml
 #
 
 
@@ -108,7 +108,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: driver
-          image: nexenta/nexentastor-csi-driver:1.0.0
+          image: nexenta/nexentastor-csi-driver:0.1.0
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=$(CSI_ENDPOINT)'
@@ -232,7 +232,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: driver
-          image: nexenta/nexentastor-csi-driver:1.0.0
+          image: nexenta/nexentastor-csi-driver:0.1.0
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=$(CSI_ENDPOINT)'
@@ -342,7 +342,7 @@ spec:
             capabilities:
               add: ['SYS_ADMIN']
             allowPrivilegeEscalation: true
-          image: nexenta/nexentastor-csi-driver:1.0.0
+          image: nexenta/nexentastor-csi-driver:0.1.0
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=$(CSI_ENDPOINT)'

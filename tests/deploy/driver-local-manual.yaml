@@ -76,6 +76,8 @@ spec:
     spec:
       serviceAccount: nexentastor-csi-provisioner-service-account
       containers:
+        # csi-provisioner: sidecar container that watches Kubernetes PersistentVolumeClaim objects
+        # and triggers CreateVolume/DeleteVolume against a CSI endpoint
         - name: csi-provisioner
           image: quay.io/k8scsi/csi-provisioner:v0.4.1
           args:
@@ -169,6 +171,8 @@ spec:
     spec:
       serviceAccount: nexentastor-csi-attacher-service-account
       containers:
+        # csi-attacher: sidecar container that watches Kubernetes VolumeAttachment objects
+        # and triggers ControllerPublish/Unpublish against a CSI endpoint
         - name: csi-attacher
           image: quay.io/k8scsi/csi-attacher:v0.4.1
           args:
@@ -266,6 +270,9 @@ spec:
       serviceAccount: nexentastor-csi-driver-service-account
       hostNetwork: true
       containers:
+        # driver-registrar: sidecar container that:
+        # 1) registers the CSI driver with kubelet
+        # 2) adds the drivers custom NodeId to a label on the Kubernetes Node API Object
         - name: driver-registrar
           image: quay.io/k8scsi/driver-registrar:v0.4.1
           args:

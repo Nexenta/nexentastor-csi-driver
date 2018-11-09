@@ -107,7 +107,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 
 		err = nsp.waitForAsyncJob(strings.TrimPrefix(href, "/jobStatus/"))
 		if err != nil {
-			l.Error(err)
+			l.Debugf("waitForAsyncJob() error: %v", err)
 		}
 	} else if statusCode >= 300 {
 		restError := nsp.parseNefError(resJSON, "request error")

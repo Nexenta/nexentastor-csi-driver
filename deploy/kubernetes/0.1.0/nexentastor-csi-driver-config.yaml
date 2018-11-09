@@ -1,7 +1,7 @@
 # nexentastor-csi-driver config file to create k8s secret
 #
 # $ kubectl create secret generic nexentastor-csi-driver-config \
-#   --from-file=./kubernetes/0.1.0/nexentastor-csi-driver-config.yaml
+#   --from-file=./deploy/kubernetes/1.0.0/nexentastor-csi-driver-config.yaml
 #
 
 restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)

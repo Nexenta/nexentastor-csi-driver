@@ -48,7 +48,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
    ```
-3. Edit `./kubernetes/master/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
+3. Edit `./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
     ```yaml
     restIp: https://10.3.3.4:8443,https://10.3.3.5:8443 # [required] NexentaStor REST API endpoint(s)
     username: admin                                     # [required] NexentaStor REST API username
@@ -73,11 +73,11 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
     then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configuration.
 4. Create Kubernetes secret from the file:
     ```bash
-    kubectl create secret generic nexentastor-csi-driver-config --from-file=./kubernetes/master/nexentastor-csi-driver-config.yaml
+    kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml
     ```
 5. Register driver to Kubernetes:
    ```bash
-   kubectl apply -f ./kubernetes/master/nexentastor-csi-driver-master.yaml
+   kubectl apply -f ./deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
    ```
 
 
@@ -189,7 +189,7 @@ kubectl delete -f ./examples/nginx-persistent-volume.yaml
 
 Using the same files as for installation:
 ```bash
-kubectl delete -f ./kubernetes/master/nexentastor-csi-driver-master.yaml
+kubectl delete -f ./deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
 kubectl delete secret nexentastor-csi-driver-config
 ```
 

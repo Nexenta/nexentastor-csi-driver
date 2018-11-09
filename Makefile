@@ -75,12 +75,12 @@ test-e2e-k8s-local:
 test-e2e-k8s-remote:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.196.219" \
-		--k8sDeploymentFile="../../../kubernetes/master/nexentastor-csi-driver-master.yaml" \
+		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.196.219" \
-		--k8sDeploymentFile="../../../kubernetes/master/nexentastor-csi-driver-master.yaml" \
+		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"
 

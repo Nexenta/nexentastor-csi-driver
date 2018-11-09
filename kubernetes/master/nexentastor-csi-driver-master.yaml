@@ -94,6 +94,7 @@ spec:
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=unix://plugin/csi.sock'
+            - '--role=controller'
           env:
             - name: NODE_ID
               valueFrom:
@@ -187,6 +188,7 @@ spec:
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=unix://plugin/csi.sock'
+            - '--role=controller'
           env:
             - name: NODE_ID
               valueFrom:
@@ -302,6 +304,7 @@ spec:
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=unix://plugin/csi.sock'
+            - '--role=node'
           env:
             - name: NODE_ID
               valueFrom:

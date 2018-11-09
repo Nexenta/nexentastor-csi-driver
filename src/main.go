@@ -16,12 +16,14 @@ import (
 const (
 	defaultEndpoint  = "unix:///var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock"
 	defaultConfigDir = "/config"
+	defaultRole      = driver.RoleAll
 )
 
 func main() {
 	var (
 		nodeID   = flag.String("nodeid", "", "Kubernetes node ID")
 		endpoint = flag.String("endpoint", defaultEndpoint, "CSI endpoint")
+		role     = flag.String("role", "", fmt.Sprintf("driver role: %v", driver.Roles))
 		version  = flag.Bool("version", false, "Print driver version")
 	)
 
@@ -44,9 +46,16 @@ func main() {
 		FieldsOrder: []string{"nodeID", "cmp", "ns", "func", "req", "reqID", "job"},
 	})
 
-	l.Info("Start driver with CLI options:")
-	l.Infof("- CSI endpoint:    '%v'", *endpoint)
-	l.Infof("- Node ID:         '%v'", *nodeID)
+	l.Info("Run driver with CLI options:")
+	l.Infof("- CSI endpoint: '%v'", *endpoint)
+	l.Infof("- Node ID:      '%v'", *nodeID)
+	l.Infof("- Role:         '%v'", *role)
+
+	// validate driver instance role
+	validatedRole, err := driver.ParseRole(string(*role))
+	if err != nil {
+		l.Warn(err)
+	}
 
 	// initial read and validate config file
 	cfg, err := config.New(defaultConfigDir)
@@ -69,6 +78,7 @@ func main() {
 	l.Infof("- Default data IP: %v", cfg.DefaultDataIP)
 
 	d, err := driver.NewDriver(driver.Args{
+		Role:     validatedRole,
 		NodeID:   *nodeID,
 		Endpoint: *endpoint,
 		Config:   cfg,

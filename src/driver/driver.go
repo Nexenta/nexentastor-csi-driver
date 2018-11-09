@@ -35,6 +35,7 @@ var DateTime string
 
 // Driver - K8s CSI driver for NexentaStor
 type Driver struct {
+	Role     Role
 	Endpoint string
 	Config   *config.Config
 	Log      *logrus.Entry
@@ -78,9 +79,13 @@ func (d *Driver) Run() error {
 	// IdentityServer - should be running on both controller and node pods
 	csi.RegisterIdentityServer(d.server, NewIdentityServer(d))
 
-	//TODO detect is it controller or node pod and don't start unnecessary servers?
-	csi.RegisterControllerServer(d.server, NewControllerServer(d))
-	csi.RegisterNodeServer(d.server, NewNodeServer(d))
+	if d.Role.IsController() {
+		csi.RegisterControllerServer(d.server, NewControllerServer(d))
+	}
+
+	if d.Role.IsNode() {
+		csi.RegisterNodeServer(d.server, NewNodeServer(d))
+	}
 
 	return d.server.Serve(listener)
 }
@@ -130,6 +135,7 @@ func (d *Driver) grpcErrorHandler(
 
 // Args - params to crete new driver
 type Args struct {
+	Role     Role
 	NodeID   string
 	Endpoint string
 	Config   *config.Config
@@ -165,6 +171,7 @@ func NewDriver(args Args) (*Driver, error) {
 	)
 
 	d := &Driver{
+		Role:      args.Role,
 		Endpoint:  args.Endpoint,
 		Config:    args.Config,
 		Log:       l,

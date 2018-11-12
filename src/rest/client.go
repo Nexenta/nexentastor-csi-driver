@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -16,14 +17,15 @@ import (
 
 const requestTimeout = 30 * time.Second
 
-var requestID = 0
-
 // Client - request client for any REST API
 type Client struct {
 	address    string
 	authToken  string
 	httpClient *http.Client
 	log        *logrus.Entry
+
+	mu        sync.Mutex
+	requestID int64
 }
 
 // ClientInterface - request client interface
@@ -45,13 +47,14 @@ func (client *Client) Send(method, path string, data interface{}) (
 	map[string]interface{},
 	error,
 ) {
-	requestID++
-
+	client.mu.Lock()
+	client.requestID++
 	l := client.log.WithFields(logrus.Fields{
 		"func":  "Send()",
 		"req":   fmt.Sprintf("%v %v", method, path),
-		"reqID": requestID,
+		"reqID": client.requestID,
 	})
+	client.mu.Unlock()
 
 	uri := fmt.Sprintf("%v/%v", client.address, path)
 
@@ -158,6 +161,7 @@ func NewClient(args ClientArgs) (client ClientInterface, err error) {
 		authToken:  "",
 		httpClient: httpClient,
 		log:        l,
+		requestID:  0,
 	}
 
 	return client, nil

@@ -13,7 +13,7 @@ type Resolver struct {
 	Log   *logrus.Entry
 }
 
-// Resolve - get one NS from the pool of NSs by provided pool or dataset path
+// Resolve - get one NS from the list of NSs by provided pool/dataset/fs path
 func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastError error) {
 	l := nsr.Log.WithField("func", "Resolve()")
 
@@ -21,6 +21,7 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 		return nil, fmt.Errorf("Resolved was called with empty pool/dataset path")
 	}
 
+	//TODO do non-block requests to all NSs in the list, select first one responded
 	for _, ns := range nsr.Nodes {
 		filesystem, err := ns.GetFilesystem(path)
 		if err != nil {

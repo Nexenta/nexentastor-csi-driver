@@ -106,6 +106,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	l.Infof("resolved NS: %v, %v", nsProvider, volumeID)
 
+	// get filesystem information
 	filesystem, err := nsProvider.GetFilesystem(volumeID)
 	if err != nil {
 		return nil, status.Errorf(
@@ -118,11 +119,22 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot find filesystem '%v'", volumeID)
 	}
 
+	// create NFS share if not exists
 	if !filesystem.SharedOverNfs {
-		// create share if not exist
 		err = nsProvider.CreateNfsShare(filesystem.Path)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v': %v", filesystem.Path, err)
+		}
+
+		// select read-only or read-write mount options set
+		aclRuleSet := ns.ACLReadWrite
+		if req.GetReadonly() {
+			aclRuleSet = ns.ACLReadOnly
+		}
+		// apply NS filesystem ACL (gets applied only for new volumes, not for already shared pre-provisioned volumes)
+		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
 		}
 	}
 
@@ -147,48 +159,11 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		mountOptions = append(mountOptions, option)
 	}
 
-	// select read-only or read-write mount options set
-	aclRuleSet := ns.ACLReadWrite
+	// add "ro" mount option if k8s requests it
 	if req.GetReadonly() {
-		aclRuleSet = ns.ACLReadOnly
 		if !arrays.ContainsString(mountOptions, "ro") {
 			mountOptions = append(mountOptions, "ro")
 		}
-	}
-
-	// apply NS filesystem ACL (overwrites every time)
-	err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
-	}
-
-	mounter := mount.New("")
-
-	// check if mountpoint exists, create if there is no such directory
-	notMountPoint, err := mounter.IsLikelyNotMountPoint(targetPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if err := os.MkdirAll(targetPath, 0750); err != nil {
-				return nil, status.Errorf(
-					codes.Internal,
-					"Failed to mkdir to share target path '%v': %v",
-					targetPath,
-					err,
-				)
-			}
-			notMountPoint = true
-		} else {
-			return nil, status.Errorf(
-				codes.Internal,
-				"Cannot ensure that target path '%v' can be used as a mount point: %v",
-				targetPath,
-				err,
-			)
-		}
-	}
-
-	if !notMountPoint { // already mounted
-		return nil, status.Errorf(codes.Internal, "Target path '%v' is already a mount point", targetPath)
 	}
 
 	// get dataIP from runtime params, set default if not specified
@@ -201,21 +176,59 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	mountSource := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
 
+	err = s.doMount(mountSource, targetPath, mountOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	l.Infof("volume '%v' has been published to '%v'", volumeID, targetPath)
+	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+// only "nfs" is supported for now
+func (s *NodeServer) doMount(mountSource, targetPath string, mountOptions []string) error {
+	l := s.Log.WithField("func", "doMount()")
+
+	mounter := mount.New("")
+
+	// check if mountpoint exists, create if there is no such directory
+	notMountPoint, err := mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(targetPath, 0750); err != nil {
+				return status.Errorf(
+					codes.Internal,
+					"Failed to mkdir to share target path '%v': %v",
+					targetPath,
+					err,
+				)
+			}
+			notMountPoint = true
+		} else {
+			return status.Errorf(
+				codes.Internal,
+				"Cannot ensure that target path '%v' can be used as a mount point: %v",
+				targetPath,
+				err,
+			)
+		}
+	}
+
+	if !notMountPoint { // already mounted
+		return status.Errorf(codes.Internal, "Target path '%v' is already a mount point", targetPath)
+	}
+
 	l.Infof(
-		"mount params: targetPath: '%v', mountSource: '%v', fsType: '%v', "+
-			"readOnly: '%v', volumeAttributes: '%v', mountFlags+mountOptions: '%v'",
+		"mount params: mountSource: '%v', targetPath: '%v', mountOptions: '%v'",
 		targetPath,
 		mountSource,
-		req.GetVolumeCapability().GetMount().GetFsType(),
-		req.GetReadonly(),
-		req.GetVolumeAttributes(),
 		mountOptions,
 	)
 
 	err = mounter.Mount(mountSource, targetPath, "nfs", mountOptions)
 	if err != nil {
 		if os.IsPermission(err) {
-			return nil, status.Errorf(
+			return status.Errorf(
 				codes.PermissionDenied,
 				"Permission denied to mount '%v' to '%v': %v",
 				mountSource,
@@ -223,7 +236,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 				err,
 			)
 		} else if strings.Contains(err.Error(), "invalid argument") {
-			return nil, status.Errorf(
+			return status.Errorf(
 				codes.InvalidArgument,
 				"Cannot mount '%v' to '%v', invalid argument: %v",
 				mountSource,
@@ -231,7 +244,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 				err,
 			)
 		}
-		return nil, status.Errorf(
+		return status.Errorf(
 			codes.Internal,
 			"Failed to mount '%v' to '%v': %v",
 			mountSource,
@@ -240,8 +253,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		)
 	}
 
-	l.Infof("volume '%v' has been published to '%v'", volumeID, targetPath)
-	return &csi.NodePublishVolumeResponse{}, nil
+	return nil
 }
 
 // NodeUnpublishVolume - umount NS fs from the node and delete directory if successful
@@ -293,6 +305,7 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 }
 
 // NodeStageVolume - stage volume
+//TODO use this to mount NFS, then do bind mount?
 func (s *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (
 	*csi.NodeStageVolumeResponse,
 	error,
@@ -302,6 +315,7 @@ func (s *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 }
 
 // NodeUnstageVolume - unstage volume
+//TODO use this to umount NFS?
 func (s *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (
 	*csi.NodeUnstageVolumeResponse,
 	error,

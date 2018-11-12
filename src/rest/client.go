@@ -158,7 +158,6 @@ func NewClient(args ClientArgs) (client ClientInterface, err error) {
 
 	client = &Client{
 		address:    args.Address,
-		authToken:  "",
 		httpClient: httpClient,
 		log:        l,
 		requestID:  0,

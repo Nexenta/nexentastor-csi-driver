@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
 
-#
-# Run configured count of nginx containers.
-# Usage:
-#   deploy-stress-test.sh <apply|delete> <COUNTAINER_COUNT>
-#
+USAGE=$(cat <<EOF
+Deploy/delete configured count of nginx containers.
+Note: Kubernetes StorageClass should be created before run.
+
+Usage:
+    deploy-stress-test.sh <apply|delete> <COUNTAINER_COUNT>
+
+Examples:
+    # deploys 10 nginx containers:
+    deploy-stress-test.sh apply 10
+
+    # deletes them:
+    deploy-stress-test.sh delete 10
+EOF
+);
 
 OPERATION=$1
 COUNTAINER_COUNT=$2
 
-USAGE="Usage:\ndeploy-stress-test.sh <apply|delete> <COUNTAINER_COUNT>";
-FILE="./deploy-stress-test.yaml"
+FILE="./deploy-stress-test.yaml";
 
 if [ -z "${OPERATION}" ] || [ -z "${COUNTAINER_COUNT}" ]; then
     echo -e "${USAGE}";
@@ -32,3 +41,4 @@ while [ $COUNTER -lt $COUNTAINER_COUNT ]; do
 done
 
 sed -i -e "s/-auto.*$/-auto/g" "${FILE}";
+exit 0;

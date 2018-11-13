@@ -35,22 +35,21 @@ var DateTime string
 
 // Driver - K8s CSI driver for NexentaStor
 type Driver struct {
-	Role     Role
-	Endpoint string
-	Config   *config.Config
-	Log      *logrus.Entry
-
+	role      Role
+	endpoint  string
+	config    *config.Config
 	server    *grpc.Server
 	csiDriver *csiCommon.CSIDriver
+	log       *logrus.Entry
 }
 
 // Run - run the driver
 func (d *Driver) Run() error {
-	d.Log.Info("run")
+	d.log.Info("run")
 
-	parsedURL, err := url.Parse(d.Endpoint)
+	parsedURL, err := url.Parse(d.endpoint)
 	if err != nil {
-		return fmt.Errorf("Failed to parse endpoint: %s", d.Endpoint)
+		return fmt.Errorf("Failed to parse endpoint: %s", d.endpoint)
 	}
 
 	if parsedURL.Scheme != "unix" {
@@ -62,7 +61,7 @@ func (d *Driver) Run() error {
 		socket = path.Join(parsedURL.Host, socket)
 	}
 
-	d.Log.Infof("parsed unix domain socket: %s", socket)
+	d.log.Infof("parsed unix domain socket: %s", socket)
 
 	//remove old socket file if exists
 	if err := os.Remove(socket); err != nil && !os.IsNotExist(err) {
@@ -79,12 +78,20 @@ func (d *Driver) Run() error {
 	// IdentityServer - should be running on both controller and node pods
 	csi.RegisterIdentityServer(d.server, NewIdentityServer(d))
 
-	if d.Role.IsController() {
-		csi.RegisterControllerServer(d.server, NewControllerServer(d))
+	if d.role.IsController() {
+		controllerServer, err := NewControllerServer(d)
+		if err != nil {
+			return fmt.Errorf("Failed to create ControllerServer: %v", err)
+		}
+		csi.RegisterControllerServer(d.server, controllerServer)
 	}
 
-	if d.Role.IsNode() {
-		csi.RegisterNodeServer(d.server, NewNodeServer(d))
+	if d.role.IsNode() {
+		nodeServer, err := NewNodeServer(d)
+		if err != nil {
+			return fmt.Errorf("Failed to create NodeServer: %v", err)
+		}
+		csi.RegisterNodeServer(d.server, nodeServer)
 	}
 
 	return d.server.Serve(listener)
@@ -95,10 +102,10 @@ func (d *Driver) Run() error {
 // - check NS license
 func (d *Driver) Validate() error {
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  d.Config.Address,
-		Username: d.Config.Username,
-		Password: d.Config.Password,
-		Log:      d.Log,
+		Address:  d.config.Address,
+		Username: d.config.Username,
+		Password: d.config.Password,
+		Log:      d.log,
 	})
 	if err != nil {
 		return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %v", err)
@@ -128,7 +135,7 @@ func (d *Driver) grpcErrorHandler(
 ) (interface{}, error) {
 	resp, err := handler(ctx, req)
 	if err != nil {
-		d.Log.WithField("func", "grpc").Error(err)
+		d.log.WithField("func", "grpc").Error(err)
 	}
 	return resp, err
 }
@@ -171,10 +178,10 @@ func NewDriver(args Args) (*Driver, error) {
 	)
 
 	d := &Driver{
-		Role:      args.Role,
-		Endpoint:  args.Endpoint,
-		Config:    args.Config,
-		Log:       l,
+		role:      args.Role,
+		endpoint:  args.Endpoint,
+		config:    args.Config,
+		log:       l,
 		csiDriver: csiDriver,
 	}
 

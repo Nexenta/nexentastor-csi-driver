@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
 // Config - driver config from file
 type Config struct {
-	filePath               string
 	Address                string `yaml:"restIp"`
 	Username               string `yaml:"username"`
 	Password               string `yaml:"password"`
@@ -20,6 +20,9 @@ type Config struct {
 	DefaultDataIP          string `yaml:"defaultDataIp,omitempty"`
 	DefaultNfsMountOptions string `yaml:"defaultNfsMountOptions,omitempty"`
 	Debug                  bool   `yaml:"debug,omitempty"`
+
+	filePath    string
+	lastMobTime time.Time
 }
 
 // GetFilePath - get filepath of found config file
@@ -27,26 +30,37 @@ func (c *Config) GetFilePath() string {
 	return c.filePath
 }
 
-// Refresh - read and validate config
-func (c *Config) Refresh() error {
+// Refresh - read and validate config, return `true` if config has been changed
+func (c *Config) Refresh() (changed bool, err error) {
 	if c.filePath == "" {
-		return fmt.Errorf("Cannot read config file, filePath not specified")
+		return false, fmt.Errorf("Cannot read config file, filePath not specified")
 	}
 
-	content, err := ioutil.ReadFile(c.filePath)
+	fileInfo, err := os.Stat(c.filePath)
 	if err != nil {
-		return fmt.Errorf("Cannot read '%v' config file: %v", c.filePath, err)
+		return false, fmt.Errorf("Cannot get stats for '%v' config file: %v", c.filePath, err)
 	}
 
-	if err := yaml.Unmarshal(content, c); err != nil {
-		return fmt.Errorf("Cannot parse yaml in '%v' config file: %v", c.filePath, err)
+	changed = c.lastMobTime != fileInfo.ModTime()
+
+	if changed {
+		c.lastMobTime = fileInfo.ModTime()
+
+		content, err := ioutil.ReadFile(c.filePath)
+		if err != nil {
+			return changed, fmt.Errorf("Cannot read '%v' config file: %v", c.filePath, err)
+		}
+
+		if err := yaml.Unmarshal(content, c); err != nil {
+			return changed, fmt.Errorf("Cannot parse yaml in '%v' config file: %v", c.filePath, err)
+		}
+
+		if err := c.Validate(); err != nil {
+			return changed, err
+		}
 	}
 
-	if err := c.Validate(); err != nil {
-		return err
-	}
-
-	return nil
+	return changed, nil
 }
 
 // Validate - validate current config
@@ -94,7 +108,7 @@ func New(lookUpDir string) (*Config, error) {
 
 	// read config file
 	config := &Config{filePath: configFilePath}
-	if err := config.Refresh(); err != nil {
+	if _, err := config.Refresh(); err != nil {
 		return nil, fmt.Errorf("Cannot refresh config from file '%v': %v", configFilePath, err)
 	}
 

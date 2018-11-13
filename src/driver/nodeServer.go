@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
-	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
+	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common" //TODO get rid of it
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -28,22 +28,34 @@ import (
 type NodeServer struct {
 	*csiCommon.DefaultNodeServer
 
-	Config *config.Config
-	Log    *logrus.Entry
+	nsResolver *ns.Resolver
+	config     *config.Config
+	log        *logrus.Entry
+}
+
+func (s *NodeServer) refreshConfig() error {
+	changed, err := s.config.Refresh()
+	if err != nil {
+		return err
+	}
+
+	if changed {
+		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
+			Address:  s.config.Address,
+			Username: s.config.Username,
+			Password: s.config.Password,
+			Log:      s.log,
+		})
+		if err != nil {
+			return fmt.Errorf("Cannot create NexentaStor resolver: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
-	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  s.Config.Address,
-		Username: s.Config.Username,
-		Password: s.Config.Password,
-		Log:      s.Log,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot create NexentaStor resolver: %v", err)
-	}
-
-	nsProvider, err := nsResolver.Resolve(datasetPath)
+	nsProvider, err := s.nsResolver.Resolve(datasetPath)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
@@ -52,7 +64,6 @@ func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error)
 			err,
 		)
 	}
-
 	return nsProvider, nil
 }
 
@@ -61,7 +72,7 @@ func (s *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCa
 	*csi.NodeGetCapabilitiesResponse,
 	error,
 ) {
-	s.Log.WithField("func", "NodeGetCapabilities()").Infof("request: %+v", req)
+	s.log.WithField("func", "NodeGetCapabilities()").Infof("request: %+v", req)
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			{
@@ -80,7 +91,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	*csi.NodePublishVolumeResponse,
 	error,
 ) {
-	l := s.Log.WithField("func", "NodePublishVolume()")
+	l := s.log.WithField("func", "NodePublishVolume()")
 	l.Infof("request: %+v", req)
 
 	volumeID := req.GetVolumeId()
@@ -94,7 +105,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	}
 
 	// read and validate config
-	err := s.Config.Refresh()
+	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
@@ -138,9 +149,10 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		}
 	}
 
-	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags() // k8s.PersistentVolume.spec.mountOptions
 	if mountOptions == nil {
 		mountOptions = []string{}
+		//TODO force vers=3
 	}
 
 	// volume params passes from ControllerServer.CreateVolume()
@@ -150,7 +162,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	}
 
 	// get nfsMountOptions from runtime volume creation params, use config's value if not specified
-	nfsMountOptions := s.Config.DefaultNfsMountOptions
+	nfsMountOptions := s.config.DefaultNfsMountOptions
 	if v, ok := volumeAttributes["nfsMountOptions"]; ok {
 		nfsMountOptions = v
 	}
@@ -162,6 +174,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	// add "ro" mount option if k8s requests it
 	if req.GetReadonly() {
 		if !arrays.ContainsString(mountOptions, "ro") {
+			//TODO remove 'rw'? mount takes the last applied option
 			mountOptions = append(mountOptions, "ro")
 		}
 	}
@@ -171,7 +184,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	if v, ok := volumeAttributes["dataIP"]; ok {
 		dataIP = v
 	} else {
-		dataIP = s.Config.DefaultDataIP
+		dataIP = s.config.DefaultDataIP
 	}
 
 	mountSource := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
@@ -187,7 +200,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 // only "nfs" is supported for now
 func (s *NodeServer) doMount(mountSource, targetPath string, mountOptions []string) error {
-	l := s.Log.WithField("func", "doMount()")
+	l := s.log.WithField("func", "doMount()")
 
 	mounter := mount.New("")
 
@@ -261,7 +274,7 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 	*csi.NodeUnpublishVolumeResponse,
 	error,
 ) {
-	l := s.Log.WithField("func", "NodeUnpublishVolume()")
+	l := s.log.WithField("func", "NodeUnpublishVolume()")
 	l.Infof("request: %+v", req)
 
 	volumeID := req.GetVolumeId()
@@ -310,7 +323,7 @@ func (s *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 	*csi.NodeStageVolumeResponse,
 	error,
 ) {
-	s.Log.WithField("func", "NodeStageVolume()").Infof("request: %+v", req)
+	s.log.WithField("func", "NodeStageVolume()").Infof("request: %+v", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
@@ -320,18 +333,29 @@ func (s *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 	*csi.NodeUnstageVolumeResponse,
 	error,
 ) {
-	s.Log.WithField("func", "NodeUnstageVolume()").Infof("request: %+v", req)
+	s.log.WithField("func", "NodeUnstageVolume()").Infof("request: %+v", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // NewNodeServer - create an instance of node service
-func NewNodeServer(driver *Driver) *NodeServer {
-	l := driver.Log.WithField("cmp", "NodeServer")
+func NewNodeServer(driver *Driver) (*NodeServer, error) {
+	l := driver.log.WithField("cmp", "NodeServer")
 	l.Info("create new NodeServer...")
+
+	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
+		Address:  driver.config.Address,
+		Username: driver.config.Username,
+		Password: driver.config.Password,
+		Log:      l,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %v", err)
+	}
 
 	return &NodeServer{
 		DefaultNodeServer: csiCommon.NewDefaultNodeServer(driver.csiDriver),
-		Config:            driver.Config,
-		Log:               l,
-	}
+		nsResolver:        nsResolver,
+		config:            driver.config,
+		log:               l,
+	}, nil
 }

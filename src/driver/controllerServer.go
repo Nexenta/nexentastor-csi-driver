@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
-	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
+	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common" //TODO get rid of it
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -24,22 +24,34 @@ const (
 type ControllerServer struct {
 	*csiCommon.DefaultControllerServer
 
-	Config *config.Config
-	Log    *logrus.Entry
+	nsResolver *ns.Resolver
+	config     *config.Config
+	log        *logrus.Entry
+}
+
+func (s *ControllerServer) refreshConfig() error {
+	changed, err := s.config.Refresh()
+	if err != nil {
+		return err
+	}
+
+	if changed {
+		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
+			Address:  s.config.Address,
+			Username: s.config.Username,
+			Password: s.config.Password,
+			Log:      s.log,
+		})
+		if err != nil {
+			return fmt.Errorf("Cannot create NexentaStor resolver: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *ControllerServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
-	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  s.Config.Address,
-		Username: s.Config.Username,
-		Password: s.Config.Password,
-		Log:      s.Log,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot create NexentaStor resolver: %v", err)
-	}
-
-	nsProvider, err := nsResolver.Resolve(datasetPath)
+	nsProvider, err := s.nsResolver.Resolve(datasetPath)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
@@ -48,31 +60,30 @@ func (s *ControllerServer) resolveNS(datasetPath string) (ns.ProviderInterface, 
 			err,
 		)
 	}
-
 	return nsProvider, nil
 }
 
-// ListVolumes - list volumes
+// ListVolumes - list volumes, shows only volumes created in defaultDataset
 func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 	*csi.ListVolumesResponse,
 	error,
 ) {
-	l := s.Log.WithField("func", "ListVolumes()")
+	l := s.log.WithField("func", "ListVolumes()")
 	l.Infof("request: %+v", req)
 
-	err := s.Config.Refresh()
+	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
 
-	nsProvider, err := s.resolveNS(s.Config.DefaultDataset)
+	nsProvider, err := s.resolveNS(s.config.DefaultDataset)
 	if err != nil {
 		return nil, err
 	}
 
-	l.Infof("resolved NS: %v, %v", nsProvider, s.Config.DefaultDataset)
+	l.Infof("resolved NS: %v, %v", nsProvider, s.config.DefaultDataset)
 
-	filesystems, err := nsProvider.GetFilesystems(s.Config.DefaultDataset)
+	filesystems, err := nsProvider.GetFilesystems(s.config.DefaultDataset)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot get filesystems: %v", err)
 	}
@@ -96,10 +107,10 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	*csi.CreateVolumeResponse,
 	error,
 ) {
-	l := s.Log.WithField("func", "CreateVolume()")
+	l := s.log.WithField("func", "CreateVolume()")
 	l.Infof("request: %+v", req)
 
-	err := s.Config.Refresh()
+	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
@@ -116,7 +127,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if v, ok := reqParams["dataset"]; ok {
 		datasetPath = v
 	} else {
-		datasetPath = s.Config.DefaultDataset
+		datasetPath = s.config.DefaultDataset
 	}
 
 	// get volume name from runtime params, generate uuid if not specified
@@ -186,10 +197,10 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	*csi.DeleteVolumeResponse,
 	error,
 ) {
-	l := s.Log.WithField("func", "DeleteVolume()")
+	l := s.log.WithField("func", "DeleteVolume()")
 	l.Infof("request: %+v", req)
 
-	err := s.Config.Refresh()
+	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
 	}
@@ -227,13 +238,24 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 }
 
 // NewControllerServer - create an instance of controller service
-func NewControllerServer(driver *Driver) *ControllerServer {
-	l := driver.Log.WithField("cmp", "ControllerServer")
+func NewControllerServer(driver *Driver) (*ControllerServer, error) {
+	l := driver.log.WithField("cmp", "ControllerServer")
 	l.Info("create new ControllerServer...")
+
+	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
+		Address:  driver.config.Address,
+		Username: driver.config.Username,
+		Password: driver.config.Password,
+		Log:      l,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %v", err)
+	}
 
 	return &ControllerServer{
 		DefaultControllerServer: csiCommon.NewDefaultControllerServer(driver.csiDriver),
-		Config:                  driver.Config,
-		Log:                     l,
-	}
+		nsResolver:              nsResolver,
+		config:                  driver.config,
+		log:                     l,
+	}, nil
 }

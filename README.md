@@ -94,6 +94,8 @@ kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-dynamic-provisioning
 provisioner: com.nexenta.nexentastor-csi-driver
+mountOptions: # only for Kubernetes >=v1.13
+  - noatime
 parameters:
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property

@@ -27,7 +27,7 @@ metadata:
   name: nexentastor-csi-driver-pvc-nginx-manual
 spec:
   accessModes:
-  - ReadWriteOnce
+  - ReadWriteMany
   resources:
     requests:
       storage: 1Gi

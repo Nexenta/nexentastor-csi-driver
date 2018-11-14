@@ -44,6 +44,7 @@ test-remote: test-unit test-e2e-ns test-e2e-k8s-remote
 
 .PHONY: test-unit
 test-unit:
+	go test ./tests/unit/arrays -v -count 1 &&\
 	go test ./tests/unit/rest -v -count 1 &&\
 	go test ./tests/unit/config -v -count 1
 

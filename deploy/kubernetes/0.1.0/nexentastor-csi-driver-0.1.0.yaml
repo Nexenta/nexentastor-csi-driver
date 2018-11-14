@@ -96,6 +96,7 @@ spec:
       containers:
         - name: csi-provisioner
           image: quay.io/k8scsi/csi-provisioner:v0.4.0
+          imagePullPolicy: IfNotPresent
           args:
             - '--connection-timeout=25s'
             - '--provisioner=com.nexenta.nexentastor-csi-driver'
@@ -103,12 +104,12 @@ spec:
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          imagePullPolicy: 'Always'
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: driver
           image: nexenta/nexentastor-csi-driver:1.0.0
+          imagePullPolicy: Always
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=$(CSI_ENDPOINT)'
@@ -119,7 +120,6 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://plugin/csi.sock
-          imagePullPolicy: 'Always'
           volumeMounts:
             - name: socket-dir
               mountPath: /plugin
@@ -221,18 +221,19 @@ spec:
       containers:
         - name: csi-attacher
           image: quay.io/k8scsi/csi-attacher:v0.4.0
+          imagePullPolicy: IfNotPresent
           args:
             - '--v=5'
             - '--csi-address=$(ADDRESS)'
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          imagePullPolicy: 'Always'
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: driver
           image: nexenta/nexentastor-csi-driver:1.0.0
+          imagePullPolicy: Always
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=$(CSI_ENDPOINT)'
@@ -243,7 +244,6 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://plugin/csi.sock
-          imagePullPolicy: 'Always'
           volumeMounts:
             - name: socket-dir
               mountPath: /plugin
@@ -323,6 +323,7 @@ spec:
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/driver-registrar:v0.4.0
+          imagePullPolicy: IfNotPresent
           args:
             - '--v=5'
             - '--csi-address=$(ADDRESS)'
@@ -343,6 +344,7 @@ spec:
               add: ['SYS_ADMIN']
             allowPrivilegeEscalation: true
           image: nexenta/nexentastor-csi-driver:1.0.0
+          imagePullPolicy: Always
           args:
             - '--nodeid=$(NODE_ID)'
             - '--endpoint=$(CSI_ENDPOINT)'
@@ -353,7 +355,6 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://plugin/csi.sock
-          imagePullPolicy: 'Always'
           volumeMounts:
             - name: plugin-dir
               mountPath: /plugin

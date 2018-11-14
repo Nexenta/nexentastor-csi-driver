@@ -30,7 +30,7 @@ metadata:
   name: nexentastor-csi-driver-pvc-nginx-dynamic
 spec:
   accessModes:
-  - ReadWriteOnce
+  - ReadWriteMany
   resources:
     requests:
       storage: 1Gi

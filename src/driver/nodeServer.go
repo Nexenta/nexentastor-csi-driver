@@ -9,6 +9,7 @@ package driver
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
@@ -152,7 +153,6 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags() // k8s.PersistentVolume.spec.mountOptions
 	if mountOptions == nil {
 		mountOptions = []string{}
-		//TODO force vers=3
 	}
 
 	// volume params passes from ControllerServer.CreateVolume()
@@ -173,11 +173,11 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	// add "ro" mount option if k8s requests it
 	if req.GetReadonly() {
-		if !arrays.ContainsString(mountOptions, "ro") {
-			//TODO remove 'rw'? mount takes the last applied option
-			mountOptions = append(mountOptions, "ro")
-		}
+		mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^ro$"), "ro")
 	}
+
+	// NFS v3 is used by default if no version specified by user
+	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^vers=.*$"), "vers=3")
 
 	// get dataIP from runtime params, set default if not specified
 	dataIP := ""

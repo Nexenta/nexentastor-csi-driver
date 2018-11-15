@@ -1,5 +1,13 @@
 # NexentaStor CSI Driver
+#
 # This driver version works with Kubernetes version >=1.12.1
+#
+# In production, each CSI driver deployment has to be customized to avoid conflicts,
+# use non-default namespace and different names for non-namespaced entities like the ClusterRole
+#
+# Before installation, make sure "csidrivers" and "csinodeinfos" resource types exist:
+# $ kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csidriver.yaml
+# $ kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csinodeinfo.yaml
 #
 # Install to Kubernetes:
 # $ kubectl apply -f deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
@@ -30,6 +38,35 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: nexentastor-csi-provisioner-service-account
+  namespace: default # replace with non-default namespace name if needed
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-provisioner-cluster-role
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]
 ---
 
 kind: ClusterRoleBinding
@@ -39,10 +76,10 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: nexentastor-csi-provisioner-service-account
-    namespace: default
+    namespace: default # replace with non-default namespace name if needed
 roleRef:
   kind: ClusterRole
-  name: system:csi-external-provisioner
+  name: nexentastor-csi-provisioner-cluster-role
   apiGroup: rbac.authorization.k8s.io
 ---
 
@@ -126,6 +163,26 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: nexentastor-csi-attacher-service-account
+  namespace: default # replace with non-default namespace name if needed
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexentastor-csi-attacher-cluster-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csinodeinfos"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
 ---
 
 kind: ClusterRoleBinding
@@ -135,10 +192,10 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: nexentastor-csi-attacher-service-account
-    namespace: default
+    namespace: default # replace with non-default namespace name if needed
 roleRef:
   kind: ClusterRole
-  name: system:csi-external-attacher
+  name: nexentastor-csi-attacher-cluster-role
   apiGroup: rbac.authorization.k8s.io
 ---
 
@@ -219,6 +276,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: nexentastor-csi-driver-service-account
+  namespace: default # replace with non-default namespace name if needed
 ---
 
 kind: ClusterRole
@@ -226,18 +284,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: nexentastor-csi-driver-cluster-role
 rules:
-  - apiGroups: ['']
-    resources: ['persistentvolumes']
-    verbs: ['get', 'list', 'watch', 'update']
-  - apiGroups: ['']
-    resources: ['services']
-    verbs: ['get', 'list', 'watch', 'update']
-  - apiGroups: ['']
-    resources: ['nodes']
-    verbs: ['get', 'list', 'watch', 'update']
-  - apiGroups: ['storage.k8s.io']
-    resources: ['volumeattachments']
-    verbs: ['get', 'list', 'watch', 'update']
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
 ---
 
 kind: ClusterRoleBinding
@@ -247,7 +296,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: nexentastor-csi-driver-service-account
-    namespace: default
+    namespace: default # replace with non-default namespace name if needed
 roleRef:
   kind: ClusterRole
   name: nexentastor-csi-driver-cluster-role

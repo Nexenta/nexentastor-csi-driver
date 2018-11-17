@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+//TODO create *Request/*Respose data types for all methods
+
 // License - NexentaStor license
 type License struct {
 	Valid   bool
@@ -19,7 +21,14 @@ type Filesystem struct {
 	Path          string
 	MountPoint    string
 	SharedOverNfs bool
+	SharedOverSmb bool
 	QuotaSize     int64
+}
+
+// GetDefaultSmbShareName - get default SMB share name (all slashes get replaced by underscore)
+// Converts '/pool/dataset/fs' to 'pool_dataset_fs'
+func (fs *Filesystem) GetDefaultSmbShareName() string {
+	return strings.Replace(strings.TrimPrefix(fs.Path, "/"), "/", "_", -1)
 }
 
 // LogIn - log in to NexentaStor API and get auth token
@@ -135,7 +144,11 @@ func (nsp *Provider) GetFilesystemAvailableCapacity(path string) (int64, error) 
 
 // GetFilesystem - get NexentaStor filesystem by its path
 func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
-	fields := []string{"path", "quotaSize", "mountPoint", "sharedOverNfs"}
+	if len(path) == 0 {
+		return nil, fmt.Errorf("Filesystem path is empty")
+	}
+
+	fields := []string{"path", "quotaSize", "mountPoint", "sharedOverNfs", "sharedOverSmb"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"path":   path,
 		"fields": strings.Join(fields, ","),
@@ -159,6 +172,7 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 			Path:          filesystem["path"].(string),
 			MountPoint:    filesystem["mountPoint"].(string),
 			SharedOverNfs: filesystem["sharedOverNfs"].(bool),
+			SharedOverSmb: filesystem["sharedOverSmb"].(bool),
 			QuotaSize:     int64(filesystem["quotaSize"].(float64)),
 		}, nil
 	}
@@ -269,7 +283,7 @@ func (nsp *Provider) CreateNfsShare(path string) error {
 	return err
 }
 
-// DeleteNfsShare - destroy filesystem by path
+// DeleteNfsShare - destroy NFS chare by filesystem path
 func (nsp *Provider) DeleteNfsShare(path string) error {
 	if len(path) == 0 {
 		return fmt.Errorf("Filesystem path is empty")
@@ -279,6 +293,75 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 	data["path"] = path
 
 	uri := fmt.Sprintf("/nas/nfs/%v", url.PathEscape(path))
+
+	_, err := nsp.doAuthRequest("DELETE", uri, nil)
+
+	return err
+}
+
+// CreateSmbShare - create SMB share (cifs) on specified filesystem
+// Leave shareName empty to generate default value
+// CLI test:
+// 	 mkdir -p /mnt/test && sudo mount -v -t cifs -o username=admin,password=Nexenta@1 //HOST//pool_fs /mnt/test
+// 	 findmnt /mnt/test
+func (nsp *Provider) CreateSmbShare(path, shareName string) error {
+	if len(path) == 0 {
+		return fmt.Errorf("Filesystem path is empty")
+	}
+
+	type Params struct {
+		Filesystem string `json:"filesystem"`
+		ShareName  string `json:"shareName,omitempty"`
+	}
+
+	data := &Params{
+		Filesystem: path,
+		ShareName:  shareName,
+	}
+
+	_, err := nsp.doAuthRequest("POST", "nas/smb", data)
+
+	return err
+}
+
+// GetSmbShareName - get share name for filesystem that shared over SMB
+func (nsp *Provider) GetSmbShareName(path string) (string, error) {
+	if len(path) == 0 {
+		return "", fmt.Errorf("Filesystem path is empty")
+	}
+
+	fields := []string{"shareName", "shareState"} //TODO check shareState value?
+	uri := nsp.RestClient.BuildURI(
+		fmt.Sprintf("/nas/smb/%v", url.PathEscape(path)),
+		map[string]string{
+			"fields": strings.Join(fields, ","),
+		},
+	)
+
+	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if err = mapHasProps(resJSON, fields); err != nil {
+		return "", fmt.Errorf("/nas/smb response: %+v", err)
+	}
+
+	shareName := resJSON["shareName"].(string)
+
+	return shareName, nil
+}
+
+// DeleteSmbShare - destroy SMB share by filesystem path
+func (nsp *Provider) DeleteSmbShare(path string) error {
+	if len(path) == 0 {
+		return fmt.Errorf("Filesystem path is empty")
+	}
+
+	data := make(map[string]interface{})
+	data["path"] = path
+
+	uri := fmt.Sprintf("/nas/smb/%v", url.PathEscape(path))
 
 	_, err := nsp.doAuthRequest("DELETE", uri, nil)
 

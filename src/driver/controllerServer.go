@@ -143,7 +143,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if capacityBytes == 0 {
 		capacityBytes = defaultFilesystemSize
 	}
-	nefParams["quotaSize"] = capacityBytes
+	nefParams["quotaSize"] = capacityBytes //TODO use "referencedQuotaSize" instead
 
 	nsProvider, err := s.resolveNS(datasetPath)
 	if err != nil {
@@ -157,8 +157,8 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			Id:            volumePath,
 			CapacityBytes: capacityBytes,
 			Attributes: map[string]string{
-				"dataIp":          reqParams["dataIp"],
-				"nfsMountOptions": reqParams["nfsMountOptions"],
+				"dataIp":       reqParams["dataIp"],
+				"mountOptions": reqParams["mountOptions"],
 			},
 		},
 	}

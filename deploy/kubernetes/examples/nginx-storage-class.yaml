@@ -16,7 +16,8 @@ provisioner: com.nexenta.nexentastor-csi-driver
 parameters:
   #dataset: csiDriverPool/test # to overwrite "defaultDataset" in config secret
   #dataIp: 10.3.199.252        # to overwrite "defaultDataIp" in config secret
-  #nfsMountOptions: noatime    # to overwrite "defaultNfsMountOptions" in config secret
+  #mountFsType: nfs            # to overwrite "defaultMountFsType" in config secret
+  #mountOptions: noatime       # to overwrite "defaultMountOptions" in config secret
 ---
 
 

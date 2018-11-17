@@ -70,7 +70,7 @@ func (client *Client) Send(method, path string, data interface{}) (
 			return 0, nil, err
 		}
 		jsonDataReader = strings.NewReader(string(jsonData))
-		l.Debugf("data: %v", data) //TODO hide passwords
+		l.Debugf("data: %+v", data) //TODO hide passwords
 	}
 
 	req, err := http.NewRequest(method, uri, jsonDataReader)

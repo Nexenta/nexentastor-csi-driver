@@ -22,9 +22,12 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 - [This page explains](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md)
   how to configure Kubernetes for CSI drivers
-- `nfs-common` and `rpcbind` must be installed on each Kubernetes node:
+- Depends on preferred filesystem to be mounted, following utilities must be installed on each Kubernetes node:
   ```bash
+  # for NFS
   apt install -y nfs-common rpcbind
+  # for SMB
+  apt install -y cifs-utils
   ```
 - Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` custom definitions
   [to be defined on the cluster](https://github.com/kubernetes-csi/docs/blob/460a49286fe164a78fde3114e893c48b572a36c8/book/src/Setup.md#csidriver-custom-resource-alpha).
@@ -55,22 +58,31 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
     password: p@ssword                                  # [required] NexentaStor REST API password
     defaultDataset: csiDriverPool/csiDriverDataset      # default 'pool/dataset' for driver's filesystems
     defaultDataIp: 20.20.20.21                          # default NexentaStor data IP or HA VIP
-    defaultNfsMountOptions: noatime                     # default NFS mount options (mount -o ...)
+    defaultMountFsType: nfs                             # default mount fs type [nfs|cifs]
+    defaultMountOptions: noatime                        # default mount options (mount -o ...)
+
+    # for CIFS mounts
+    #defaultMountFsType: cifs                                   # default mount fs type [nfs|cifs]
+    #defaultMountOptions: username=admin,password=Nexenta@1     # username/password must be defined for CIFS
     ```
     All driver configuration options:
 
-    | Name                     | Description                                                     | Required   | Example                                       |
-    | ------------------------ | --------------------------------------------------------------- | ---------- | --------------------------------------------- |
-    | `restIp`                 | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443` |
-    | `username`               | NexentaStor REST API username                                   | yes        | `admin`                                       |
-    | `password`               | NexentaStor REST API password                                   | yes        | `p@ssword`                                    |
-    | `defaultDataset`         | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`              |
-    | `defaultDataIp`          | NexentaStor data IP or HA VIP for mounting NFS shares           | yes for PV | `20.20.20.21`                                 |
-    | `defaultNfsMountOptions` | NFS mount options for: `mount -o ...` (default: "")             | no         | `noatime,nosuid`                              |
-    | `debug`                  | print more logs (default: false)                                | no         | `true`                                        |
+    | Name                  | Description                                                     | Required   | Example                                                    |
+    | --------------------- | --------------------------------------------------------------- | ---------- | ---------------------------------------------------------- |
+    | `restIp`              | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443,https://10.3.3.5:8443`              |
+    | `username`            | NexentaStor REST API username                                   | yes        | `admin`                                                    |
+    | `password`            | NexentaStor REST API password                                   | yes        | `p@ssword`                                                 |
+    | `defaultDataset`      | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`                           |
+    | `defaultDataIp`       | NexentaStor data IP or HA VIP for mounting NFS shares           | yes for PV | `20.20.20.21`                                              |
+    | `defaultMountFsType`  | mount filesystem type [nfs|cifs] (default: "nfs")               | no         | `cifs`                                                     |
+    | `defaultMountOptions` | NFS/CIFS mount options: `mount -o ...` (default: "")            | no         | NFS: `noatime,nosuid`; CIFS: `username=admin,password=123` |
+    | `debug`               | print more logs (default: false)                                | no         | `true`                                                     |
 
-    **Note**: if parameter `defaultDataset` (`defaultDataIp`) is not specified in driver configuration,
-    then parameter `dataset` (`dataIp`) must be specified in _StorageClass_ configuration.
+    **Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,
+    then parameter `dataset`/`dataIp` must be specified in _StorageClass_ configuration.
+    **Note**: all default parameters `default*` may be overwritten in _StorageClass_ configuration.
+    **Note**: if `defaultMountFsType` is set to `cifs` than parameter `defaultMountOptions` must include
+    CIFS username and password (`username=admin,password=123`).
 4. Create Kubernetes secret from the file:
     ```bash
     kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml
@@ -99,16 +111,18 @@ mountOptions: # only for Kubernetes >=v1.13
 parameters:
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
-  #nfsMountOptions: noatime          # to overwrite "defaultNfsMountOptions" in config secret
+  #mountFsType: nfs                  # to overwrite "defaultMountFsType" in config secret
+  #mountOptions: noatime             # to overwrite "defaultMountOptions" in config secret
 ```
 
 #### Parameters
 
-| Name              | Description                                            | Example                    |
-| ----------------- | -------------------------------------------------------| -------------------------- |
-| `dataset`         | parent dataset for driver's filesystems [pool/dataset] | `customPool/customDataset` |
-| `dataIp`          | NexentaStor data IP or HA VIP for mounting NFS shares  | `20.20.20.253`             |
-| `nfsMountOptions` | nfs mount options (`mount -o ...`)                     | `noatime`                  |
+| Name           | Description                                            | Example                                             |
+| -------------- | -------------------------------------------------------| --------------------------------------------------- |
+| `dataset`      | parent dataset for driver's filesystems [pool/dataset] | `customPool/customDataset`                          |
+| `dataIp`       | NexentaStor data IP or HA VIP for mounting NFS shares  | `20.20.20.253`                                      |
+| `mountFsType`  | mount filesystem type [nfs|cifs] (default: "nfs")      | `cifs`                                              |
+| `mountOptions` | NFS/CIFS mount options: `mount -o ...`                 | NFS: `noatime`; CIFS: `username=admin,password=123` |
 
 #### Example
 

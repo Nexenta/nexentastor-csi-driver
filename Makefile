@@ -45,8 +45,9 @@ test-remote: test-unit test-e2e-ns test-e2e-k8s-remote
 .PHONY: test-unit
 test-unit:
 	go test ./tests/unit/arrays -v -count 1 &&\
+	go test ./tests/unit/config -v -count 1 &&\
 	go test ./tests/unit/rest -v -count 1 &&\
-	go test ./tests/unit/config -v -count 1
+	go test ./tests/unit/ns -v -count 1
 
 .PHONY: test-e2e-ns
 test-e2e-ns:
@@ -69,7 +70,12 @@ test-e2e-k8s-local:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
-		--k8sSecretFile="./_configs/driver-config-cluster.yaml" \
+		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
+		--k8sSecretName="nexentastor-csi-driver-config-tests" &&\
+	go test tests/e2e/driver/driver_test.go -v -count 1 \
+		--k8sConnectionString="root@10.3.196.219" \
+		--k8sDeploymentFile="./_configs/driver-local.yaml" \
+		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests"
 
 .PHONY: test-e2e-k8s-remote
@@ -82,7 +88,12 @@ test-e2e-k8s-remote:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
-		--k8sSecretFile="./_configs/driver-config-cluster.yaml" \
+		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
+		--k8sSecretName="nexentastor-csi-driver-config" &&\
+	go test tests/e2e/driver/driver_test.go -v -count 1 \
+		--k8sConnectionString="root@10.3.196.219" \
+		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
+		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"
 
 .PHONY: container-test-local

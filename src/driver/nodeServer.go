@@ -118,7 +118,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	l.Infof("resolved NS: %v, %v", nsProvider, volumeID)
 
-	// get filesystem information
+	// get NexentaStor filesystem information
 	filesystem, err := nsProvider.GetFilesystem(volumeID)
 	if err != nil {
 		return nil, status.Errorf(
@@ -131,44 +131,36 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot find filesystem '%v'", volumeID)
 	}
 
-	// create NFS share if not exists
-	if !filesystem.SharedOverNfs {
-		err = nsProvider.CreateNfsShare(filesystem.Path)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Cannot share filesystem '%v': %v", filesystem.Path, err)
-		}
-
-		// select read-only or read-write mount options set
-		aclRuleSet := ns.ACLReadWrite
-		if req.GetReadonly() {
-			aclRuleSet = ns.ACLReadOnly
-		}
-		// apply NS filesystem ACL (gets applied only for new volumes, not for already shared pre-provisioned volumes)
-		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
-		}
-	}
-
-	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags() // k8s.PersistentVolume.spec.mountOptions
-	if mountOptions == nil {
-		mountOptions = []string{}
-	}
-
-	// volume params passes from ControllerServer.CreateVolume()
+	// volume attributes are passed from ControllerServer.CreateVolume()
 	volumeAttributes := req.GetVolumeAttributes()
 	if volumeAttributes == nil {
 		volumeAttributes = make(map[string]string)
 	}
 
-	// get nfsMountOptions from runtime volume creation params, use config's value if not specified
-	nfsMountOptions := s.config.DefaultNfsMountOptions
-	if v, ok := volumeAttributes["nfsMountOptions"]; ok {
-		nfsMountOptions = v
+	// get mount options by priority:
+	// 	- k8s runtime volume mount options:
+	//		- `k8s.PersistentVolume.spec.mountOptions` definition
+	// 		- `k8s.StorageClass.mountOptions` (should work in k8s v1.13) //TODO test it
+	// 	- runtime volume attributes: `k8s.StorageClass.parameters.mountOptions`
+	// 	- driver config file (k8s secret): `defaultMountOptions`
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+	if mountOptions == nil {
+		mountOptions = []string{}
 	}
-	nfsMountOptionsList := strings.Split(nfsMountOptions, ",")
-	for _, option := range nfsMountOptionsList {
-		mountOptions = append(mountOptions, option)
+	if len(mountOptions) == 0 {
+		var configMountOptions string
+		if v, ok := volumeAttributes["mountOptions"]; ok && v != "" {
+			// `k8s.StorageClass.parameters` in volume definition
+			configMountOptions = v
+		} else {
+			// `defaultMountOptions` in driver config file
+			configMountOptions = s.config.DefaultMountOptions
+		}
+		for _, option := range strings.Split(configMountOptions, ",") {
+			if option != "" {
+				mountOptions = append(mountOptions, option)
+			}
+		}
 	}
 
 	// add "ro" mount option if k8s requests it
@@ -177,20 +169,37 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^ro$"), "ro")
 	}
 
-	// NFS v3 is used by default if no version specified by user
-	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^vers=.*$"), "vers=3")
-
-	// get dataIP from runtime params, set default if not specified
-	dataIP := ""
-	if v, ok := volumeAttributes["dataIP"]; ok {
+	// get dataIP checking by priority:
+	// 	- runtime volume attributes: `k8s.StorageClass.parameters.dataIP`
+	// 	- driver config file (k8s secret): `defaultDataIP`
+	var dataIP string
+	if v, ok := volumeAttributes["dataIP"]; ok && v != "" {
 		dataIP = v
 	} else {
 		dataIP = s.config.DefaultDataIP
 	}
 
-	mountSource := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
+	// get mount filesystem type checking by priority:
+	// 	- runtime volume attributes: `k8s.StorageClass.parameters.mountFsType`
+	// 	- driver config file (k8s secret): `defaultMountFsType`
+	// 	- fallback to NFS as default mount filesystem type
+	var fsType string
+	if v, ok := volumeAttributes["mountFsType"]; ok && v != "" {
+		fsType = v
+	} else if s.config.DefaultMountFsType != "" {
+		fsType = s.config.DefaultMountFsType
+	} else {
+		fsType = config.FsTypeNFS
+	}
 
-	err = s.doMount(mountSource, targetPath, mountOptions)
+	// share and mount filesystem with selected type
+	if fsType == config.FsTypeNFS {
+		err = s.mountNFS(req, nsProvider, filesystem, dataIP, mountOptions)
+	} else if fsType == config.FsTypeCIFS {
+		err = s.mountCIFS(req, nsProvider, filesystem, dataIP, mountOptions)
+	} else {
+		err = status.Errorf(codes.FailedPrecondition, "Unsupported mount filesystem type: '%s'", fsType)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -199,8 +208,102 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
+func (s *NodeServer) mountNFS(
+	req *csi.NodePublishVolumeRequest,
+	nsProvider ns.ProviderInterface,
+	filesystem *ns.Filesystem,
+	dataIP string,
+	mountOptions []string,
+) error {
+	// create NFS share if not exists
+	if !filesystem.SharedOverNfs {
+		err := nsProvider.CreateNfsShare(filesystem.Path)
+		if err != nil {
+			return status.Errorf(codes.Internal, "Cannot share filesystem '%v' over NFS: %v", filesystem.Path, err)
+		}
+
+		// select read-only or read-write mount options set
+		var aclRuleSet ns.ACLRuleSet
+		if req.GetReadonly() {
+			aclRuleSet = ns.ACLReadOnly
+		} else {
+			aclRuleSet = ns.ACLReadWrite
+		}
+
+		// apply NS filesystem ACL (gets applied only for new volumes, not for already shared pre-provisioned volumes)
+		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
+		if err != nil {
+			return status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
+		}
+	}
+
+	// NFS style mount source
+	mountSource := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
+
+	// NFS v3 is used by default if no version specified by user
+	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^vers=.*$"), "vers=3")
+
+	return s.doMount(mountSource, req.GetTargetPath(), config.FsTypeNFS, mountOptions)
+}
+
+func (s *NodeServer) mountCIFS(
+	req *csi.NodePublishVolumeRequest,
+	nsProvider ns.ProviderInterface,
+	filesystem *ns.Filesystem,
+	dataIP string,
+	mountOptions []string,
+) error {
+	// validate CIFS mount options
+	for _, optionRE := range []string{"^username=.+$", "^password=.+$"} {
+		if len(arrays.FindRegexpIndexesString(mountOptions, regexp.MustCompile(optionRE))) == 0 {
+			return status.Errorf(
+				codes.FailedPrecondition,
+				"Options '%s' must be specified for CIFS mount (got options: %v)",
+				optionRE,
+				mountOptions,
+			)
+		}
+	}
+
+	// create SMB share if not exists
+	if !filesystem.SharedOverSmb {
+		err := nsProvider.CreateSmbShare(filesystem.Path, filesystem.GetDefaultSmbShareName())
+		if err != nil {
+			return status.Errorf(codes.Internal, "Cannot share filesystem '%v' over SMB: %v", filesystem.Path, err)
+		}
+
+		//TODO check if we need ACL rules for SMB
+		//TODO apply ACL for specific user?
+
+		// select read-only or read-write mount options set
+		var aclRuleSet ns.ACLRuleSet
+		if req.GetReadonly() {
+			aclRuleSet = ns.ACLReadOnly
+		} else {
+			aclRuleSet = ns.ACLReadWrite
+		}
+
+		// apply NS filesystem ACL (gets applied only for new volumes, not for already shared pre-provisioned volumes)
+		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
+		if err != nil {
+			return status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
+		}
+	}
+
+	//get sm share name
+	shareName, err := nsProvider.GetSmbShareName(filesystem.Path) //TODO make Filesystem method?
+	if err != nil {
+		return err
+	}
+
+	// CIFS style mount source
+	mountSource := fmt.Sprintf("//%v/%v", dataIP, shareName)
+
+	return s.doMount(mountSource, req.GetTargetPath(), config.FsTypeCIFS, mountOptions)
+}
+
 // only "nfs" is supported for now
-func (s *NodeServer) doMount(mountSource, targetPath string, mountOptions []string) error {
+func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOptions []string) error {
 	l := s.log.WithField("func", "doMount()")
 
 	mounter := mount.New("")
@@ -233,13 +336,15 @@ func (s *NodeServer) doMount(mountSource, targetPath string, mountOptions []stri
 	}
 
 	l.Infof(
-		"mount params: mountSource: '%v', targetPath: '%v', mountOptions: '%v'",
+		"mount params: type: '%s', mountSource: '%s', targetPath: '%s', mountOptions(%v): %+v",
+		s.config.DefaultMountFsType,
 		targetPath,
 		mountSource,
+		len(mountOptions),
 		mountOptions,
 	)
 
-	err = mounter.Mount(mountSource, targetPath, "nfs", mountOptions)
+	err = mounter.Mount(mountSource, targetPath, fsType, mountOptions)
 	if err != nil {
 		if os.IsPermission(err) {
 			return status.Errorf(

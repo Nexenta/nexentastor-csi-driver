@@ -9,17 +9,33 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+
+	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
 )
+
+//TODO move to node server?
+// supported mount filesystem types
+const (
+	// FsTypeNFS - to mount NS filesystem over NFS
+	FsTypeNFS string = "nfs"
+
+	// FsTypeCIFS - to mount NS filesystem over SMB
+	FsTypeCIFS string = "cifs"
+)
+
+// SuppertedFsTypeList - list of supported filesystem types to mount
+var SuppertedFsTypeList = []string{FsTypeNFS, FsTypeCIFS}
 
 // Config - driver config from file
 type Config struct {
-	Address                string `yaml:"restIp"`
-	Username               string `yaml:"username"`
-	Password               string `yaml:"password"`
-	DefaultDataset         string `yaml:"defaultDataset,omitempty"`
-	DefaultDataIP          string `yaml:"defaultDataIp,omitempty"`
-	DefaultNfsMountOptions string `yaml:"defaultNfsMountOptions,omitempty"`
-	Debug                  bool   `yaml:"debug,omitempty"`
+	Address             string `yaml:"restIp"`
+	Username            string `yaml:"username"`
+	Password            string `yaml:"password"`
+	DefaultDataset      string `yaml:"defaultDataset,omitempty"`
+	DefaultDataIP       string `yaml:"defaultDataIp,omitempty"`
+	DefaultMountFsType  string `yaml:"defaultMountFsType,omitempty"`
+	DefaultMountOptions string `yaml:"defaultMountOptions,omitempty"`
+	Debug               bool   `yaml:"debug,omitempty"`
 
 	filePath    string
 	lastMobTime time.Time
@@ -77,9 +93,15 @@ func (c *Config) Validate() error {
 	if c.Password == "" {
 		errors = append(errors, fmt.Sprintf("parameter 'password' is missed"))
 	}
+	if c.DefaultMountFsType != "" && !arrays.ContainsString(SuppertedFsTypeList, c.DefaultMountFsType) {
+		errors = append(
+			errors,
+			fmt.Sprintf("parameter 'defaultMountFsType' must be omitted or one of: [%s, %s]", FsTypeNFS, FsTypeCIFS),
+		)
+	}
 
 	if len(errors) != 0 {
-		return fmt.Errorf("Bad format, fix following issues: %v", strings.Join(errors, ", "))
+		return fmt.Errorf("Bad format, fix following issues: %v", strings.Join(errors, "; "))
 	}
 
 	return nil

@@ -160,7 +160,6 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystems, err = nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
-			return
 		} else if !filesystemArrayContains(filesystems, c.filesystem) {
 			t.Errorf("New filesystem %v wasn't created on NS %v", c.filesystem, c.address)
 		}
@@ -170,13 +169,12 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystem, err := nsp.GetFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
-			return
 		} else if filesystem == nil {
 			t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
-			return
 		} else if filesystem.SharedOverNfs {
-			t.Errorf("Created filesystem %v should not be shared (NS %v)", c.filesystem, c.address)
-			return
+			t.Errorf("Created filesystem %v should not be shared over NFS (NS %v)", c.filesystem, c.address)
+		} else if filesystem.SharedOverSmb {
+			t.Errorf("Created filesystem %v should not be shared over SMB (NS %v)", c.filesystem, c.address)
 		}
 	})
 
@@ -196,17 +194,14 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("GetFilesystem() created filesystem should be shared", func(t *testing.T) {
+	t.Run("GetFilesystem() created filesystem should be shared over NFS", func(t *testing.T) {
 		filesystem, err := nsp.GetFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
-			return
 		} else if filesystem == nil {
 			t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
-			return
 		} else if !filesystem.SharedOverNfs {
 			t.Errorf("Created filesystem %v should be shared (NS %v)", c.filesystem, c.address)
-			return
 		}
 	})
 
@@ -238,6 +233,90 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 		}
 	})
+
+	testSmbShareName := "testShareName"
+	for _, smbShareName := range []string{testSmbShareName, ""} {
+		smbShareName := smbShareName
+
+		t.Run(
+			fmt.Sprintf("CreateSmbShare() should create SMB share with '%s' share name", smbShareName),
+			func(t *testing.T) {
+				filesystems, err := nsp.GetFilesystems(c.dataset)
+				if err != nil {
+					t.Error(err)
+					return
+				} else if !filesystemArrayContains(filesystems, c.filesystem) {
+					t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
+					return
+				}
+
+				err = nsp.CreateSmbShare(c.filesystem, smbShareName)
+				if err != nil {
+					t.Error(err)
+				}
+			},
+		)
+
+		t.Run("GetFilesystem() created filesystem should be shared over SMB", func(t *testing.T) {
+			filesystem, err := nsp.GetFilesystem(c.filesystem)
+			if err != nil {
+				t.Error(err)
+			} else if filesystem == nil {
+				t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
+			} else if !filesystem.SharedOverSmb {
+				t.Errorf("Created filesystem %v should be shared over SMB (NS %v)", c.filesystem, c.address)
+			}
+		})
+
+		t.Run("GetSmbShareName() should return SMB share name", func(t *testing.T) {
+			filesystem, err := nsp.GetFilesystem(c.filesystem)
+			if err != nil {
+				t.Error(err)
+				return
+			} else if filesystem == nil {
+				t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
+				return
+			}
+
+			var expectedShareName string
+			if smbShareName == "" {
+				expectedShareName = filesystem.GetDefaultSmbShareName()
+			} else {
+				expectedShareName = smbShareName
+			}
+
+			shareName, err := nsp.GetSmbShareName(c.filesystem)
+			if err != nil {
+				t.Error(err)
+			} else if shareName != expectedShareName {
+				t.Errorf(
+					"expected shareName='%s' but got '%s', for filesystem '%s' on NS %s",
+					expectedShareName,
+					shareName,
+					c.filesystem,
+					c.address,
+				)
+			}
+		})
+
+		//TODO test SMB share, mount cifs?
+
+		t.Run("DeleteSmbShare()", func(t *testing.T) {
+			filesystems, err := nsp.GetFilesystems(c.dataset)
+			if err != nil {
+				t.Error(err)
+				return
+			} else if !filesystemArrayContains(filesystems, c.filesystem) {
+				t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
+				return
+			}
+
+			err = nsp.DeleteSmbShare(c.filesystem)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+	}
 
 	t.Run("DestroyFilesystem()", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.dataset)

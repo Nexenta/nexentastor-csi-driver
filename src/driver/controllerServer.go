@@ -120,8 +120,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		reqParams = make(map[string]string)
 	}
 
-	nefParams := make(map[string]interface{})
-
 	// get dataset path from runtime params, set default if not specified
 	datasetPath := ""
 	if v, ok := reqParams["dataset"]; ok {
@@ -143,7 +141,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if capacityBytes == 0 {
 		capacityBytes = defaultFilesystemSize
 	}
-	nefParams["quotaSize"] = capacityBytes //TODO use "referencedQuotaSize" instead
 
 	nsProvider, err := s.resolveNS(datasetPath)
 	if err != nil {
@@ -163,7 +160,10 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		},
 	}
 
-	err = nsProvider.CreateFilesystem(volumePath, nefParams)
+	err = nsProvider.CreateFilesystem(ns.CreateFilesystemParams{
+		Path:      volumePath,
+		QuotaSize: capacityBytes,
+	})
 	if err == nil {
 		l.Infof("volume '%v' has been created", volumePath)
 		return res, nil

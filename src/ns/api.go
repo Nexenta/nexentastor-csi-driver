@@ -218,16 +218,19 @@ func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
 	return filesystems, nil
 }
 
-// CreateFilesystem - create filesystem by path
-func (nsp *Provider) CreateFilesystem(path string, params map[string]interface{}) error {
-	data := make(map[string]interface{})
-	data["path"] = path
+// CreateFilesystemParams - params to create filesystem
+type CreateFilesystemParams struct {
+	Path      string `json:"path,omitempty"`
+	QuotaSize int64  `json:"quotaSize,omitempty"` //TODO use "referencedQuotaSize" instead
+}
 
-	for key, val := range params {
-		data[key] = val
+// CreateFilesystem - create filesystem by path
+func (nsp *Provider) CreateFilesystem(params CreateFilesystemParams) error {
+	if params.Path == "" {
+		return fmt.Errorf("Parameter 'CreateFilesystemParams.Path' is required")
 	}
 
-	_, err := nsp.doAuthRequest("POST", "/storage/filesystems", data)
+	_, err := nsp.doAuthRequest("POST", "/storage/filesystems", params)
 
 	return err
 }

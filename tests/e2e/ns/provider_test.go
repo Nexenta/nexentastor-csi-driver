@@ -152,7 +152,9 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		err = nsp.CreateFilesystem(c.filesystem, nil)
+		err = nsp.CreateFilesystem(ns.CreateFilesystemParams{
+			Path: c.filesystem,
+		})
 		if err != nil {
 			t.Error(err)
 			return
@@ -353,10 +355,10 @@ func TestProvider_NewProvider(t *testing.T) {
 
 		var quotaSize int64 = 2 * 1024 * 1024 * 1024
 
-		params := make(map[string]interface{})
-		params["quotaSize"] = quotaSize
-
-		err = nsp.CreateFilesystem(c.filesystem, params)
+		err = nsp.CreateFilesystem(ns.CreateFilesystemParams{
+			Path:      c.filesystem,
+			QuotaSize: quotaSize,
+		})
 		if err != nil {
 			t.Error(err)
 			return
@@ -393,10 +395,10 @@ func TestProvider_NewProvider(t *testing.T) {
 
 		var quotaSize int64 = 3 * 1024 * 1024 * 1024
 
-		params := make(map[string]interface{})
-		params["quotaSize"] = quotaSize
-
-		err = nsp.CreateFilesystem(c.filesystem, params)
+		err = nsp.CreateFilesystem(ns.CreateFilesystemParams{
+			Path:      c.filesystem,
+			QuotaSize: quotaSize,
+		})
 		if err != nil {
 			t.Error(err)
 			return

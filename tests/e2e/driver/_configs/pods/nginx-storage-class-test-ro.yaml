@@ -28,7 +28,7 @@ metadata:
   name: nexentastor-csi-driver-pvc-nginx-test-ro
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
@@ -46,17 +46,17 @@ metadata:
   name: nginx-storage-class-test-ro
 spec:
   containers:
-  - image: nginx
-    imagePullPolicy: IfNotPresent
-    name: nginx
-    ports:
-    - containerPort: 80
-      protocol: TCP
-    volumeMounts:
-      - mountPath: /usr/share/nginx/html
-        name: nexentastor-csi-driver-data
+    - image: nginx
+      imagePullPolicy: IfNotPresent
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nexentastor-csi-driver-data
   volumes:
-  - name: nexentastor-csi-driver-data
-    persistentVolumeClaim:
-      claimName: nexentastor-csi-driver-pvc-nginx-test-ro
-      readOnly: true
+    - name: nexentastor-csi-driver-data
+      persistentVolumeClaim:
+        claimName: nexentastor-csi-driver-pvc-nginx-test-ro
+        readOnly: true

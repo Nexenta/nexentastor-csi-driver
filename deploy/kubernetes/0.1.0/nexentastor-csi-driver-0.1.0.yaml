@@ -128,7 +128,7 @@ spec:
               readOnly: true
       volumes:
         - name: socket-dir
-          ? emptyDir
+          emptyDir:
         - name: secret
           secret:
             secretName: nexentastor-csi-driver-config
@@ -251,7 +251,7 @@ spec:
               mountPath: /config
       volumes:
         - name: socket-dir
-          ? emptyDir
+          emptyDir:
         - name: secret
           secret:
             secretName: nexentastor-csi-driver-config

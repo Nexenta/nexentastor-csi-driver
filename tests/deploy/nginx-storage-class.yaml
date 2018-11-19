@@ -29,7 +29,7 @@ metadata:
   name: nexentastor-csi-driver-pvc-nginx-manual
 spec:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
@@ -47,17 +47,17 @@ metadata:
   name: nginx-storage-class-manual
 spec:
   containers:
-  - image: nginx
-    imagePullPolicy: IfNotPresent
-    name: nginx
-    ports:
-    - containerPort: 80
-      protocol: TCP
-    volumeMounts:
-      - mountPath: /usr/share/nginx/html
-        name: nexentastor-csi-driver-data
+    - image: nginx
+      imagePullPolicy: IfNotPresent
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nexentastor-csi-driver-data
   volumes:
-  - name: nexentastor-csi-driver-data
-    persistentVolumeClaim:
-      claimName: nexentastor-csi-driver-pvc-nginx-manual
-      readOnly: false
+    - name: nexentastor-csi-driver-data
+      persistentVolumeClaim:
+        claimName: nexentastor-csi-driver-pvc-nginx-manual
+        readOnly: false

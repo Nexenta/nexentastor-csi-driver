@@ -16,7 +16,7 @@ metadata:
     name: nexentastor-csi-driver-nginx-pv
 spec:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteMany
   capacity:
     storage: 1Gi
   csi:
@@ -35,15 +35,15 @@ metadata:
   name: nexentastor-csi-driver-nginx-pvc
 spec:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
   selector:
     matchExpressions:
-    - key: name
-      operator: In
-      values: ["nexentastor-csi-driver-nginx-pv"]
+      - key: name
+        operator: In
+        values: ['nexentastor-csi-driver-nginx-pv']
 ---
 
 
@@ -57,16 +57,16 @@ metadata:
   name: nginx-persistent-volume
 spec:
   containers:
-  - image: maersk/nginx
-    imagePullPolicy: Always
-    name: nginx
-    ports:
-    - containerPort: 80
-      protocol: TCP
-    volumeMounts:
-      - mountPath: /usr/share/nginx/html
-        name: nexentastor-csi-driver-data
+    - image: maersk/nginx
+      imagePullPolicy: Always
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nexentastor-csi-driver-data
   volumes:
-  - name: nexentastor-csi-driver-data
-    persistentVolumeClaim:
-      claimName: nexentastor-csi-driver-nginx-pvc
+    - name: nexentastor-csi-driver-data
+      persistentVolumeClaim:
+        claimName: nexentastor-csi-driver-nginx-pvc

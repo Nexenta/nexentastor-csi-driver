@@ -2,7 +2,6 @@ package ns
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,11 +17,11 @@ type License struct {
 
 // Filesystem - NexentaStor filesystem
 type Filesystem struct {
-	Path          string
-	MountPoint    string
-	SharedOverNfs bool
-	SharedOverSmb bool
-	QuotaSize     int64
+	Path                string
+	MountPoint          string
+	SharedOverNfs       bool
+	SharedOverSmb       bool
+	ReferencedQuotaSize int64
 }
 
 // GetDefaultSmbShareName - get default SMB share name (all slashes get replaced by underscore)
@@ -111,7 +110,7 @@ func (nsp *Provider) GetPools() ([]string, error) {
 
 // GetFilesystemAvailableCapacity - get NexentaStor filesystem available size by its path
 func (nsp *Provider) GetFilesystemAvailableCapacity(path string) (int64, error) {
-	fields := []string{"quotaSize", "bytesAvailable"}
+	fields := []string{"bytesAvailable"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"path":   path,
 		"fields": strings.Join(fields, ","),
@@ -126,20 +125,17 @@ func (nsp *Provider) GetFilesystemAvailableCapacity(path string) (int64, error) 
 		return 0, fmt.Errorf("/storage/filesystems response: %+v", err)
 	}
 
-	//TODO what is the right limit for fs?
-
-	var quotaSize, availableSize float64
+	var availableSize int64
 	if dataArray, ok := resJSON["data"].([]interface{}); ok && len(dataArray) != 0 {
 		filesystem := dataArray[0].(map[string]interface{})
 		if err := mapHasProps(filesystem, fields); err != nil {
 			return 0, fmt.Errorf("/storage/filesystems response: %+v", err)
 		}
 
-		quotaSize = filesystem["quotaSize"].(float64)
-		availableSize = filesystem["bytesAvailable"].(float64)
+		availableSize = int64(filesystem["bytesAvailable"].(float64))
 	}
 
-	return int64(math.Min(availableSize, quotaSize)), nil
+	return availableSize, nil
 }
 
 // GetFilesystem - get NexentaStor filesystem by its path
@@ -148,7 +144,7 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 		return nil, fmt.Errorf("Filesystem path is empty")
 	}
 
-	fields := []string{"path", "quotaSize", "mountPoint", "sharedOverNfs", "sharedOverSmb"}
+	fields := []string{"path", "mountPoint", "bytesAvailable", "bytesUsed", "sharedOverNfs", "sharedOverSmb"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"path":   path,
 		"fields": strings.Join(fields, ","),
@@ -169,11 +165,11 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 			return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
 		}
 		return &Filesystem{
-			Path:          filesystem["path"].(string),
-			MountPoint:    filesystem["mountPoint"].(string),
-			SharedOverNfs: filesystem["sharedOverNfs"].(bool),
-			SharedOverSmb: filesystem["sharedOverSmb"].(bool),
-			QuotaSize:     int64(filesystem["quotaSize"].(float64)),
+			Path:                filesystem["path"].(string),
+			MountPoint:          filesystem["mountPoint"].(string),
+			SharedOverNfs:       filesystem["sharedOverNfs"].(bool),
+			SharedOverSmb:       filesystem["sharedOverSmb"].(bool),
+			ReferencedQuotaSize: int64(filesystem["bytesAvailable"].(float64) + filesystem["bytesUsed"].(float64)),
 		}, nil
 	}
 
@@ -182,7 +178,7 @@ func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
 
 // GetFilesystems - get all NexentaStor filesystems by parent filesystem
 func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
-	fields := []string{"path", "quotaSize", "mountPoint", "sharedOverNfs"}
+	fields := []string{"path", "mountPoint", "bytesAvailable", "bytesUsed", "sharedOverNfs", "sharedOverSmb"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"parent": parent,
 		"fields": strings.Join(fields, ","),
@@ -199,6 +195,7 @@ func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
 		return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
 	}
 
+	//TODO use unmarshal?
 	for _, val := range resJSON["data"].([]interface{}) {
 		filesystem := val.(map[string]interface{})
 		if err := mapHasProps(filesystem, fields); err != nil {
@@ -207,10 +204,11 @@ func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
 		filesystemPath := filesystem["path"].(string)
 		if filesystemPath != parent {
 			filesystems = append(filesystems, &Filesystem{
-				Path:          filesystemPath,
-				MountPoint:    filesystem["mountPoint"].(string),
-				SharedOverNfs: filesystem["sharedOverNfs"].(bool),
-				QuotaSize:     int64(filesystem["quotaSize"].(float64)),
+				Path:                filesystemPath,
+				MountPoint:          filesystem["mountPoint"].(string),
+				SharedOverNfs:       filesystem["sharedOverNfs"].(bool),
+				SharedOverSmb:       filesystem["sharedOverSmb"].(bool),
+				ReferencedQuotaSize: int64(filesystem["bytesAvailable"].(float64) + filesystem["bytesUsed"].(float64)),
 			})
 		}
 	}
@@ -222,8 +220,8 @@ func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
 type CreateFilesystemParams struct {
 	// filesystem path w/o leading slash
 	Path string `json:"path,omitempty"`
-	// filesystem quota size in bytes
-	QuotaSize int64 `json:"quotaSize,omitempty"` //TODO use "referencedQuotaSize" instead
+	// filesystem referenced quota size in bytes
+	ReferencedQuotaSize int64 `json:"referencedQuotaSize,omitempty"`
 }
 
 // CreateFilesystem - create filesystem by path

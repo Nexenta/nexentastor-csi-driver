@@ -348,7 +348,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("CreateFilesystem() with quota size", func(t *testing.T) {
+	t.Run("CreateFilesystem() with referenced quota size", func(t *testing.T) {
 		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
@@ -358,11 +358,11 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		var quotaSize int64 = 2 * 1024 * 1024 * 1024
+		var referencedQuotaSize int64 = 2 * 1024 * 1024 * 1024
 
 		err = nsp.CreateFilesystem(ns.CreateFilesystemParams{
-			Path:      c.filesystem,
-			QuotaSize: quotaSize,
+			Path:                c.filesystem,
+			ReferencedQuotaSize: referencedQuotaSize,
 		})
 		if err != nil {
 			t.Error(err)
@@ -374,12 +374,12 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		} else if filesystem == nil {
 			t.Errorf("New filesystem %v wasn't created on NS %v", c.filesystem, c.address)
-		} else if filesystem.QuotaSize != quotaSize {
+		} else if filesystem.ReferencedQuotaSize != referencedQuotaSize {
 			t.Errorf(
-				"New filesystem %v quota size expected to be %v, but got %v (NS %v)",
+				"New filesystem %v referenced quota size expected to be %v, but got %v (NS %v)",
 				filesystem.Path,
-				quotaSize,
-				filesystem.QuotaSize,
+				referencedQuotaSize,
+				filesystem.ReferencedQuotaSize,
 				c.address,
 			)
 		}
@@ -398,11 +398,11 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		var quotaSize int64 = 3 * 1024 * 1024 * 1024
+		var referencedQuotaSize int64 = 3 * 1024 * 1024 * 1024
 
 		err = nsp.CreateFilesystem(ns.CreateFilesystemParams{
-			Path:      c.filesystem,
-			QuotaSize: quotaSize,
+			Path:                c.filesystem,
+			ReferencedQuotaSize: referencedQuotaSize,
 		})
 		if err != nil {
 			t.Error(err)
@@ -415,11 +415,11 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		} else if availableCapacity == 0 {
 			t.Errorf("New filesystem %v indicates wrong available capacity (0), on: %v", c.filesystem, c.address)
-		} else if availableCapacity >= quotaSize {
+		} else if availableCapacity >= referencedQuotaSize {
 			t.Errorf(
 				"New filesystem %v available capacity expected to be more or equal to %v, but got %v (NS %v)",
 				c.filesystem,
-				quotaSize,
+				referencedQuotaSize,
 				availableCapacity,
 				c.address,
 			)

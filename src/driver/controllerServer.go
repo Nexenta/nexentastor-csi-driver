@@ -16,10 +16,6 @@ import (
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
-const (
-	defaultFilesystemSize int64 = 1024 * 1024 * 1024 // 1Gb
-)
-
 // ControllerServer - k8s csi driver controller server
 type ControllerServer struct {
 	*csiCommon.DefaultControllerServer
@@ -138,9 +134,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	// get requested volume size from runtime params, set default if not specified
 	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
-	if capacityBytes == 0 {
-		capacityBytes = defaultFilesystemSize
-	}
 
 	nsProvider, err := s.resolveNS(datasetPath)
 	if err != nil {
@@ -161,14 +154,14 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	}
 
 	err = nsProvider.CreateFilesystem(ns.CreateFilesystemParams{
-		Path:      volumePath,
-		QuotaSize: capacityBytes,
+		Path:                volumePath,
+		ReferencedQuotaSize: capacityBytes,
 	})
 	if err == nil {
 		l.Infof("volume '%v' has been created", volumePath)
 		return res, nil
 	} else if ns.IsAlreadyExistNefError(err) {
-		existingVolume, err := nsProvider.GetFilesystem(volumePath)
+		existingFilesystem, err := nsProvider.GetFilesystem(volumePath)
 		if err != nil {
 			return nil, status.Errorf(
 				codes.AlreadyExists,
@@ -176,13 +169,13 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 				volumePath,
 				err,
 			)
-		} else if existingVolume.QuotaSize != capacityBytes {
+		} else if existingFilesystem.ReferencedQuotaSize != capacityBytes {
 			return nil, status.Errorf(
 				codes.AlreadyExists,
 				"Volume '%v' already exists, but with a different size: requested=%v, existing=%v",
 				volumePath,
 				capacityBytes,
-				existingVolume.QuotaSize,
+				existingFilesystem.ReferencedQuotaSize,
 			)
 		}
 		l.Infof("volume '%v' already exists and can be used", volumePath)

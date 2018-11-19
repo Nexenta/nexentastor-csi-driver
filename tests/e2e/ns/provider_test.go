@@ -190,7 +190,9 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		}
 
-		err = nsp.CreateNfsShare(c.filesystem)
+		err = nsp.CreateNfsShare(ns.CreateNfsShareParams{
+			Filesystem: c.filesystem,
+		})
 		if err != nil {
 			t.Error(err)
 		}
@@ -252,7 +254,10 @@ func TestProvider_NewProvider(t *testing.T) {
 					return
 				}
 
-				err = nsp.CreateSmbShare(c.filesystem, smbShareName)
+				err = nsp.CreateSmbShare(ns.CreateSmbShareParams{
+					Filesystem: c.filesystem,
+					ShareName:  smbShareName,
+				})
 				if err != nil {
 					t.Error(err)
 				}

@@ -220,8 +220,10 @@ func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
 
 // CreateFilesystemParams - params to create filesystem
 type CreateFilesystemParams struct {
-	Path      string `json:"path,omitempty"`
-	QuotaSize int64  `json:"quotaSize,omitempty"` //TODO use "referencedQuotaSize" instead
+	// filesystem path w/o leading slash
+	Path string `json:"path,omitempty"`
+	// filesystem quota size in bytes
+	QuotaSize int64 `json:"quotaSize,omitempty"` //TODO use "referencedQuotaSize" instead
 }
 
 // CreateFilesystem - create filesystem by path
@@ -251,14 +253,20 @@ func (nsp *Provider) DestroyFilesystem(path string) error {
 	return err
 }
 
+// CreateNfsShareParams - params to create NFS share
+type CreateNfsShareParams struct {
+	// filesystem path w/o leading slash
+	Filesystem string `json:"filesystem"`
+}
+
 // CreateNfsShare - create NFS share on specified filesystem
 // CLI test:
 //	 showmount -e HOST
 // 	 mkdir -p /mnt/test && sudo mount -v -t nfs HOST:/pool/fs /mnt/test
 // 	 findmnt /mnt/test
-func (nsp *Provider) CreateNfsShare(path string) error {
-	if len(path) == 0 {
-		return fmt.Errorf("Filesystem path is empty")
+func (nsp *Provider) CreateNfsShare(params CreateNfsShareParams) error {
+	if params.Filesystem == "" {
+		return fmt.Errorf("CreateNfsShareParams.Filesystem is required")
 	}
 
 	type ParamsSecurityContext struct {
@@ -266,16 +274,16 @@ func (nsp *Provider) CreateNfsShare(path string) error {
 	}
 
 	type Params struct {
-		Filesystem       string                   `json:"filesystem"`
-		Anon             string                   `json:"anon"`
-		SecurityContexts []*ParamsSecurityContext `json:"securityContexts"`
+		Filesystem       string                  `json:"filesystem"`
+		Anon             string                  `json:"anon"`
+		SecurityContexts []ParamsSecurityContext `json:"securityContexts"`
 	}
 
-	data := &Params{
-		Filesystem: path,
+	data := Params{
+		Filesystem: params.Filesystem,
 		Anon:       "root",
-		SecurityContexts: []*ParamsSecurityContext{
-			&ParamsSecurityContext{
+		SecurityContexts: []ParamsSecurityContext{
+			ParamsSecurityContext{
 				SecurityModes: []string{"sys"},
 			},
 		},
@@ -302,27 +310,25 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 	return err
 }
 
+// CreateSmbShareParams - params to create SMB share
+type CreateSmbShareParams struct {
+	// filesystem path w/o leading slash
+	Filesystem string `json:"filesystem"`
+	// share name, used in mount command
+	ShareName string `json:"shareName,omitempty"`
+}
+
 // CreateSmbShare - create SMB share (cifs) on specified filesystem
 // Leave shareName empty to generate default value
 // CLI test:
 // 	 mkdir -p /mnt/test && sudo mount -v -t cifs -o username=admin,password=Nexenta@1 //HOST//pool_fs /mnt/test
 // 	 findmnt /mnt/test
-func (nsp *Provider) CreateSmbShare(path, shareName string) error {
-	if len(path) == 0 {
-		return fmt.Errorf("Filesystem path is empty")
+func (nsp *Provider) CreateSmbShare(params CreateSmbShareParams) error {
+	if params.Filesystem == "" {
+		return fmt.Errorf("CreateSmbShareParams.Filesystem is required")
 	}
 
-	type Params struct {
-		Filesystem string `json:"filesystem"`
-		ShareName  string `json:"shareName,omitempty"`
-	}
-
-	data := &Params{
-		Filesystem: path,
-		ShareName:  shareName,
-	}
-
-	_, err := nsp.doAuthRequest("POST", "nas/smb", data)
+	_, err := nsp.doAuthRequest("POST", "nas/smb", params)
 
 	return err
 }

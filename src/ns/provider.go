@@ -18,21 +18,21 @@ const (
 
 // ProviderInterface - NexentaStor provider interface
 type ProviderInterface interface {
-	LogIn() error
-	GetLicense() (*License, error)
-	GetPools() ([]string, error)
+	CreateFilesystem(params CreateFilesystemParams) error
+	CreateNfsShare(params CreateNfsShareParams) error
+	CreateSmbShare(params CreateSmbShareParams) error
+	DeleteNfsShare(path string) error
+	DeleteSmbShare(path string) error
+	DestroyFilesystem(path string) error
 	GetFilesystem(path string) (*Filesystem, error)
 	GetFilesystemAvailableCapacity(path string) (int64, error)
 	GetFilesystems(parent string) ([]*Filesystem, error)
+	GetLicense() (*License, error)
+	GetPools() ([]string, error)
 	GetSmbShareName(path string) (string, error) //TODO return *SmbShare
-	CreateFilesystem(params CreateFilesystemParams) error
-	DestroyFilesystem(path string) error
-	CreateNfsShare(path string) error
-	CreateSmbShare(path, shareName string) error
-	DeleteNfsShare(path string) error
-	DeleteSmbShare(path string) error
-	SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error
 	IsJobDone(jobID string) (bool, error)
+	LogIn() error
+	SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error
 }
 
 // Provider - NexentaStor API provider

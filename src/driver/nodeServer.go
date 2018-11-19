@@ -217,7 +217,9 @@ func (s *NodeServer) mountNFS(
 ) error {
 	// create NFS share if not exists
 	if !filesystem.SharedOverNfs {
-		err := nsProvider.CreateNfsShare(filesystem.Path)
+		err := nsProvider.CreateNfsShare(ns.CreateNfsShareParams{
+			Filesystem: filesystem.Path,
+		})
 		if err != nil {
 			return status.Errorf(codes.Internal, "Cannot share filesystem '%v' over NFS: %v", filesystem.Path, err)
 		}
@@ -267,7 +269,10 @@ func (s *NodeServer) mountCIFS(
 
 	// create SMB share if not exists
 	if !filesystem.SharedOverSmb {
-		err := nsProvider.CreateSmbShare(filesystem.Path, filesystem.GetDefaultSmbShareName())
+		err := nsProvider.CreateSmbShare(ns.CreateSmbShareParams{
+			Filesystem: filesystem.Path,
+			ShareName:  filesystem.GetDefaultSmbShareName(),
+		})
 		if err != nil {
 			return status.Errorf(codes.Internal, "Cannot share filesystem '%v' over SMB: %v", filesystem.Path, err)
 		}

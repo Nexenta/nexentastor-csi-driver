@@ -13,10 +13,9 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 ## Supported versions
 
 |                             | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
-| --------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
+|-----------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Kubernetes 1.10.5 to 1.12.0 | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) |
 | Kubernetes >=1.12.1         | master                                                                | master                                                                |
-
 ## Requirements
 
 - [This page explains](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md)
@@ -52,13 +51,13 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    ```
 3. Edit `./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml
-   restIp: https://10.3.3.4:8443,https://10.3.3.5:8443 # [required] NexentaStor REST API endpoint(s)
-   username: admin # [required] NexentaStor REST API username
-   password: p@ssword # [required] NexentaStor REST API password
-   defaultDataset: csiDriverPool/csiDriverDataset # default 'pool/dataset' to use
-   defaultDataIp: 20.20.20.21 # default NexentaStor data IP or HA VIP
-   defaultMountFsType: nfs # default mount fs type [nfs|cifs]
-   defaultMountOptions: noatime # default mount options (mount -o ...)
+   restIp: https://10.3.3.4:8443,https://10.3.3.5:8443     # [required] NexentaStor REST API endpoint(s)
+   username: admin                                         # [required] NexentaStor REST API username
+   password: p@ssword                                      # [required] NexentaStor REST API password
+   defaultDataset: csiDriverPool/csiDriverDataset          # default 'pool/dataset' to use
+   defaultDataIp: 20.20.20.21                              # default NexentaStor data IP or HA VIP
+   defaultMountFsType: nfs                                 # default mount fs type [nfs|cifs]
+   defaultMountOptions: noatime                            # default mount options (mount -o ...)
 
    # for CIFS mounts:
    #defaultMountFsType: cifs                               # default mount fs type [nfs|cifs]
@@ -68,8 +67,8 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    All driver configuration options:
 
    | Name                  | Description                                                     | Required   | Example                                                      |
-   | --------------------- | --------------------------------------------------------------- | ---------- | ------------------------------------------------------------ |
-   | `restIp`              | NexentaStor REST API endpoint(s), `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443`                                      |
+   |-----------------------|-----------------------------------------------------------------|------------|--------------------------------------------------------------|
+   | `restIp`              | NexentaStor REST API endpoint(s); `,` to separate cluster nodes | yes        | `https://10.3.3.4:8443`                                      |
    | `username`            | NexentaStor REST API username                                   | yes        | `admin`                                                      |
    | `password`            | NexentaStor REST API password                                   | yes        | `p@ssword`                                                   |
    | `defaultDataset`      | parent dataset for driver's filesystems [pool/dataset]          | no         | `csiDriverPool/csiDriverDataset`                             |
@@ -108,7 +107,7 @@ kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-dynamic-provisioning
 provisioner: com.nexenta.nexentastor-csi-driver
-mountOptions: # only for Kubernetes >=v1.13
+mountOptions:                        # only for Kubernetes >=v1.13
   - noatime
 parameters:
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
@@ -120,7 +119,7 @@ parameters:
 #### Parameters
 
 | Name           | Description                                            | Example                                               |
-| -------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+|----------------|--------------------------------------------------------|-------------------------------------------------------|
 | `dataset`      | parent dataset for driver's filesystems [pool/dataset] | `customPool/customDataset`                            |
 | `dataIp`       | NexentaStor data IP or HA VIP for mounting shares      | `20.20.20.253`                                        |
 | `mountFsType`  | mount filesystem type [nfs, cifs](default: 'nfs')      | `cifs`                                                |
@@ -164,7 +163,7 @@ spec:
 CSI Parameters:
 
 | Name           | Description                                                       | Example                  |
-| -------------- | ----------------------------------------------------------------- | ------------------------ |
+|----------------|-------------------------------------------------------------------|--------------------------|
 | `driver`       | installed driver name "nexentastor-csi-driver"                    | `nexentastor-csi-driver` |
 | `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `PoolA/datasetA/nginx`   |
 
@@ -207,7 +206,10 @@ kubectl delete -f ./examples/nginx-persistent-volume.yaml
 Using the same files as for installation:
 
 ```bash
+# delete driver
 kubectl delete -f ./deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
+
+# delete secret
 kubectl delete secret nexentastor-csi-driver-config
 ```
 

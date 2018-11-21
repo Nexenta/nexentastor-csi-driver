@@ -54,7 +54,8 @@ test-e2e-ns:
 	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
 		--address="https://10.3.199.254:8443" &&\
 	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
-		--address="https://10.3.199.252:8443" &&\
+		--address="https://10.3.199.252:8443" \
+		--cluster=true &&\
 	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \
 		--address="https://10.3.199.254:8443" &&\
 	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \

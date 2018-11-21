@@ -6,8 +6,8 @@ import (
 
 // NefError - nef error format
 type NefError struct {
-	Err  error  `json:"message"`
-	Code string `json:"code"`
+	Err  error
+	Code string
 }
 
 func (e *NefError) Error() string {

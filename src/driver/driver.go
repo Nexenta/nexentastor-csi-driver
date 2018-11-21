@@ -100,6 +100,7 @@ func (d *Driver) Run() error {
 // Validate - validate driver configuration:
 // - check NS connection
 // - check NS license
+// - in case of cluster, check if provided addresses belong to the same cluster
 func (d *Driver) Validate() error {
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
 		Address:  d.config.Address,
@@ -121,6 +122,15 @@ func (d *Driver) Validate() error {
 				nsProvider,
 				license.Expires,
 			)
+		}
+	}
+
+	if len(nsResolver.Nodes) > 1 {
+		isCluster, err := nsResolver.IsCluster()
+		if err != nil {
+			return fmt.Errorf("Cannot check cluster: %s", err)
+		} else if !isCluster {
+			return fmt.Errorf("Provided NexentaStor addresses don't belong to the same cluster")
 		}
 	}
 

@@ -280,7 +280,8 @@ go test ./tests/e2e/ns/provider_test.go -v -count 1 \
     --pool="myPool" \
     --dataset="myDataset" \
     --filesystem="myFs" \
-    --log="true"
+    --cluster=true \
+    --log=true
 
 # Tests install driver to k8s and run nginx pod with mounted volume
 # "export NOCOLORS=true" to run w/o colors

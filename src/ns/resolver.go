@@ -44,6 +44,44 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 	return nil, fmt.Errorf(message)
 }
 
+// IsCluster - check if nodes is a NS cluster
+// For now it simple checks if all nodes return at least one similar cluster name
+func (nsr *Resolver) IsCluster() (bool, error) {
+	l := nsr.Log.WithField("func", "IsCluster()")
+
+	if len(nsr.Nodes) < 2 {
+		return false, nil
+	}
+
+	names := map[string]int{
+		// ClusterName: FindOnNodeCount
+	}
+
+	for _, node := range nsr.Nodes {
+		// get RSF cluster from each node
+		clusters, err := node.GetRSFClusters()
+		if err != nil {
+			return false, err
+		}
+		for _, cluster := range clusters {
+			if v, ok := names[cluster.Name]; ok {
+				names[cluster.Name] = v + 1
+			} else {
+				names[cluster.Name] = 1
+			}
+		}
+	}
+
+	for clusterName, findOnNodeCount := range names {
+		if findOnNodeCount == len(nsr.Nodes) {
+			l.Infof("all nodes belong to '%s' cluster", clusterName)
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 // ResolverArgs - params to create resolver instance from config
 type ResolverArgs struct {
 	Address  string

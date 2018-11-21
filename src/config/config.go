@@ -107,11 +107,9 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// New - find config file and create config instance
-func New(lookUpDir string) (*Config, error) {
-	// look up for config file
-	configFilePath := ""
-	err := filepath.Walk(lookUpDir, func(path string, info os.FileInfo, err error) error {
+// findConfigFile - look up for config file in a directory
+func findConfigFile(lookUpDir string) (configFilePath string, err error) {
+	err = filepath.Walk(lookUpDir, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
@@ -122,16 +120,22 @@ func New(lookUpDir string) (*Config, error) {
 		}
 		return nil
 	})
+	return configFilePath, err
+}
+
+// New - find config file and create config instance
+func New(lookUpDir string) (*Config, error) {
+	configFilePath, err := findConfigFile(lookUpDir)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot read config directory '%v'", lookUpDir)
+		return nil, fmt.Errorf("Cannot read config directory '%s': %s", lookUpDir, err)
 	} else if configFilePath == "" {
-		return nil, fmt.Errorf("Cannot find .yaml config file in '%v' directory", lookUpDir)
+		return nil, fmt.Errorf("Cannot find .yaml config file in '%s' directory", lookUpDir)
 	}
 
 	// read config file
 	config := &Config{filePath: configFilePath}
 	if _, err := config.Refresh(); err != nil {
-		return nil, fmt.Errorf("Cannot refresh config from file '%v': %v", configFilePath, err)
+		return nil, fmt.Errorf("Cannot refresh config from file '%s': %s", configFilePath, err)
 	}
 
 	return config, nil

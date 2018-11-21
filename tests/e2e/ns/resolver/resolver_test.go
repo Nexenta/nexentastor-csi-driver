@@ -116,4 +116,15 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 			return
 		}
 	})
+
+	t.Run("IsCluster()", func(t *testing.T) {
+		expectedIsCluster := len(nsr.Nodes) > 1
+
+		isCluster, err := nsr.IsCluster()
+		if err != nil {
+			t.Error(err)
+		} else if isCluster != expectedIsCluster {
+			t.Errorf("expected to be '%v' but got '%v' for '%+v' NS", expectedIsCluster, !isCluster, nsr)
+		}
+	})
 }

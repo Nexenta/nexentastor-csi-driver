@@ -288,6 +288,21 @@ func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error 
 	return nsp.sendRequest("POST", uri, data)
 }
 
+// GetRSFClusters - get RSF clusters from NS
+func (nsp *Provider) GetRSFClusters() ([]RSFCluster, error) {
+	uri := nsp.RestClient.BuildURI("/rsf/clusters", map[string]string{
+		"fields": "clusterName,nodes",
+	})
+
+	response := nefRsfClustersResponse{}
+	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Data, nil
+}
+
 // IsJobDone - check if job is done by jobId
 func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 	uri := fmt.Sprintf("/jobStatus/%v", jobID)

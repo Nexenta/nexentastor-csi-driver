@@ -30,6 +30,7 @@ type ProviderInterface interface {
 	GetFilesystems(parent string) ([]Filesystem, error)
 	GetLicense() (License, error)
 	GetPools() ([]string, error)
+	GetRSFClusters() ([]RSFCluster, error)
 	GetSmbShareName(path string) (string, error) //TODO return *SmbShare
 	IsJobDone(jobID string) (bool, error)
 	LogIn() error
@@ -54,10 +55,10 @@ func (nsp *Provider) parseNefError(bodyBytes []byte, prefix string) error {
 	var restErrorCode string
 
 	response := struct {
-		Name    string `json:"name,omitempty"`
-		Message string `json:"message,omitempty"`
-		Errors  string `json:"errors,omitempty"`
-		Code    string `json:"code,omitempty"`
+		Name    string `json:"name"`
+		Message string `json:"message"`
+		Errors  string `json:"errors"`
+		Code    string `json:"code"`
 	}{}
 
 	if err := json.Unmarshal(bodyBytes, &response); err != nil {
@@ -93,25 +94,27 @@ func (nsp *Provider) sendRequestWithStruct(method, path string, data, response i
 		return err
 	}
 
-	if response != nil && len(bodyBytes) > 0 {
-		if json.Valid(bodyBytes) {
-			err := json.Unmarshal(bodyBytes, response)
-			if err != nil || response == nil {
-				err = fmt.Errorf(
-					"Request '%s %s': cannot unmarshal JSON from: '%s' to '%+v': %s",
-					method,
-					path,
-					bodyBytes,
-					response,
-					err,
-				)
-			}
-		} else {
-			err = fmt.Errorf("Request '%s %s' responded with invalid JSON: '%s'", method, path, bodyBytes)
+	if len(bodyBytes) == 0 {
+		return fmt.Errorf("Request '%s %s' responded with empty body", method, path)
+	} else if !json.Valid(bodyBytes) {
+		return fmt.Errorf("Request '%s %s' responded with invalid JSON: '%s'", method, path, bodyBytes)
+	}
+
+	if response != nil {
+		err := json.Unmarshal(bodyBytes, response)
+		if err != nil {
+			return fmt.Errorf(
+				"Request '%s %s': cannot unmarshal JSON from: '%s' to '%+v': %s",
+				method,
+				path,
+				bodyBytes,
+				response,
+				err,
+			)
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (nsp *Provider) sendRequest(method, path string, data interface{}) error {

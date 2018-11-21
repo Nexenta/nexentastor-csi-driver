@@ -42,6 +42,11 @@ func (fs *Filesystem) GetReferencedQuotaSize() int64 {
 	return fs.BytesAvailable + fs.BytesUsed
 }
 
+// RSFCluster - RSF cluster with a name
+type RSFCluster struct {
+	Name string `json:"clusterName"`
+}
+
 // NEF request/response types
 
 type nefAuthLoginRequest struct {
@@ -82,6 +87,10 @@ type nefStorageFilesystemsACLRequest struct {
 	Principal   string   `json:"principal"`
 	Flags       []string `json:"flags"`
 	Permissions []string `json:"permissions"`
+}
+
+type nefRsfClustersResponse struct {
+	Data []RSFCluster `json:"data"`
 }
 
 type nefJobStatusResponse struct {

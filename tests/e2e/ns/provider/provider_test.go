@@ -30,6 +30,7 @@ type config struct {
 	pool       string
 	dataset    string
 	filesystem string
+	cluster    bool
 }
 
 var c *config
@@ -52,6 +53,7 @@ func TestMain(m *testing.M) {
 		pool       = flag.String("pool", defaultPoolName, "pool on NS")
 		dataset    = flag.String("dataset", defaultDatasetName, "dataset on NS")
 		filesystem = flag.String("filesystem", defaultFilesystemName, "filesystem on NS")
+		cluster    = flag.Bool("cluster", false, "this is a NS cluster")
 		log        = flag.Bool("log", false, "show logs")
 	)
 
@@ -74,6 +76,7 @@ func TestMain(m *testing.M) {
 		pool:       *pool,
 		dataset:    fmt.Sprintf("%v/%v", *pool, *dataset),
 		filesystem: fmt.Sprintf("%v/%v/%v", *pool, *dataset, *filesystem),
+		cluster:    *cluster,
 	}
 
 	os.Exit(m.Run())
@@ -416,5 +419,28 @@ func TestProvider_NewProvider(t *testing.T) {
 
 		// clean up
 		nsp.DestroyFilesystem(c.filesystem)
+	})
+
+	t.Run("GetRSFClusters()", func(t *testing.T) {
+		expectedToBeACluster := c.cluster
+
+		clusters, err := nsp.GetRSFClusters()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		if expectedToBeACluster && len(clusters) == 0 {
+			t.Errorf(
+				"NS %s expected to be in a cluster (--cluster=true flag) but got no clusters from the API",
+				c.address,
+			)
+		} else if !expectedToBeACluster && len(clusters) > 0 {
+			t.Errorf(
+				"NS %s expected not to be in a cluster (--cluster=false flag) but got clusters from the API: %+v",
+				c.address,
+				clusters,
+			)
+		}
 	})
 }

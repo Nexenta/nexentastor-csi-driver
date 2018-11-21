@@ -6,8 +6,8 @@ import (
 
 // NefError - nef error format
 type NefError struct {
-	Err  error
-	Code string
+	Err  error  `json:"message"`
+	Code string `json:"code"`
 }
 
 func (e *NefError) Error() string {
@@ -30,4 +30,9 @@ func IsAlreadyExistNefError(err error) bool {
 // IsNotExistNefError - treats an error as NefError and returns true if its code is "ENOENT"
 func IsNotExistNefError(err error) bool {
 	return GetNefErrorCode(err) == "ENOENT"
+}
+
+// IsAuthNefError - treats an error as NefError and returns true if its code is "EAUTH"
+func IsAuthNefError(err error) bool {
+	return GetNefErrorCode(err) == "EAUTH" //TODO use constants
 }

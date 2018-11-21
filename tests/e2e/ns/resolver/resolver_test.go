@@ -31,7 +31,7 @@ type config struct {
 var c *config
 var l *logrus.Entry
 
-func filesystemArrayContains(array []*ns.Filesystem, value string) bool {
+func filesystemArrayContains(array []ns.Filesystem, value string) bool {
 	for _, v := range array {
 		if v.Path == value {
 			return true

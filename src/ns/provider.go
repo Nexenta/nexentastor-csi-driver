@@ -1,6 +1,7 @@
 package ns
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -24,10 +25,10 @@ type ProviderInterface interface {
 	DeleteNfsShare(path string) error
 	DeleteSmbShare(path string) error
 	DestroyFilesystem(path string) error
-	GetFilesystem(path string) (*Filesystem, error)
+	GetFilesystem(path string) (Filesystem, error)
 	GetFilesystemAvailableCapacity(path string) (int64, error)
-	GetFilesystems(parent string) ([]*Filesystem, error)
-	GetLicense() (*License, error)
+	GetFilesystems(parent string) ([]Filesystem, error)
+	GetLicense() (License, error)
 	GetPools() ([]string, error)
 	GetSmbShareName(path string) (string, error) //TODO return *SmbShare
 	IsJobDone(jobID string) (bool, error)
@@ -48,43 +49,88 @@ func (nsp *Provider) String() string {
 	return nsp.Address
 }
 
-func (nsp *Provider) parseNefError(resJSON map[string]interface{}, prefix string) error {
+func (nsp *Provider) parseNefError(bodyBytes []byte, prefix string) error {
 	var restErrorMessage string
 	var restErrorCode string
 
-	if name, ok := resJSON["name"]; ok {
-		restErrorMessage = fmt.Sprint(name)
+	response := struct {
+		Name    string `json:"name,omitempty"`
+		Message string `json:"message,omitempty"`
+		Errors  string `json:"errors,omitempty"`
+		Code    string `json:"code,omitempty"`
+	}{}
+
+	if err := json.Unmarshal(bodyBytes, &response); err != nil {
+		return nil
 	}
-	if message, ok := resJSON["message"]; ok {
-		restErrorMessage = fmt.Sprintf("%v: %v", restErrorMessage, message)
+
+	if response.Name != "" {
+		restErrorMessage = fmt.Sprint(response.Name)
 	}
-	if errors, ok := resJSON["errors"]; ok {
-		restErrorMessage = fmt.Sprintf("%v, errors: [%v]", restErrorMessage, errors)
+	if response.Message != "" {
+		restErrorMessage = fmt.Sprintf("%v: %v", restErrorMessage, response.Message)
 	}
-	if code, ok := resJSON["code"]; ok {
-		restErrorCode = code.(string)
+	if response.Errors != "" {
+		restErrorMessage = fmt.Sprintf("%v, errors: [%v]", restErrorMessage, response.Errors)
+	}
+	if response.Code != "" {
+		restErrorCode = response.Code
 	}
 
 	if len(restErrorMessage) > 0 {
-		return &NefError{fmt.Errorf("%v: %v", prefix, restErrorMessage), restErrorCode}
+		return &NefError{
+			Err:  fmt.Errorf("%v: %v", prefix, restErrorMessage),
+			Code: restErrorCode,
+		}
 	}
 
 	return nil
 }
 
-func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
-	map[string]interface{},
-	error,
-) {
-	l := nsp.Log.WithField("func", "doAuthRequest()")
-
-	statusCode, resJSON, err := nsp.RestClient.Send(method, path, data)
+func (nsp *Provider) sendRequestWithStruct(method, path string, data, response interface{}) error {
+	bodyBytes, err := nsp.doAuthRequest(method, path, data)
 	if err != nil {
-		return resJSON, err
+		return err
 	}
 
+	if response != nil && len(bodyBytes) > 0 {
+		if json.Valid(bodyBytes) {
+			err := json.Unmarshal(bodyBytes, response)
+			if err != nil || response == nil {
+				err = fmt.Errorf(
+					"Request '%s %s': cannot unmarshal JSON from: '%s' to '%+v': %s",
+					method,
+					path,
+					bodyBytes,
+					response,
+					err,
+				)
+			}
+		} else {
+			err = fmt.Errorf("Request '%s %s' responded with invalid JSON: '%s'", method, path, bodyBytes)
+		}
+	}
+
+	return err
+}
+
+func (nsp *Provider) sendRequest(method, path string, data interface{}) error {
+	_, err := nsp.doAuthRequest(method, path, data)
+	return err
+}
+
+func (nsp *Provider) doAuthRequest(method, path string, data interface{}) ([]byte, error) {
+	l := nsp.Log.WithField("func", "doAuthRequest()")
+
+	statusCode, bodyBytes, err := nsp.RestClient.Send(method, path, data)
+	if err != nil {
+		return bodyBytes, err
+	}
+
+	nefError := nsp.parseNefError(bodyBytes, "checking login status")
+
 	// log in again if user is not logged in
-	if statusCode == 401 && resJSON["code"] == "EAUTH" {
+	if statusCode == 401 && IsAuthNefError(nefError) {
 		// do login call if used is not authorized in api
 		l.Debugf("log in as '%v'...", nsp.Username)
 
@@ -94,18 +140,18 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 		}
 
 		// send original request again
-		statusCode, resJSON, err = nsp.RestClient.Send(method, path, data)
+		statusCode, bodyBytes, err = nsp.RestClient.Send(method, path, data)
 		if err != nil {
-			return resJSON, err
+			return bodyBytes, err
 		}
 	}
 
 	if statusCode == http.StatusAccepted {
 		// this is an async job
 		var href string
-		href, err = nsp.getAsyncJobHref(resJSON)
+		href, err = nsp.parseAsyncJobHref(bodyBytes)
 		if err != nil {
-			return resJSON, err
+			return bodyBytes, err
 		}
 
 		err = nsp.waitForAsyncJob(strings.TrimPrefix(href, "/jobStatus/"))
@@ -113,42 +159,35 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) (
 			l.Debugf("waitForAsyncJob() error: %v", err)
 		}
 	} else if statusCode >= 300 {
-		restError := nsp.parseNefError(resJSON, "request error")
-		if restError != nil {
-			err = restError
+		nefError := nsp.parseNefError(bodyBytes, "request error")
+		if nefError != nil {
+			err = nefError
 		} else {
 			err = fmt.Errorf(
 				"Request returned %v code, but response body doesn't contain explanation: %v",
 				statusCode,
-				resJSON)
+				bodyBytes,
+			)
 		}
 	}
 
-	return resJSON, err
+	return bodyBytes, err
 }
 
-func (nsp *Provider) getAsyncJobHref(resJSON map[string]interface{}) (string, error) {
-	noFieldError := func(field string) error {
-		return fmt.Errorf(
-			"Request return an async job, but links response doesn't contain '%v' field: %v",
-			field,
-			resJSON)
+func (nsp *Provider) parseAsyncJobHref(bodyBytes []byte) (string, error) {
+	response := nefJobStatusResponse{}
+	if err := json.Unmarshal(bodyBytes, &response); err != nil {
+		return "", fmt.Errorf("Cannot parse NS response '%s' to '%+v'", bodyBytes, response)
 	}
 
-	if links, ok := resJSON["links"].([]interface{}); ok && len(links) != 0 {
-		link := links[0].(map[string]interface{})
-		if rel, ok := link["rel"]; ok && rel == "monitor" {
-			if val, ok := link["href"]; ok {
-				return val.(string), nil
-			}
-			return "", noFieldError("href")
+	for _, link := range response.Links {
+		if link.Rel == "monitor" && link.Href != "" {
+			return link.Href, nil
 		}
-		return "", noFieldError("rel")
 	}
 
-	return "", fmt.Errorf(
-		"Request return an async job, but response doesn't contain any links: %v",
-		resJSON)
+	err := fmt.Errorf("Request return an async job, but response doesn't contain any links: %v", bodyBytes)
+	return "", err
 }
 
 // waitForAsyncJob - keep asking for job status while it's not completed, return an error if timeout exceeded

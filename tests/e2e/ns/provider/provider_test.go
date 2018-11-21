@@ -35,7 +35,7 @@ type config struct {
 var c *config
 var l *logrus.Entry
 
-func filesystemArrayContains(array []*ns.Filesystem, value string) bool {
+func filesystemArrayContains(array []ns.Filesystem, value string) bool {
 	for _, v := range array {
 		if v.Path == value {
 			return true
@@ -127,7 +127,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystem, err := nsp.GetFilesystem(c.dataset)
 		if err != nil {
 			t.Error(err)
-		} else if filesystem == nil || filesystem.Path != c.dataset {
+		} else if filesystem.Path != c.dataset {
 			t.Errorf("No %v filesystem in the result", c.dataset)
 		}
 	})
@@ -135,9 +135,9 @@ func TestProvider_NewProvider(t *testing.T) {
 	t.Run("GetFilesystem() not exists", func(t *testing.T) {
 		nonExistingName := "NON_EXISTING"
 		filesystem, err := nsp.GetFilesystem(nonExistingName)
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "not found") {
 			t.Error(err)
-		} else if filesystem != nil {
+		} else if filesystem.Path != "" {
 			t.Errorf("Filesystem %v should not exist, but found in the result: %v", nonExistingName, filesystem)
 		}
 	})
@@ -171,8 +171,6 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystem, err := nsp.GetFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
-		} else if filesystem == nil {
-			t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
 		} else if filesystem.SharedOverNfs {
 			t.Errorf("Created filesystem %v should not be shared over NFS (NS %v)", c.filesystem, c.address)
 		} else if filesystem.SharedOverSmb {
@@ -202,8 +200,6 @@ func TestProvider_NewProvider(t *testing.T) {
 		filesystem, err := nsp.GetFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
-		} else if filesystem == nil {
-			t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
 		} else if !filesystem.SharedOverNfs {
 			t.Errorf("Created filesystem %v should be shared (NS %v)", c.filesystem, c.address)
 		}
@@ -268,8 +264,6 @@ func TestProvider_NewProvider(t *testing.T) {
 			filesystem, err := nsp.GetFilesystem(c.filesystem)
 			if err != nil {
 				t.Error(err)
-			} else if filesystem == nil {
-				t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
 			} else if !filesystem.SharedOverSmb {
 				t.Errorf("Created filesystem %v should be shared over SMB (NS %v)", c.filesystem, c.address)
 			}
@@ -279,9 +273,6 @@ func TestProvider_NewProvider(t *testing.T) {
 			filesystem, err := nsp.GetFilesystem(c.filesystem)
 			if err != nil {
 				t.Error(err)
-				return
-			} else if filesystem == nil {
-				t.Errorf("Filesystem %v wasn't found on NS %v", c.filesystem, c.address)
 				return
 			}
 
@@ -372,14 +363,12 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
-		} else if filesystem == nil {
-			t.Errorf("New filesystem %v wasn't created on NS %v", c.filesystem, c.address)
-		} else if filesystem.ReferencedQuotaSize != referencedQuotaSize {
+		} else if filesystem.GetReferencedQuotaSize() != referencedQuotaSize {
 			t.Errorf(
 				"New filesystem %v referenced quota size expected to be %v, but got %v (NS %v)",
 				filesystem.Path,
 				referencedQuotaSize,
-				filesystem.ReferencedQuotaSize,
+				filesystem.GetReferencedQuotaSize(),
 				c.address,
 			)
 		}

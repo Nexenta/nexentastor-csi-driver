@@ -23,10 +23,10 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 
 	//TODO do non-block requests to all NSs in the list, select first one responded
 	for _, ns := range nsr.Nodes {
-		filesystem, err := ns.GetFilesystem(path)
+		_, err := ns.GetFilesystem(path)
 		if err != nil {
 			lastError = err
-		} else if filesystem != nil {
+		} else {
 			resolvedNS = ns
 			break
 		}

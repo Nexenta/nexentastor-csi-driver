@@ -169,13 +169,13 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 				volumePath,
 				err,
 			)
-		} else if existingFilesystem.ReferencedQuotaSize != capacityBytes {
+		} else if existingFilesystem.GetReferencedQuotaSize() != capacityBytes {
 			return nil, status.Errorf(
 				codes.AlreadyExists,
 				"Volume '%v' already exists, but with a different size: requested=%v, existing=%v",
 				volumePath,
 				capacityBytes,
-				existingFilesystem.ReferencedQuotaSize,
+				existingFilesystem.GetReferencedQuotaSize(),
 			)
 		}
 		l.Infof("volume '%v' already exists and can be used", volumePath)

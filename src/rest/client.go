@@ -30,23 +30,33 @@ type Client struct {
 
 // ClientInterface - request client interface
 type ClientInterface interface {
-	SetAuthToken(string)
-	Send(string, string, interface{}) (int, map[string]interface{}, error)
-	BuildURI(string, map[string]string) string
+	BuildURI(uri string, params map[string]string) string
+	Send(method, path string, data interface{}) (int, []byte, error)
+	SetAuthToken(token string)
 }
 
-// SetAuthToken - set Bearer auth token for all requests
-func (client *Client) SetAuthToken(token string) {
-	client.authToken = token
+// BuildURI - build request URI using [path?params...] format
+func (client *Client) BuildURI(uri string, params map[string]string) string {
+	paramsStr := ""
+	paramValues := url.Values{}
+
+	for key, val := range params {
+		if len(val) != 0 {
+			paramValues.Set(key, val)
+		}
+	}
+
+	paramsStr = paramValues.Encode()
+	if len(paramsStr) != 0 {
+		uri = fmt.Sprintf("%v?%v", uri, paramsStr)
+	}
+
+	return uri
 }
 
 // Send - send request to REST server
-// data interface{} - request payload, any interface for json.Marshal()
-func (client *Client) Send(method, path string, data interface{}) (
-	int,
-	map[string]interface{},
-	error,
-) {
+// data     interface{} - request payload, any interface for json.Marshal()
+func (client *Client) Send(method, path string, data interface{}) (int, []byte, error) {
 	client.mu.Lock()
 	client.requestID++
 	l := client.log.WithFields(logrus.Fields{
@@ -92,44 +102,21 @@ func (client *Client) Send(method, path string, data interface{}) (
 
 	defer res.Body.Close()
 
+	l.Debugf("response status code: %v", res.StatusCode)
+
+	// validate response body
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		l.Errorf("cannot read body: %v", err)
+		err = fmt.Errorf("Cannot read body of request '%s %s': '%s'", method, uri, err)
 		return res.StatusCode, nil, err
 	}
 
-	l.Debugf("response status code: %v", res.StatusCode)
-
-	jsonRes := make(map[string]interface{})
-
-	if len(bodyBytes) > 0 {
-		jsonErr := json.Unmarshal(bodyBytes, &jsonRes)
-		if jsonErr != nil {
-			jsonRes["error"] = fmt.Sprintf("Cannot parse json from body: '%v'", string(bodyBytes))
-			return res.StatusCode, jsonRes, err
-		}
-	}
-
-	return res.StatusCode, jsonRes, nil
+	return res.StatusCode, bodyBytes, err
 }
 
-// BuildURI - build request URI using [path?params...] format
-func (client *Client) BuildURI(uri string, params map[string]string) string {
-	paramsStr := ""
-	paramValues := url.Values{}
-
-	for key, val := range params {
-		if len(val) != 0 {
-			paramValues.Set(key, val)
-		}
-	}
-
-	paramsStr = paramValues.Encode()
-	if len(paramsStr) != 0 {
-		uri = fmt.Sprintf("%v?%v", uri, paramsStr)
-	}
-
-	return uri
+// SetAuthToken - set Bearer auth token for all requests
+func (client *Client) SetAuthToken(token string) {
+	client.authToken = token
 }
 
 // ClientArgs - params to create Client instance

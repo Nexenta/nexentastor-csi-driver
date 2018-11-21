@@ -127,8 +127,6 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 			volumeID,
 			err,
 		)
-	} else if filesystem == nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot find filesystem '%v'", volumeID)
 	}
 
 	// volume attributes are passed from ControllerServer.CreateVolume()
@@ -211,7 +209,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 func (s *NodeServer) mountNFS(
 	req *csi.NodePublishVolumeRequest,
 	nsProvider ns.ProviderInterface,
-	filesystem *ns.Filesystem,
+	filesystem ns.Filesystem,
 	dataIP string,
 	mountOptions []string,
 ) error {
@@ -251,7 +249,7 @@ func (s *NodeServer) mountNFS(
 func (s *NodeServer) mountCIFS(
 	req *csi.NodePublishVolumeRequest,
 	nsProvider ns.ProviderInterface,
-	filesystem *ns.Filesystem,
+	filesystem ns.Filesystem,
 	dataIP string,
 	mountOptions []string,
 ) error {

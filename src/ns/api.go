@@ -1,86 +1,55 @@
 package ns
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 )
-
-//TODO create *Request/*Respose data types for all methods
-
-// License - NexentaStor license
-type License struct {
-	Valid   bool
-	Expires string
-}
-
-// Filesystem - NexentaStor filesystem
-type Filesystem struct {
-	Path                string
-	MountPoint          string
-	SharedOverNfs       bool
-	SharedOverSmb       bool
-	ReferencedQuotaSize int64
-}
-
-// GetDefaultSmbShareName - get default SMB share name (all slashes get replaced by underscore)
-// Converts '/pool/dataset/fs' to 'pool_dataset_fs'
-func (fs *Filesystem) GetDefaultSmbShareName() string {
-	return strings.Replace(strings.TrimPrefix(fs.Path, "/"), "/", "_", -1)
-}
 
 // LogIn - log in to NexentaStor API and get auth token
 func (nsp *Provider) LogIn() error {
 	l := nsp.Log.WithField("func", "LogIn()")
 
-	data := make(map[string]interface{})
-	data["username"] = nsp.Username
-	data["password"] = nsp.Password
+	data := nefAuthLoginRequest{
+		Username: nsp.Username,
+		Password: nsp.Password,
+	}
 
-	_, resJSON, err := nsp.RestClient.Send("POST", "auth/login", data)
+	_, bodyBytes, err := nsp.RestClient.Send("POST", "auth/login", data)
 	if err != nil {
-		return err
-	}
-
-	if token, ok := resJSON["token"]; ok {
-		nsp.RestClient.SetAuthToken(fmt.Sprint(token))
-		l.Debugf("login token has been updated")
-		return nil
-	}
-
-	// try to parse error from rest response
-	restError := nsp.parseNefError(resJSON, "Login request")
-	if restError != nil {
-		code := restError.(*NefError).Code
-		if code == "EAUTH" {
-			l.Errorf(
-				"login to NexentaStor %v failed (username: '%v'), "+
-					"please make sure to use correct address and password",
-				nsp.Address,
-				nsp.Username)
+		// try to parse error from rest response
+		nefError := nsp.parseNefError(bodyBytes, "Login request")
+		if nefError != nil {
+			if IsAuthNefError(nefError) {
+				l.Errorf(
+					"login to NexentaStor %v failed (username: '%v'), "+
+						"please make sure to use correct address and password",
+					nsp.Address,
+					nsp.Username)
+			}
+			return nefError
 		}
-		return restError
+
+		return fmt.Errorf("Login request: failed, response: %s; error: %s", bodyBytes, err)
 	}
 
-	return fmt.Errorf("Login request: No token found in response: %v", resJSON)
+	response := nefAuthLoginResponse{}
+	if err := json.Unmarshal(bodyBytes, &response); err != nil {
+		return fmt.Errorf("Login request: cannot unmarshal JSON from: '%s' to '%+v': %s", bodyBytes, response, err)
+	} else if len(response.Token) == 0 {
+		return fmt.Errorf("Login request: token not found in response: '%s'", bodyBytes)
+	}
+
+	nsp.RestClient.SetAuthToken(response.Token)
+	l.Debugf("login token has been updated")
+	return nil
 }
 
 // GetLicense - return NexentaStor license
-func (nsp *Provider) GetLicense() (*License, error) {
-	resJSON, err := nsp.doAuthRequest("GET", "/settings/license", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := mapHasProps(resJSON, []string{"expires", "valid"}); err != nil {
-		return nil, err
-	}
-
-	return &License{
-		Valid:   resJSON["valid"].(bool),
-		Expires: resJSON["expires"].(string),
-	}, nil
+func (nsp *Provider) GetLicense() (license License, err error) {
+	err = nsp.sendRequestWithStruct("GET", "/settings/license", nil, &license)
+	return license, err
 }
 
 // GetPools - get NexentaStor pools
@@ -89,127 +58,82 @@ func (nsp *Provider) GetPools() ([]string, error) {
 		"fields": "poolName,health,status",
 	})
 
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	response := nefStoragePoolsResponse{}
+	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
 	if err != nil {
 		return nil, err
 	}
 
 	pools := []string{}
-
-	if data, ok := resJSON["data"]; ok {
-		for _, val := range data.([]interface{}) {
-			pool := val.(map[string]interface{})
-			pools = append(pools, fmt.Sprint(pool["poolName"]))
-		}
-	} else {
-		return nil, fmt.Errorf("/storage/pools response doesn't contain 'data' property: %v", resJSON)
+	for _, pool := range response.Data {
+		pools = append(pools, pool.PoolName)
 	}
 
-	return pools, nil
+	return pools, nil //TODO return Pool struct
 }
 
 // GetFilesystemAvailableCapacity - get NexentaStor filesystem available size by its path
 func (nsp *Provider) GetFilesystemAvailableCapacity(path string) (int64, error) {
-	fields := []string{"bytesAvailable"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"path":   path,
-		"fields": strings.Join(fields, ","),
+		"fields": "bytesAvailable",
 	})
 
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	response := nefStorageFilesystemsResponse{}
+	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
 	if err != nil {
 		return 0, err
 	}
 
-	if err = mapHasProps(resJSON, []string{"data"}); err != nil {
-		return 0, fmt.Errorf("/storage/filesystems response: %+v", err)
-	}
-
 	var availableSize int64
-	if dataArray, ok := resJSON["data"].([]interface{}); ok && len(dataArray) != 0 {
-		filesystem := dataArray[0].(map[string]interface{})
-		if err := mapHasProps(filesystem, fields); err != nil {
-			return 0, fmt.Errorf("/storage/filesystems response: %+v", err)
-		}
-
-		availableSize = int64(filesystem["bytesAvailable"].(float64))
+	if len(response.Data) > 0 {
+		availableSize = int64(response.Data[0].BytesAvailable)
 	}
 
 	return availableSize, nil
 }
 
 // GetFilesystem - get NexentaStor filesystem by its path
-func (nsp *Provider) GetFilesystem(path string) (*Filesystem, error) {
+func (nsp *Provider) GetFilesystem(path string) (filesystem Filesystem, err error) {
 	if len(path) == 0 {
-		return nil, fmt.Errorf("Filesystem path is empty")
+		return filesystem, fmt.Errorf("Filesystem path is empty")
 	}
 
-	fields := []string{"path", "mountPoint", "bytesAvailable", "bytesUsed", "sharedOverNfs", "sharedOverSmb"}
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"path":   path,
-		"fields": strings.Join(fields, ","),
+		"fields": "path,mountPoint,bytesAvailable,bytesUsed,sharedOverNfs,sharedOverSmb",
 	})
 
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	response := nefStorageFilesystemsResponse{}
+	err = nsp.sendRequestWithStruct("GET", uri, nil, &response)
 	if err != nil {
-		return nil, err
+		return filesystem, err
 	}
 
-	if err = mapHasProps(resJSON, []string{"data"}); err != nil {
-		return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
+	if len(response.Data) == 0 {
+		return filesystem, fmt.Errorf("Filesystem '%s' not found", path)
 	}
 
-	if dataArray, ok := resJSON["data"].([]interface{}); ok && len(dataArray) != 0 {
-		filesystem := dataArray[0].(map[string]interface{})
-		if err := mapHasProps(filesystem, fields); err != nil {
-			return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
-		}
-		return &Filesystem{
-			Path:                filesystem["path"].(string),
-			MountPoint:          filesystem["mountPoint"].(string),
-			SharedOverNfs:       filesystem["sharedOverNfs"].(bool),
-			SharedOverSmb:       filesystem["sharedOverSmb"].(bool),
-			ReferencedQuotaSize: int64(filesystem["bytesAvailable"].(float64) + filesystem["bytesUsed"].(float64)),
-		}, nil
-	}
-
-	return nil, nil
+	return response.Data[0], nil
 }
 
 // GetFilesystems - get all NexentaStor filesystems by parent filesystem
-func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
-	fields := []string{"path", "mountPoint", "bytesAvailable", "bytesUsed", "sharedOverNfs", "sharedOverSmb"}
+func (nsp *Provider) GetFilesystems(parent string) ([]Filesystem, error) {
 	uri := nsp.RestClient.BuildURI("/storage/filesystems", map[string]string{
 		"parent": parent,
-		"fields": strings.Join(fields, ","),
+		"fields": "path,mountPoint,bytesAvailable,bytesUsed,sharedOverNfs,sharedOverSmb",
 	})
 
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	response := nefStorageFilesystemsResponse{}
+	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
 	if err != nil {
 		return nil, err
 	}
 
-	filesystems := []*Filesystem{}
-
-	if err = mapHasProps(resJSON, []string{"data"}); err != nil {
-		return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
-	}
-
-	//TODO use unmarshal?
-	for _, val := range resJSON["data"].([]interface{}) {
-		filesystem := val.(map[string]interface{})
-		if err := mapHasProps(filesystem, fields); err != nil {
-			return nil, fmt.Errorf("/storage/filesystems response: %+v", err)
-		}
-		filesystemPath := filesystem["path"].(string)
-		if filesystemPath != parent {
-			filesystems = append(filesystems, &Filesystem{
-				Path:                filesystemPath,
-				MountPoint:          filesystem["mountPoint"].(string),
-				SharedOverNfs:       filesystem["sharedOverNfs"].(bool),
-				SharedOverSmb:       filesystem["sharedOverSmb"].(bool),
-				ReferencedQuotaSize: int64(filesystem["bytesAvailable"].(float64) + filesystem["bytesUsed"].(float64)),
-			})
+	filesystems := []Filesystem{}
+	for _, fs := range response.Data {
+		if fs.Path != parent { // exclude parent filesystem from the list
+			filesystems = append(filesystems, fs)
 		}
 	}
 
@@ -219,7 +143,7 @@ func (nsp *Provider) GetFilesystems(parent string) ([]*Filesystem, error) {
 // CreateFilesystemParams - params to create filesystem
 type CreateFilesystemParams struct {
 	// filesystem path w/o leading slash
-	Path string `json:"path,omitempty"`
+	Path string `json:"path"`
 	// filesystem referenced quota size in bytes
 	ReferencedQuotaSize int64 `json:"referencedQuotaSize,omitempty"`
 }
@@ -230,25 +154,18 @@ func (nsp *Provider) CreateFilesystem(params CreateFilesystemParams) error {
 		return fmt.Errorf("Parameter 'CreateFilesystemParams.Path' is required")
 	}
 
-	_, err := nsp.doAuthRequest("POST", "/storage/filesystems", params)
-
-	return err
+	return nsp.sendRequest("POST", "/storage/filesystems", params)
 }
 
 // DestroyFilesystem - destroy filesystem by path
 func (nsp *Provider) DestroyFilesystem(path string) error {
-	if len(path) == 0 {
-		return fmt.Errorf("Filesystem path is empty")
+	if path == "" {
+		return fmt.Errorf("Filesystem path is required")
 	}
-
-	data := make(map[string]interface{})
-	data["path"] = path
 
 	uri := fmt.Sprintf("/storage/filesystems/%v", url.PathEscape(path))
 
-	_, err := nsp.doAuthRequest("DELETE", uri, nil)
-
-	return err
+	return nsp.sendRequest("DELETE", uri, nil)
 }
 
 // CreateNfsShareParams - params to create NFS share
@@ -267,29 +184,17 @@ func (nsp *Provider) CreateNfsShare(params CreateNfsShareParams) error {
 		return fmt.Errorf("CreateNfsShareParams.Filesystem is required")
 	}
 
-	type ParamsSecurityContext struct {
-		SecurityModes []string `json:"securityModes"`
-	}
-
-	type Params struct {
-		Filesystem       string                  `json:"filesystem"`
-		Anon             string                  `json:"anon"`
-		SecurityContexts []ParamsSecurityContext `json:"securityContexts"`
-	}
-
-	data := Params{
+	data := nefNasNfsRequest{
 		Filesystem: params.Filesystem,
 		Anon:       "root",
-		SecurityContexts: []ParamsSecurityContext{
-			ParamsSecurityContext{
+		SecurityContexts: []nefNasNfsRequestSecurityContext{
+			nefNasNfsRequestSecurityContext{
 				SecurityModes: []string{"sys"},
 			},
 		},
 	}
 
-	_, err := nsp.doAuthRequest("POST", "nas/nfs", data)
-
-	return err
+	return nsp.sendRequest("POST", "nas/nfs", data)
 }
 
 // DeleteNfsShare - destroy NFS chare by filesystem path
@@ -298,14 +203,9 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 		return fmt.Errorf("Filesystem path is empty")
 	}
 
-	data := make(map[string]interface{})
-	data["path"] = path
-
 	uri := fmt.Sprintf("/nas/nfs/%v", url.PathEscape(path))
 
-	_, err := nsp.doAuthRequest("DELETE", uri, nil)
-
-	return err
+	return nsp.sendRequest("DELETE", uri, nil)
 }
 
 // CreateSmbShareParams - params to create SMB share
@@ -322,41 +222,31 @@ type CreateSmbShareParams struct {
 // 	 mkdir -p /mnt/test && sudo mount -v -t cifs -o username=admin,password=Nexenta@1 //HOST//pool_fs /mnt/test
 // 	 findmnt /mnt/test
 func (nsp *Provider) CreateSmbShare(params CreateSmbShareParams) error {
-	if params.Filesystem == "" {
+	if len(params.Filesystem) == 0 {
 		return fmt.Errorf("CreateSmbShareParams.Filesystem is required")
 	}
 
-	_, err := nsp.doAuthRequest("POST", "nas/smb", params)
-
-	return err
+	return nsp.sendRequest("POST", "nas/smb", params)
 }
 
 // GetSmbShareName - get share name for filesystem that shared over SMB
 func (nsp *Provider) GetSmbShareName(path string) (string, error) {
 	if len(path) == 0 {
-		return "", fmt.Errorf("Filesystem path is empty")
+		return "", fmt.Errorf("Filesystem path is required")
 	}
 
-	fields := []string{"shareName", "shareState"} //TODO check shareState value?
 	uri := nsp.RestClient.BuildURI(
 		fmt.Sprintf("/nas/smb/%v", url.PathEscape(path)),
-		map[string]string{
-			"fields": strings.Join(fields, ","),
-		},
+		map[string]string{"fields": "shareName,shareState"}, //TODO check shareState value?
 	)
 
-	resJSON, err := nsp.doAuthRequest("GET", uri, nil)
+	response := nefNasSmbResponse{}
+	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
 	if err != nil {
 		return "", err
 	}
 
-	if err = mapHasProps(resJSON, fields); err != nil {
-		return "", fmt.Errorf("/nas/smb response: %+v", err)
-	}
-
-	shareName := resJSON["shareName"].(string)
-
-	return shareName, nil
+	return response.ShareName, nil
 }
 
 // DeleteSmbShare - destroy SMB share by filesystem path
@@ -365,32 +255,18 @@ func (nsp *Provider) DeleteSmbShare(path string) error {
 		return fmt.Errorf("Filesystem path is empty")
 	}
 
-	data := make(map[string]interface{})
-	data["path"] = path
-
 	uri := fmt.Sprintf("/nas/smb/%v", url.PathEscape(path))
 
-	_, err := nsp.doAuthRequest("DELETE", uri, nil)
-
-	return err
+	return nsp.sendRequest("DELETE", uri, nil)
 }
-
-// ACLRuleSet - filesystem ACL rule set
-type ACLRuleSet int64
-
-const (
-	// ACLReadOnly - apply read only set of rules to filesystem
-	ACLReadOnly ACLRuleSet = iota
-
-	// ACLReadWrite - apply full access set of rules to filesystem
-	ACLReadWrite
-)
 
 // SetFilesystemACL - set filesystem ACL, so NFS share can allow user to write w/o checking UNIX user uid
 func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error {
 	if len(path) == 0 {
-		return fmt.Errorf("Filesystem path is empty")
+		return fmt.Errorf("Filesystem path is required")
 	}
+
+	uri := fmt.Sprintf("/storage/filesystems/%v/acl", url.PathEscape(path))
 
 	permissions := []string{}
 	if aclRuleSet == ACLReadOnly {
@@ -399,14 +275,7 @@ func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error 
 		permissions = append(permissions, "full_set")
 	}
 
-	type Params struct {
-		Type        string   `json:"type"`
-		Principal   string   `json:"principal"`
-		Flags       []string `json:"flags"`
-		Permissions []string `json:"permissions"`
-	}
-
-	data := &Params{
+	data := &nefStorageFilesystemsACLRequest{
 		Type:      "allow",
 		Principal: "everyone@",
 		Flags: []string{
@@ -416,17 +285,14 @@ func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error 
 		Permissions: permissions,
 	}
 
-	uri := fmt.Sprintf("/storage/filesystems/%v/acl", url.PathEscape(path))
-	_, err := nsp.doAuthRequest("POST", uri, data)
-
-	return err
+	return nsp.sendRequest("POST", uri, data)
 }
 
 // IsJobDone - check if job is done by jobId
 func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 	uri := fmt.Sprintf("/jobStatus/%v", jobID)
 
-	statusCode, resJSON, err := nsp.RestClient.Send("GET", uri, nil)
+	statusCode, bodyBytes, err := nsp.RestClient.Send("GET", uri, nil)
 	if err != nil { // request failed
 		return false, err
 	} else if statusCode == http.StatusOK || statusCode == http.StatusCreated { // job is completed
@@ -436,27 +302,16 @@ func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 	}
 
 	// job is failed
-	restError := nsp.parseNefError(resJSON, "Job was finished with error")
-	if restError != nil {
-		err = restError
+	nefError := nsp.parseNefError(bodyBytes, "Job was finished with error")
+	if nefError != nil {
+		err = nefError
 	} else {
 		err = fmt.Errorf(
-			"Job request returned %v code, but response body doesn't contain explanation: %v",
+			"Job request returned %v code, but response body doesn't contain explanation: %s",
 			statusCode,
-			resJSON)
+			bodyBytes,
+		)
 	}
-	return false, err
-}
 
-func mapHasProps(m map[string]interface{}, props []string) error {
-	var missedProps []string
-	for _, prop := range props {
-		if _, ok := m[prop]; !ok {
-			missedProps = append(missedProps, prop)
-		}
-	}
-	if len(missedProps) != 0 {
-		return fmt.Errorf("Properties missed: %v", missedProps)
-	}
-	return nil
+	return false, err
 }

@@ -47,6 +47,11 @@ type RSFCluster struct {
 	Name string `json:"clusterName"`
 }
 
+// Pool - NS pool
+type Pool struct {
+	Name string `json:"poolName"`
+}
+
 // NEF request/response types
 
 type nefAuthLoginRequest struct {
@@ -59,10 +64,7 @@ type nefAuthLoginResponse struct {
 }
 
 type nefStoragePoolsResponse struct {
-	Data []nefStoragePoolsResponsePool `json:"data"`
-}
-type nefStoragePoolsResponsePool struct {
-	PoolName string `json:"poolName"`
+	Data []Pool `json:"data"`
 }
 
 type nefStorageFilesystemsResponse struct {

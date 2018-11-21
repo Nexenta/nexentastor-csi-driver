@@ -10,7 +10,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
 	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
 )
 
@@ -35,6 +34,15 @@ type config struct {
 
 var c *config
 var l *logrus.Entry
+
+func poolArrayContains(array []ns.Pool, value string) bool {
+	for _, v := range array {
+		if v.Name == value {
+			return true
+		}
+	}
+	return false
+}
 
 func filesystemArrayContains(array []ns.Filesystem, value string) bool {
 	for _, v := range array {
@@ -110,7 +118,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		pools, err := nsp.GetPools()
 		if err != nil {
 			t.Error(err)
-		} else if !arrays.ContainsString(pools, c.pool) {
+		} else if !poolArrayContains(pools, c.pool) {
 			t.Errorf("Pool %v doesn't exist on NS %v", c.pool, c.address)
 		}
 	})

@@ -29,9 +29,9 @@ type ProviderInterface interface {
 	GetFilesystemAvailableCapacity(path string) (int64, error)
 	GetFilesystems(parent string) ([]Filesystem, error)
 	GetLicense() (License, error)
-	GetPools() ([]string, error)
+	GetPools() ([]Pool, error)
 	GetRSFClusters() ([]RSFCluster, error)
-	GetSmbShareName(path string) (string, error) //TODO return *SmbShare
+	GetSmbShareName(path string) (string, error)
 	IsJobDone(jobID string) (bool, error)
 	LogIn() error
 	SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error

@@ -53,7 +53,7 @@ func (nsp *Provider) GetLicense() (license License, err error) {
 }
 
 // GetPools - get NexentaStor pools
-func (nsp *Provider) GetPools() ([]string, error) {
+func (nsp *Provider) GetPools() ([]Pool, error) {
 	uri := nsp.RestClient.BuildURI("/storage/pools", map[string]string{
 		"fields": "poolName,health,status",
 	})
@@ -64,12 +64,7 @@ func (nsp *Provider) GetPools() ([]string, error) {
 		return nil, err
 	}
 
-	pools := []string{}
-	for _, pool := range response.Data {
-		pools = append(pools, pool.PoolName)
-	}
-
-	return pools, nil //TODO return Pool struct
+	return response.Data, nil
 }
 
 // GetFilesystemAvailableCapacity - get NexentaStor filesystem available size by its path

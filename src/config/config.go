@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,7 +14,8 @@ import (
 	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
 )
 
-//TODO move to node server?
+const addressRegExp = "^https?://[^:]+:[0-9]{1,5}$"
+
 // supported mount filesystem types
 const (
 	// FsTypeNFS - to mount NS filesystem over NFS
@@ -86,6 +88,19 @@ func (c *Config) Validate() error {
 	//TODO validate address schema too
 	if c.Address == "" {
 		errors = append(errors, fmt.Sprintf("parameter 'restIp' is missed"))
+	} else {
+		addresses := strings.Split(c.Address, ",")
+		for _, address := range addresses {
+			if !regexp.MustCompile(addressRegExp).MatchString(address) {
+				errors = append(
+					errors,
+					fmt.Sprintf(
+						"parameter 'restIp' has invalid address: '%v', should be 'schema://host:port'",
+						address,
+					),
+				)
+			}
+		}
 	}
 	if c.Username == "" {
 		errors = append(errors, fmt.Sprintf("parameter 'username' is missed"))

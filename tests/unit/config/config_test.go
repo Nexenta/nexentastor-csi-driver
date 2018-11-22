@@ -94,6 +94,16 @@ func TestConfig_Not_Valid(t *testing.T) {
 			t.Fatalf("not existing config file '%v' returns config: %v", path, c)
 		}
 	})
+
+	t.Run("should return an error if one of the addresses is invalid", func(t *testing.T) {
+		path := "./_fixtures/test-config-not-valid-address"
+		c, err := config.New(path)
+		if err == nil {
+			t.Fatalf("should return an error for file '%v' but returns config: %v", path, c)
+		} else if !strings.Contains(err.Error(), "BAD_PORT") {
+			t.Fatalf("should return an error with 'BAD_PORT' text for file '%v' but returns this: %v", path, err)
+		}
+	})
 }
 
 func TestConfig_Refresh(t *testing.T) {
@@ -116,7 +126,7 @@ func TestConfig_Refresh(t *testing.T) {
 	t.Run("should return changed:true after config update", func(t *testing.T) {
 		err := os.Chtimes(c.GetFilePath(), time.Now(), time.Now())
 		if err != nil {
-			t.Fatalf("Cannot change a/mtime for '%s' config file: %s", c.GetFilePath(), err)
+			t.Fatalf("Cannot change atime/mtime for '%s' config file: %s", c.GetFilePath(), err)
 		}
 
 		changed, err := c.Refresh()

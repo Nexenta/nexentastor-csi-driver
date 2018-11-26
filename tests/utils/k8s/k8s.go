@@ -49,7 +49,7 @@ type Deployment struct {
 
 func (d *Deployment) createFormattedError(message string) func(error) error {
 	return func(err error) error {
-		return fmt.Errorf("K8s deployment failed (%v on %v): %v: %v", d.ConfigFile, d.RemoteClient, message, err)
+		return fmt.Errorf("K8s deployment failed (%s on %v): %s: %s", d.ConfigFile, d.RemoteClient, message, err)
 	}
 }
 
@@ -137,7 +137,7 @@ func (d *Deployment) WaitForPods(pods []string, mode WaitForPodsMode) (string, e
 				done <- fmt.Errorf(
 					"Checking cmd output timeout exceeded (%v), "+
 						"pods: '%v', mode: %v, last output:\n"+
-						"---\n%v---\n",
+						"---\n%s---\n",
 					d.WaitTimeout,
 					failedPodsList,
 					mode,
@@ -163,7 +163,7 @@ func (d *Deployment) Apply(pods []string) error {
 		return fail(err)
 	}
 
-	applyCommand := fmt.Sprintf("cd %v; kubectl apply -f %v", d.deploymentTmpDir, d.getConfigFileName())
+	applyCommand := fmt.Sprintf("cd %s; kubectl apply -f %s", d.deploymentTmpDir, d.getConfigFileName())
 	if _, err := d.RemoteClient.Exec(applyCommand); err != nil {
 		return fail(err)
 	}
@@ -173,17 +173,17 @@ func (d *Deployment) Apply(pods []string) error {
 		if err != nil {
 			return fail(err)
 		}
-		l.Infof("pods are running:\n---\n%v---", out)
+		l.Infof("pods are running:\n---\n%s---", out)
 	}
 
 	l.Info("deployment file has been successfully deployed")
 
-	grepCommand := fmt.Sprintf("cd %v; grep \"image:\" %v", d.deploymentTmpDir, d.getConfigFileName())
+	grepCommand := fmt.Sprintf("cd %s; grep \"image:\" %s", d.deploymentTmpDir, d.getConfigFileName())
 	out, err := d.RemoteClient.Exec(grepCommand)
 	if err != nil {
-		l.Warnf("cannot get list of used images: %v; out: %v", err, out)
+		l.Warnf("cannot get list of used images: %s; out: %s", err, out)
 	} else {
-		l.Infof("used images:\n---\n%v---", out)
+		l.Infof("used images:\n---\n%s---", out)
 	}
 
 	return nil
@@ -197,17 +197,17 @@ func (d *Deployment) Delete(pods []string) error {
 
 	l.Info("run...")
 
-	deleteCommand := fmt.Sprintf("cd %v; kubectl delete -f %v", d.deploymentTmpDir, d.getConfigFileName())
+	deleteCommand := fmt.Sprintf("cd %s; kubectl delete -f %s", d.deploymentTmpDir, d.getConfigFileName())
 	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		return fail(fmt.Errorf("Failed to delete k8s deployment: %v", err))
+		return fail(fmt.Errorf("Failed to delete k8s deployment: %s", err))
 	}
 
 	if pods != nil {
 		out, err := d.WaitForPods(pods, WaitForPodsModeNone)
 		if err != nil {
-			return fail(fmt.Errorf("Failed to wait for pods to be shutted down: %v", err))
+			return fail(fmt.Errorf("Failed to wait for pods to be shutted down: %s", err))
 		}
-		l.Infof("pods after deletion:\n---\n%v---", out)
+		l.Infof("pods after deletion:\n---\n%s---", out)
 	}
 
 	l.Info("deployment has been successfully deleted")
@@ -231,7 +231,7 @@ func (d *Deployment) CreateSecret() error {
 	}
 
 	applyCommand := fmt.Sprintf(
-		"cd %v; kubectl create secret generic %v --from-file=%v",
+		"cd %s; kubectl create secret generic %s --from-file=%s",
 		d.deploymentTmpDir,
 		d.secretName,
 		d.getSecretFileName(),
@@ -245,7 +245,7 @@ func (d *Deployment) CreateSecret() error {
 		return fail(err)
 	}
 
-	l.Infof("kubernetes secrets:\n---\n%v---", out)
+	l.Infof("kubernetes secrets:\n---\n%s---", out)
 	l.Info("secret has been successfully created")
 
 	return nil
@@ -258,7 +258,7 @@ func (d *Deployment) DeleteSecret() error {
 
 	l.Info("run...")
 
-	if _, err := d.RemoteClient.Exec(fmt.Sprintf("kubectl delete secret %v", d.secretName)); err != nil {
+	if _, err := d.RemoteClient.Exec(fmt.Sprintf("kubectl delete secret %s", d.secretName)); err != nil {
 		return fail(err)
 	}
 
@@ -272,9 +272,9 @@ func (d *Deployment) CleanUp() {
 	l := d.log.WithField("func", "CleanUp()")
 	l.Info("run...")
 
-	deleteCommand := fmt.Sprintf("cd %v; kubectl delete -f %v | true", d.deploymentTmpDir, d.getConfigFileName())
+	deleteCommand := fmt.Sprintf("cd %s; kubectl delete -f %s | true", d.deploymentTmpDir, d.getConfigFileName())
 	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		l.Errorf("failed to delete pods: %v\n", err)
+		l.Errorf("failed to delete pods: %s\n", err)
 	}
 
 	// wait all pods to be terminated
@@ -283,24 +283,28 @@ func (d *Deployment) CleanUp() {
 	time.Sleep(t)
 	re := regexp.MustCompile(`.*Terminating.*`)
 	if err := d.RemoteClient.ExecAndWaitRegExp("kubectl get pods", re, true); err != nil {
-		l.Errorf("failed to shutdown pods: %v\n", err)
+		l.Errorf("failed to shutdown pods: %s\n", err)
 	}
 
 	if d.secretName != "" {
-		deleteCommand = fmt.Sprintf("kubectl delete secret %v | true", d.secretName)
+		deleteCommand = fmt.Sprintf("kubectl delete secret %s | true", d.secretName)
 		if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-			l.Errorf("failed to delete secret: %v\n", err)
+			l.Errorf("failed to delete secret: %s\n", err)
 		}
 
-		deleteCommand = fmt.Sprintf("rm -f %v/%v | true", d.deploymentTmpDir, d.getSecretFileName())
-		if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-			l.Errorf("failed to remove secret from tmp directory: %v\n", err)
+		if d.deploymentTmpDir != "" {
+			deleteCommand = fmt.Sprintf("rm -f %s/%s | true", d.deploymentTmpDir, d.getSecretFileName())
+			if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
+				l.Errorf("failed to remove secret from tmp directory: %s\n", err)
+			}
 		}
 	}
 
-	deleteCommand = fmt.Sprintf("rm -f %v/%v | true", d.deploymentTmpDir, d.getConfigFileName())
-	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		l.Errorf("failed to remove config from tmp directory: %v\n", err)
+	if d.deploymentTmpDir != "" {
+		deleteCommand = fmt.Sprintf("rm -f %s/%s | true", d.deploymentTmpDir, d.getConfigFileName())
+		if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
+			l.Errorf("failed to remove config from tmp directory: %s\n", err)
+		}
 	}
 
 	l.Info("done.")
@@ -332,9 +336,9 @@ func NewDeployment(args DeploymentArgs) (*Deployment, error) {
 
 	deploymentTmpDir := filepath.Join("/tmp", defaultDeploymentTmpDirName)
 
-	if _, err := args.RemoteClient.Exec(fmt.Sprintf("mkdir -p %v", deploymentTmpDir)); err != nil {
+	if _, err := args.RemoteClient.Exec(fmt.Sprintf("mkdir -p %s", deploymentTmpDir)); err != nil {
 		return nil, fmt.Errorf(
-			"NewDeployment(): cannot create '%v' directory on %v",
+			"NewDeployment(): cannot create '%s' directory on %+v",
 			deploymentTmpDir,
 			args.RemoteClient,
 		)

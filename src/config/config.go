@@ -56,7 +56,7 @@ func (c *Config) Refresh() (changed bool, err error) {
 
 	fileInfo, err := os.Stat(c.filePath)
 	if err != nil {
-		return false, fmt.Errorf("Cannot get stats for '%v' config file: %v", c.filePath, err)
+		return false, fmt.Errorf("Cannot get stats for '%s' config file: %s", c.filePath, err)
 	}
 
 	changed = c.lastMobTime != fileInfo.ModTime()
@@ -66,11 +66,11 @@ func (c *Config) Refresh() (changed bool, err error) {
 
 		content, err := ioutil.ReadFile(c.filePath)
 		if err != nil {
-			return changed, fmt.Errorf("Cannot read '%v' config file: %v", c.filePath, err)
+			return changed, fmt.Errorf("Cannot read '%s' config file: %s", c.filePath, err)
 		}
 
 		if err := yaml.Unmarshal(content, c); err != nil {
-			return changed, fmt.Errorf("Cannot parse yaml in '%v' config file: %v", c.filePath, err)
+			return changed, fmt.Errorf("Cannot parse yaml in '%s' config file: %s", c.filePath, err)
 		}
 
 		if err := c.Validate(); err != nil {
@@ -94,7 +94,7 @@ func (c *Config) Validate() error {
 				errors = append(
 					errors,
 					fmt.Sprintf(
-						"parameter 'restIp' has invalid address: '%v', should be 'schema://host:port'",
+						"parameter 'restIp' has invalid address: '%s', should be 'schema://host:port'",
 						address,
 					),
 				)
@@ -115,7 +115,7 @@ func (c *Config) Validate() error {
 	}
 
 	if len(errors) != 0 {
-		return fmt.Errorf("Bad format, fix following issues: %v", strings.Join(errors, "; "))
+		return fmt.Errorf("Bad format, fix following issues: %s", strings.Join(errors, "; "))
 	}
 
 	return nil

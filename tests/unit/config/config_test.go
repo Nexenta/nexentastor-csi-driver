@@ -21,7 +21,7 @@ var testConfigParams = map[string]string{
 
 func testParam(t *testing.T, name, expected, given string) {
 	if expected != given {
-		t.Errorf("Param '%v' expected to be '%v', but got '%v' instead", name, expected, given)
+		t.Errorf("Param '%s' expected to be '%s', but got '%s' instead", name, expected, given)
 	}
 }
 
@@ -30,7 +30,7 @@ func TestConfig_Full(t *testing.T) {
 
 	c, err := config.New(path)
 	if err != nil {
-		t.Fatalf("cannot read config file '%v': %v", path, err)
+		t.Fatalf("cannot read config file '%s': %s", path, err)
 	}
 
 	testParam(t, "Address", testConfigParams["Address"], c.Address)
@@ -47,7 +47,7 @@ func TestConfig_Short(t *testing.T) {
 
 	c, err := config.New(path)
 	if err != nil {
-		t.Fatalf("cannot read config file '%v': %v", path, err)
+		t.Fatalf("cannot read config file '%s': %s", path, err)
 	}
 
 	testParam(t, "Address", testConfigParams["Address"], c.Address)
@@ -65,7 +65,7 @@ func TestConfig_Not_Valid(t *testing.T) {
 		path := "./_fixtures/test-config-not-valid"
 		c, err := config.New(path)
 		if err == nil {
-			t.Fatalf("not valid '%v' config file should return an error, but got this: %v", path, c)
+			t.Fatalf("not valid '%s' config file should return an error, but got this: %+v", path, c)
 		}
 	})
 
@@ -74,13 +74,13 @@ func TestConfig_Not_Valid(t *testing.T) {
 		c, err := config.New(path)
 		if err == nil {
 			t.Fatalf(
-				"not valid 'defaultMountFsType' (file: %v) value should return an error, but got this: %v",
+				"not valid 'defaultMountFsType' (file: %s) value should return an error, but got this: %+v",
 				path,
 				c,
 			)
 		} else if !strings.Contains(err.Error(), "defaultMountFsType") {
 			t.Fatalf(
-				"not valid 'defaultMountFsType' (file: %v) error text should contain property name, but got this: %v",
+				"not valid 'defaultMountFsType' (file: %s) error text should contain property name, but got this: %+v",
 				path,
 				err,
 			)
@@ -91,7 +91,7 @@ func TestConfig_Not_Valid(t *testing.T) {
 		path := "./_fixtures/dir-without-config"
 		c, err := config.New(path)
 		if err == nil {
-			t.Fatalf("not existing config file '%v' returns config: %v", path, c)
+			t.Fatalf("not existing config file '%s' returns config: %+v", path, c)
 		}
 	})
 
@@ -99,9 +99,9 @@ func TestConfig_Not_Valid(t *testing.T) {
 		path := "./_fixtures/test-config-not-valid-address"
 		c, err := config.New(path)
 		if err == nil {
-			t.Fatalf("should return an error for file '%v' but returns config: %v", path, c)
+			t.Fatalf("should return an error for file '%s' but returns config: %+v", path, c)
 		} else if !strings.Contains(err.Error(), "BAD_PORT") {
-			t.Fatalf("should return an error with 'BAD_PORT' text for file '%v' but returns this: %v", path, err)
+			t.Fatalf("should return an error with 'BAD_PORT' text for file '%s' but returns this: %s", path, err)
 		}
 	})
 }

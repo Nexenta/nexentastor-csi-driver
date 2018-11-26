@@ -48,7 +48,7 @@ func (client *Client) BuildURI(uri string, params map[string]string) string {
 
 	paramsStr = paramValues.Encode()
 	if len(paramsStr) != 0 {
-		uri = fmt.Sprintf("%v?%v", uri, paramsStr)
+		uri = fmt.Sprintf("%s?%s", uri, paramsStr)
 	}
 
 	return uri
@@ -61,12 +61,12 @@ func (client *Client) Send(method, path string, data interface{}) (int, []byte, 
 	client.requestID++
 	l := client.log.WithFields(logrus.Fields{
 		"func":  "Send()",
-		"req":   fmt.Sprintf("%v %v", method, path),
+		"req":   fmt.Sprintf("%s %s", method, path),
 		"reqID": client.requestID,
 	})
 	client.mu.Unlock()
 
-	uri := fmt.Sprintf("%v/%v", client.address, path)
+	uri := fmt.Sprintf("%s/%s", client.address, path)
 
 	l.Debug("send request")
 
@@ -85,24 +85,24 @@ func (client *Client) Send(method, path string, data interface{}) (int, []byte, 
 
 	req, err := http.NewRequest(method, uri, jsonDataReader)
 	if err != nil {
-		l.Errorf("request creation error: %v", err)
+		l.Errorf("request creation error: %s", err)
 		return 0, nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	if len(client.authToken) != 0 {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", client.authToken))
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", client.authToken))
 	}
 
 	res, err := client.httpClient.Do(req)
 	if err != nil {
-		l.Errorf("request error: %v", err)
+		l.Errorf("request error: %s", err)
 		return 0, nil, err
 	}
 
 	defer res.Body.Close()
 
-	l.Debugf("response status code: %v", res.StatusCode)
+	l.Debugf("response status code: %d", res.StatusCode)
 
 	// validate response body
 	bodyBytes, err := ioutil.ReadAll(res.Body)
@@ -129,7 +129,7 @@ type ClientArgs struct {
 func NewClient(args ClientArgs) (client ClientInterface, err error) {
 	l := args.Log.WithField("cmp", "RestClient")
 
-	l.Debugf("created for %v", args.Address)
+	l.Debugf("created for %s", args.Address)
 
 	tr := &http.Transport{
 		IdleConnTimeout: 60 * time.Second,

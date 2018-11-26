@@ -30,7 +30,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Printf("%v@%v-%v (%v)\n", driver.Name, driver.Version, driver.Commit, driver.DateTime)
+		fmt.Printf("%s@%s-%s (%s)\n", driver.Name, driver.Version, driver.Commit, driver.DateTime)
 		os.Exit(0)
 	}
 
@@ -47,9 +47,9 @@ func main() {
 	})
 
 	l.Info("Run driver with CLI options:")
-	l.Infof("- CSI endpoint: '%v'", *endpoint)
-	l.Infof("- Node ID:      '%v'", *nodeID)
-	l.Infof("- Role:         '%v'", *role)
+	l.Infof("- CSI endpoint: '%s'", *endpoint)
+	l.Infof("- Node ID:      '%s'", *nodeID)
+	l.Infof("- Role:         '%s'", *role)
 
 	// validate driver instance role
 	validatedRole, err := driver.ParseRole(string(*role))
@@ -60,9 +60,9 @@ func main() {
 	// initial read and validate config file
 	cfg, err := config.New(defaultConfigDir)
 	if err != nil {
-		l.Fatalf("Cannot use config file: %v", err)
+		l.Fatalf("Cannot use config file: %s", err)
 	}
-	l.Infof("Config file: '%v'", cfg.GetFilePath())
+	l.Infof("Config file: '%s'", cfg.GetFilePath())
 
 	// logger level
 	if cfg.Debug {
@@ -72,10 +72,10 @@ func main() {
 	}
 
 	l.Info("Config file options:")
-	l.Infof("- NexentaStor address(es): %v", cfg.Address)
-	l.Infof("- NexentaStor username: %v", cfg.Username)
-	l.Infof("- Default dataset: %v", cfg.DefaultDataset)
-	l.Infof("- Default data IP: %v", cfg.DefaultDataIP)
+	l.Infof("- NexentaStor address(es): %s", cfg.Address)
+	l.Infof("- NexentaStor username: %s", cfg.Username)
+	l.Infof("- Default dataset: %s", cfg.DefaultDataset)
+	l.Infof("- Default data IP: %s", cfg.DefaultDataIP)
 
 	d, err := driver.NewDriver(driver.Args{
 		Role:     validatedRole,
@@ -107,8 +107,8 @@ func main() {
 // Kubernetes retrieves termination messages from the termination message file of a Container,
 // which as a default value of /dev/termination-log
 func writeTerminationMessage(err error, l *logrus.Entry) {
-	writeErr := ioutil.WriteFile("/dev/termination-log", []byte(fmt.Sprintf("\n%v\n", err)), os.ModePerm)
+	writeErr := ioutil.WriteFile("/dev/termination-log", []byte(fmt.Sprintf("\n%s\n", err)), os.ModePerm)
 	if writeErr != nil {
-		l.Warnf("Failed to write termination message: %v", writeErr)
+		l.Warnf("Failed to write termination message: %s", writeErr)
 	}
 }

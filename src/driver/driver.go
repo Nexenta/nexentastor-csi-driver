@@ -69,7 +69,7 @@ func (d *Driver) Run() error {
 
 	listener, err := net.Listen(parsedURL.Scheme, socket)
 	if err != nil {
-		return fmt.Errorf("Failed to create socket listener: %v", err)
+		return fmt.Errorf("Failed to create socket listener: %s", err)
 	}
 
 	d.server = grpc.NewServer(grpc.UnaryInterceptor(d.grpcErrorHandler))
@@ -80,7 +80,7 @@ func (d *Driver) Run() error {
 	if d.role.IsController() {
 		controllerServer, err := NewControllerServer(d)
 		if err != nil {
-			return fmt.Errorf("Failed to create ControllerServer: %v", err)
+			return fmt.Errorf("Failed to create ControllerServer: %s", err)
 		}
 		csi.RegisterControllerServer(d.server, controllerServer)
 	}
@@ -88,7 +88,7 @@ func (d *Driver) Run() error {
 	if d.role.IsNode() {
 		nodeServer, err := NewNodeServer(d)
 		if err != nil {
-			return fmt.Errorf("Failed to create NodeServer: %v", err)
+			return fmt.Errorf("Failed to create NodeServer: %s", err)
 		}
 		csi.RegisterNodeServer(d.server, nodeServer)
 	}
@@ -108,16 +108,16 @@ func (d *Driver) Validate() error {
 		Log:      d.log,
 	})
 	if err != nil {
-		return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %v", err)
+		return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %s", err)
 	}
 
 	for _, nsProvider := range nsResolver.Nodes {
 		license, err := nsProvider.GetLicense()
 		if err != nil {
-			return fmt.Errorf("Driver validation failed: %v", err)
+			return fmt.Errorf("Driver validation failed: %s", err)
 		} else if !license.Valid {
 			return fmt.Errorf(
-				"Driver validation failed, NexentaStor %v has invalid license (expired: %v)",
+				"Driver validation failed, NexentaStor %s has invalid license (expired: %s)",
 				nsProvider,
 				license.Expires,
 			)
@@ -168,7 +168,7 @@ func NewDriver(args Args) (*Driver, error) {
 		return nil, fmt.Errorf("args.Log is required")
 	}
 
-	l.Infof("create new driver: %v@%v-%v (%v)", Name, Version, Commit, DateTime)
+	l.Infof("create new driver: %s@%s-%s (%s)", Name, Version, Commit, DateTime)
 
 	d := &Driver{
 		role:     args.Role,

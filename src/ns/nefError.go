@@ -11,7 +11,7 @@ type NefError struct {
 }
 
 func (e *NefError) Error() string {
-	return fmt.Sprintf("%v [code: %v]", e.Err, e.Code)
+	return fmt.Sprintf("%s [code: %s]", e.Err, e.Code)
 }
 
 // GetNefErrorCode - treats an error as NefError and returns its code in case of success

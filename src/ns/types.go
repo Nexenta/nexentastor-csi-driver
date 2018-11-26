@@ -31,6 +31,10 @@ type Filesystem struct {
 	BytesUsed      int64  `json:"bytesUsed"`
 }
 
+func (fs *Filesystem) String() string {
+	return fs.Path
+}
+
 // GetDefaultSmbShareName - get default SMB share name (all slashes get replaced by underscore)
 // Converts '/pool/dataset/fs' to 'pool_dataset_fs'
 func (fs *Filesystem) GetDefaultSmbShareName() string {

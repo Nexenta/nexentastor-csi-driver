@@ -42,7 +42,7 @@ func (c *Client) Exec(cmd string) (string, error) {
 
 	out, err := exec.Command("ssh", c.ConnectionString, cmd).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("Command 'ssh %v %v' error: %v; out: %s", c.ConnectionString, cmd, err, out)
+		return "", fmt.Errorf("Command 'ssh %s %s' error: %s; out: %s", c.ConnectionString, cmd, err, out)
 	}
 	return fmt.Sprintf("%s", out), nil
 }
@@ -50,7 +50,7 @@ func (c *Client) Exec(cmd string) (string, error) {
 // ExecAndWaitRegExp - wait command output to to satisfy regex or return error on timeout
 func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool) error {
 	l := c.log.WithField("func", "ExecAndWaitRegExp()")
-	l.Infof("%v # wait: '%v'", cmd, re)
+	l.Infof("%s # wait: '%v'", cmd, re)
 
 	done := make(chan error)
 	timer := time.NewTimer(0)
@@ -86,8 +86,8 @@ func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool)
 				timer.Stop()
 				done <- fmt.Errorf(
 					"Checking cmd output timeout exceeded (%v), "+
-						"cmd: '%v', regexp: '%v', inverted: %v, last output:\n"+
-						"---\n%v\n---\n",
+						"cmd: '%s', regexp: '%v', inverted: %t, last output:\n"+
+						"---\n%s\n---\n",
 					c.WaitTimeout,
 					cmd,
 					re,
@@ -106,12 +106,12 @@ func (c *Client) ExecAndWaitRegExp(cmd string, re *regexp.Regexp, inverted bool)
 func (c *Client) CopyFiles(from, to string) error {
 	l := c.log.WithField("func", "CopyFiles()")
 
-	toAddress := fmt.Sprintf("%v:%v", c.ConnectionString, to)
+	toAddress := fmt.Sprintf("%s:%s", c.ConnectionString, to)
 
-	l.Infof("scp %v %v\n", from, toAddress)
+	l.Infof("scp %s %s\n", from, toAddress)
 
 	if out, err := exec.Command("scp", from, toAddress).CombinedOutput(); err != nil {
-		return fmt.Errorf("Command 'scp %v %v' error: %v; out: %s", from, toAddress, err, out)
+		return fmt.Errorf("Command 'scp %s %s' error: %s; out: %s", from, toAddress, err, out)
 	}
 
 	return nil
@@ -133,7 +133,7 @@ func NewClient(connectionString string, log *logrus.Entry) (*Client, error) {
 
 	_, err := client.Exec("date")
 	if err != nil {
-		return nil, fmt.Errorf("Failed to validate %v connection: %v", connectionString, err)
+		return nil, fmt.Errorf("Failed to validate %s connection: %s", connectionString, err)
 	}
 
 	return client, nil

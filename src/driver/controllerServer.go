@@ -82,7 +82,7 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 
 	err := s.refreshConfig()
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
 	nsProvider, err := s.resolveNS(s.config.DefaultDataset)
@@ -94,7 +94,7 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 
 	filesystems, err := nsProvider.GetFilesystems(s.config.DefaultDataset)
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot get filesystems: %v", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot get filesystems: %s", err)
 	}
 
 	entries := make([]*csi.ListVolumesResponse_Entry, len(filesystems))

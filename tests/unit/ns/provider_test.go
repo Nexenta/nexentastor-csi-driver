@@ -15,7 +15,7 @@ func TestProvider_Filesystem(t *testing.T) {
 	t.Run("Filesystem.GetDefaultSmbShareName() should return default SMB share name", func(t *testing.T) {
 		shareName := fs.GetDefaultSmbShareName()
 		if shareName != expectedShareName {
-			t.Errorf("expected '%v', but got '%v' instead", expectedShareName, shareName)
+			t.Errorf("expected '%s', but got '%s' instead", expectedShareName, shareName)
 		}
 	})
 }

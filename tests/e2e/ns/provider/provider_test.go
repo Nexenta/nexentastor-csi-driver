@@ -82,8 +82,8 @@ func TestMain(m *testing.M) {
 		username:   *username,
 		password:   *password,
 		pool:       *pool,
-		dataset:    fmt.Sprintf("%v/%v", *pool, *dataset),
-		filesystem: fmt.Sprintf("%v/%v/%v", *pool, *dataset, *filesystem),
+		dataset:    fmt.Sprintf("%s/%s", *pool, *dataset),
+		filesystem: fmt.Sprintf("%s/%s/%s", *pool, *dataset, *filesystem),
 		cluster:    *cluster,
 	}
 
@@ -91,7 +91,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestProvider_NewProvider(t *testing.T) {
-	t.Logf("Using NS: %v", c.address)
+	t.Logf("Using NS: %s", c.address)
 
 	nsp, err := ns.NewProvider(ns.ProviderArgs{
 		Address:  c.address,
@@ -108,9 +108,9 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if !license.Valid {
-			t.Errorf("License %v is not valid, on NS %v", license, c.address)
+			t.Errorf("License %+v is not valid, on NS %s", license, c.address)
 		} else if license.Expires[0:2] != "20" {
-			t.Errorf("License expires date should starts with '20': %v, on NS %v", license, c.address)
+			t.Errorf("License expires date should starts with '20': %+v, on NS %s", license, c.address)
 		}
 	})
 
@@ -119,7 +119,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if !poolArrayContains(pools, c.pool) {
-			t.Errorf("Pool %v doesn't exist on NS %v", c.pool, c.address)
+			t.Errorf("Pool %s doesn't exist on NS %s", c.pool, c.address)
 		}
 	})
 
@@ -128,9 +128,9 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if filesystemArrayContains(filesystems, c.pool) {
-			t.Errorf("Pool %v should not be in the results", c.pool)
+			t.Errorf("Pool %s should not be in the results", c.pool)
 		} else if !filesystemArrayContains(filesystems, c.dataset) {
-			t.Errorf("Dataset %v doesn't exist", c.dataset)
+			t.Errorf("Dataset %s doesn't exist", c.dataset)
 		}
 	})
 
@@ -139,7 +139,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if filesystem.Path != c.dataset {
-			t.Errorf("No %v filesystem in the result", c.dataset)
+			t.Errorf("No %s filesystem in the result", c.dataset)
 		}
 	})
 
@@ -149,7 +149,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			t.Error(err)
 		} else if filesystem.Path != "" {
-			t.Errorf("Filesystem %v should not exist, but found in the result: %v", nonExistingName, filesystem)
+			t.Errorf("Filesystem %s should not exist, but found in the result: %v", nonExistingName, filesystem)
 		}
 	})
 
@@ -159,7 +159,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %v already exists on NS %v", c.filesystem, c.address)
+			t.Skipf("Filesystem %s already exists on NS %s", c.filesystem, c.address)
 			return
 		}
 
@@ -174,7 +174,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if !filesystemArrayContains(filesystems, c.filesystem) {
-			t.Errorf("New filesystem %v wasn't created on NS %v", c.filesystem, c.address)
+			t.Errorf("New filesystem %s wasn't created on NS %s", c.filesystem, c.address)
 		}
 	})
 
@@ -183,9 +183,9 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if filesystem.SharedOverNfs {
-			t.Errorf("Created filesystem %v should not be shared over NFS (NS %v)", c.filesystem, c.address)
+			t.Errorf("Created filesystem %s should not be shared over NFS (NS %s)", c.filesystem, c.address)
 		} else if filesystem.SharedOverSmb {
-			t.Errorf("Created filesystem %v should not be shared over SMB (NS %v)", c.filesystem, c.address)
+			t.Errorf("Created filesystem %s should not be shared over SMB (NS %s)", c.filesystem, c.address)
 		}
 	})
 
@@ -195,7 +195,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if !filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
+			t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
 			return
 		}
 
@@ -212,7 +212,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if !filesystem.SharedOverNfs {
-			t.Errorf("Created filesystem %v should be shared (NS %v)", c.filesystem, c.address)
+			t.Errorf("Created filesystem %s should be shared (NS %s)", c.filesystem, c.address)
 		}
 	})
 
@@ -225,7 +225,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if !strings.Contains(fmt.Sprintf("%s", out), c.filesystem) {
-			t.Errorf("cannot find '%v' nfs in the 'showmount' output: \n---\n%s\n---\n", c.filesystem, out)
+			t.Errorf("cannot find '%s' nfs in the 'showmount' output: \n---\n%s\n---\n", c.filesystem, out)
 		}
 	})
 
@@ -235,7 +235,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if !filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
+			t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
 			return
 		}
 
@@ -257,7 +257,7 @@ func TestProvider_NewProvider(t *testing.T) {
 					t.Error(err)
 					return
 				} else if !filesystemArrayContains(filesystems, c.filesystem) {
-					t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
+					t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
 					return
 				}
 
@@ -276,7 +276,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			} else if !filesystem.SharedOverSmb {
-				t.Errorf("Created filesystem %v should be shared over SMB (NS %v)", c.filesystem, c.address)
+				t.Errorf("Created filesystem %s should be shared over SMB (NS %s)", c.filesystem, c.address)
 			}
 		})
 
@@ -316,7 +316,7 @@ func TestProvider_NewProvider(t *testing.T) {
 				t.Error(err)
 				return
 			} else if !filesystemArrayContains(filesystems, c.filesystem) {
-				t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
+				t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
 				return
 			}
 
@@ -333,7 +333,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if !filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %v doesn't exist on NS %v", c.filesystem, c.address)
+			t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
 			return
 		}
 
@@ -346,7 +346,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if filesystemArrayContains(filesystems, c.filesystem) {
-			t.Errorf("Filesystem %v still exists on NS %v", c.filesystem, c.address)
+			t.Errorf("Filesystem %s still exists on NS %s", c.filesystem, c.address)
 		}
 	})
 
@@ -356,7 +356,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %v already exists on NS %v", c.filesystem, c.address)
+			t.Skipf("Filesystem %s already exists on NS %s", c.filesystem, c.address)
 			return
 		}
 
@@ -376,7 +376,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			return
 		} else if filesystem.GetReferencedQuotaSize() != referencedQuotaSize {
 			t.Errorf(
-				"New filesystem %v referenced quota size expected to be %v, but got %v (NS %v)",
+				"New filesystem %s referenced quota size expected to be %d, but got %d (NS %s)",
 				filesystem.Path,
 				referencedQuotaSize,
 				filesystem.GetReferencedQuotaSize(),
@@ -394,7 +394,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %v already exists on NS %v", c.filesystem, c.address)
+			t.Skipf("Filesystem %s already exists on NS %s", c.filesystem, c.address)
 			return
 		}
 
@@ -414,10 +414,10 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		} else if availableCapacity == 0 {
-			t.Errorf("New filesystem %v indicates wrong available capacity (0), on: %v", c.filesystem, c.address)
+			t.Errorf("New filesystem %s indicates wrong available capacity (0), on: %s", c.filesystem, c.address)
 		} else if availableCapacity >= referencedQuotaSize {
 			t.Errorf(
-				"New filesystem %v available capacity expected to be more or equal to %v, but got %v (NS %v)",
+				"New filesystem %s available capacity expected to be more or equal to %d, but got %d (NS %s)",
 				c.filesystem,
 				referencedQuotaSize,
 				availableCapacity,

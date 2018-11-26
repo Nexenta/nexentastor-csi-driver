@@ -75,7 +75,7 @@ func TestMain(m *testing.M) {
 func TestDriver_deploy(t *testing.T) {
 	rc, err := remote.NewClient(c.k8sConnectionString, l)
 	if err != nil {
-		t.Errorf("Cannot create connection: %v", err)
+		t.Errorf("Cannot create connection: %s", err)
 		return
 	}
 
@@ -88,7 +88,7 @@ func TestDriver_deploy(t *testing.T) {
 	})
 	defer k8sDriver.CleanUp()
 	if err != nil {
-		t.Errorf("Cannot create K8s deployment: %v", err)
+		t.Errorf("Cannot create K8s deployment: %s", err)
 		return
 	}
 
@@ -113,7 +113,7 @@ func TestDriver_deploy(t *testing.T) {
 
 	t.Run("install nginx with dynamic volume provisioning", func(t *testing.T) {
 		getNginxRunCommand := func(cmd string) string {
-			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%v\"", cmd)
+			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%s\"", cmd)
 		}
 
 		k8sNginx, err := k8s.NewDeployment(k8s.DeploymentArgs{
@@ -123,7 +123,7 @@ func TestDriver_deploy(t *testing.T) {
 		})
 		defer k8sNginx.CleanUp()
 		if err != nil {
-			t.Fatalf("Cannot create K8s nginx deployment: %v", err)
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
 		}
 
 		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-rw.*Running"}); err != nil {
@@ -132,12 +132,12 @@ func TestDriver_deploy(t *testing.T) {
 
 		// write data to nginx container
 		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
-			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %v", err))
+			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %s", err))
 		}
 
 		// check if data has been written
 		if _, err := rc.Exec(getNginxRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
-			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %v", err))
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
 		}
 
 		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-rw"}); err != nil {
@@ -147,7 +147,7 @@ func TestDriver_deploy(t *testing.T) {
 
 	t.Run("install nginx with dynamic volume provisioning [read only]", func(t *testing.T) {
 		getNginxRunCommand := func(cmd string) string {
-			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%v\"", cmd)
+			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%s\"", cmd)
 		}
 
 		k8sNginx, err := k8s.NewDeployment(k8s.DeploymentArgs{
@@ -157,7 +157,7 @@ func TestDriver_deploy(t *testing.T) {
 		})
 		defer k8sNginx.CleanUp()
 		if err != nil {
-			t.Fatalf("Cannot create K8s nginx deployment: %v", err)
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
 		}
 
 		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-ro.*Running"}); err != nil {

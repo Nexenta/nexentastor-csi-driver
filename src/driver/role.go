@@ -51,7 +51,7 @@ func ParseRole(from string) (Role, error) {
 		}
 	}
 	return RoleAll, fmt.Errorf(
-		"role '%s' is not one of supported roles: %v, default '%v' will be used",
+		"role '%s' is not one of supported roles: %v, default '%s' will be used",
 		from,
 		Roles,
 		RoleAll,

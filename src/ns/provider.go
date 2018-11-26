@@ -69,10 +69,10 @@ func (nsp *Provider) parseNefError(bodyBytes []byte, prefix string) error {
 		restErrorMessage = fmt.Sprint(response.Name)
 	}
 	if response.Message != "" {
-		restErrorMessage = fmt.Sprintf("%v: %v", restErrorMessage, response.Message)
+		restErrorMessage = fmt.Sprintf("%s: %s", restErrorMessage, response.Message)
 	}
 	if response.Errors != "" {
-		restErrorMessage = fmt.Sprintf("%v, errors: [%v]", restErrorMessage, response.Errors)
+		restErrorMessage = fmt.Sprintf("%s, errors: [%s]", restErrorMessage, response.Errors)
 	}
 	if response.Code != "" {
 		restErrorCode = response.Code
@@ -80,7 +80,7 @@ func (nsp *Provider) parseNefError(bodyBytes []byte, prefix string) error {
 
 	if len(restErrorMessage) > 0 {
 		return &NefError{
-			Err:  fmt.Errorf("%v: %v", prefix, restErrorMessage),
+			Err:  fmt.Errorf("%s: %s", prefix, restErrorMessage),
 			Code: restErrorCode,
 		}
 	}
@@ -135,7 +135,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) ([]byt
 	// log in again if user is not logged in
 	if statusCode == 401 && IsAuthNefError(nefError) {
 		// do login call if used is not authorized in api
-		l.Debugf("log in as '%v'...", nsp.Username)
+		l.Debugf("log in as '%s'...", nsp.Username)
 
 		err = nsp.LogIn()
 		if err != nil {
@@ -159,7 +159,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) ([]byt
 
 		err = nsp.waitForAsyncJob(strings.TrimPrefix(href, "/jobStatus/"))
 		if err != nil {
-			l.Debugf("waitForAsyncJob() error: %v", err)
+			l.Debugf("waitForAsyncJob() error: %s", err)
 		}
 	} else if statusCode >= 300 {
 		nefError := nsp.parseNefError(bodyBytes, "request error")
@@ -167,7 +167,7 @@ func (nsp *Provider) doAuthRequest(method, path string, data interface{}) ([]byt
 			err = nefError
 		} else {
 			err = fmt.Errorf(
-				"Request returned %v code, but response body doesn't contain explanation: %v",
+				"Request returned %d code, but response body doesn't contain explanation: %v",
 				statusCode,
 				bodyBytes,
 			)
@@ -218,7 +218,7 @@ func (nsp *Provider) waitForAsyncJob(jobID string) (err error) {
 			}
 		case <-timeout:
 			timer.Stop()
-			return fmt.Errorf("Checking job status timeout exceeded (%vs)", checkJobStatusTimeout)
+			return fmt.Errorf("Checking job status timeout exceeded (%ds)", checkJobStatusTimeout)
 		}
 	}
 }
@@ -238,14 +238,14 @@ func NewProvider(args ProviderArgs) (nsp ProviderInterface, err error) {
 		"ns":  fmt.Sprint(args.Address),
 	})
 
-	l.Debugf("created for %v", args.Address)
+	l.Debugf("created for %s", args.Address)
 
 	restClient, err := rest.NewClient(rest.ClientArgs{
 		Address: args.Address,
 		Log:     l,
 	})
 	if err != nil {
-		l.Errorf("cannot create REST client for: %v", args.Address)
+		l.Errorf("cannot create REST client for: %s", args.Address)
 	}
 
 	nsp = &Provider{

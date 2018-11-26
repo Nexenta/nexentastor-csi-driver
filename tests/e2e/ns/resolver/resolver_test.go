@@ -68,15 +68,15 @@ func TestMain(m *testing.M) {
 		username:   *username,
 		password:   *password,
 		pool:       *pool,
-		dataset:    fmt.Sprintf("%v/%v", *pool, *dataset),
-		filesystem: fmt.Sprintf("%v/%v/%v", *pool, *dataset, *filesystem),
+		dataset:    fmt.Sprintf("%s/%s", *pool, *dataset),
+		filesystem: fmt.Sprintf("%s/%s/%s", *pool, *dataset, *filesystem),
 	}
 
 	os.Exit(m.Run())
 }
 
 func TestResolver_NewResolverMulti(t *testing.T) {
-	t.Logf("Using NS: %v", c.address)
+	t.Logf("Using NS: %s", c.address)
 
 	nsr, err := ns.NewResolver(ns.ResolverArgs{
 		Address:  c.address,
@@ -101,10 +101,10 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 
 		filesystems, err := nsProvider.GetFilesystems(c.pool)
 		if err != nil {
-			t.Errorf("NS Error: %v", err)
+			t.Errorf("NS Error: %s", err)
 			return
 		} else if !filesystemArrayContains(filesystems, c.dataset) {
-			t.Errorf("Returned NS (%v) doesn't contain dataset: %v", nsProvider, c.dataset)
+			t.Errorf("Returned NS (%s) doesn't contain dataset: %s", nsProvider, c.dataset)
 			return
 		}
 	})
@@ -112,7 +112,7 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 	t.Run("Resolve() should return error if dataset not exists", func(t *testing.T) {
 		nsProvider, err := nsr.Resolve("not/exists")
 		if err == nil {
-			t.Errorf("Resolver return NS for non-existing datastore: %v", nsProvider)
+			t.Errorf("Resolver return NS for non-existing datastore: %s", nsProvider)
 			return
 		}
 	})
@@ -124,7 +124,7 @@ func TestResolver_NewResolverMulti(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		} else if isCluster != expectedIsCluster {
-			t.Errorf("expected to be '%v' but got '%v' for '%+v' NS", expectedIsCluster, !isCluster, nsr)
+			t.Errorf("expected to be '%t' but got '%t' for '%+v' NS", expectedIsCluster, isCluster, nsr)
 		}
 	})
 }

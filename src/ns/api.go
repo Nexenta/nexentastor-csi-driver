@@ -23,7 +23,7 @@ func (nsp *Provider) LogIn() error {
 		if nefError != nil {
 			if IsAuthNefError(nefError) {
 				l.Errorf(
-					"login to NexentaStor %v failed (username: '%v'), "+
+					"login to NexentaStor %s failed (username: '%s'), "+
 						"please make sure to use correct address and password",
 					nsp.Address,
 					nsp.Username)
@@ -158,7 +158,7 @@ func (nsp *Provider) DestroyFilesystem(path string) error {
 		return fmt.Errorf("Filesystem path is required")
 	}
 
-	uri := fmt.Sprintf("/storage/filesystems/%v", url.PathEscape(path))
+	uri := fmt.Sprintf("/storage/filesystems/%s", url.PathEscape(path))
 
 	return nsp.sendRequest("DELETE", uri, nil)
 }
@@ -198,7 +198,7 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 		return fmt.Errorf("Filesystem path is empty")
 	}
 
-	uri := fmt.Sprintf("/nas/nfs/%v", url.PathEscape(path))
+	uri := fmt.Sprintf("/nas/nfs/%s", url.PathEscape(path))
 
 	return nsp.sendRequest("DELETE", uri, nil)
 }
@@ -231,7 +231,7 @@ func (nsp *Provider) GetSmbShareName(path string) (string, error) {
 	}
 
 	uri := nsp.RestClient.BuildURI(
-		fmt.Sprintf("/nas/smb/%v", url.PathEscape(path)),
+		fmt.Sprintf("/nas/smb/%s", url.PathEscape(path)),
 		map[string]string{"fields": "shareName,shareState"}, //TODO check shareState value?
 	)
 
@@ -250,7 +250,7 @@ func (nsp *Provider) DeleteSmbShare(path string) error {
 		return fmt.Errorf("Filesystem path is empty")
 	}
 
-	uri := fmt.Sprintf("/nas/smb/%v", url.PathEscape(path))
+	uri := fmt.Sprintf("/nas/smb/%s", url.PathEscape(path))
 
 	return nsp.sendRequest("DELETE", uri, nil)
 }
@@ -261,7 +261,7 @@ func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error 
 		return fmt.Errorf("Filesystem path is required")
 	}
 
-	uri := fmt.Sprintf("/storage/filesystems/%v/acl", url.PathEscape(path))
+	uri := fmt.Sprintf("/storage/filesystems/%s/acl", url.PathEscape(path))
 
 	permissions := []string{}
 	if aclRuleSet == ACLReadOnly {
@@ -300,7 +300,7 @@ func (nsp *Provider) GetRSFClusters() ([]RSFCluster, error) {
 
 // IsJobDone - check if job is done by jobId
 func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
-	uri := fmt.Sprintf("/jobStatus/%v", jobID)
+	uri := fmt.Sprintf("/jobStatus/%s", jobID)
 
 	statusCode, bodyBytes, err := nsp.RestClient.Send("GET", uri, nil)
 	if err != nil { // request failed
@@ -317,7 +317,7 @@ func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 		err = nefError
 	} else {
 		err = fmt.Errorf(
-			"Job request returned %v code, but response body doesn't contain explanation: %s",
+			"Job request returned %d code, but response body doesn't contain explanation: %s",
 			statusCode,
 			bodyBytes,
 		)

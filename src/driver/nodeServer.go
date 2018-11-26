@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
-	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common" //TODO get rid of it
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -27,8 +26,7 @@ import (
 
 // NodeServer - k8s csi driver node server
 type NodeServer struct {
-	*csiCommon.DefaultNodeServer
-
+	nodeID     string
 	nsResolver *ns.Resolver
 	config     *config.Config
 	log        *logrus.Entry
@@ -48,7 +46,7 @@ func (s *NodeServer) refreshConfig() error {
 			Log:      s.log,
 		})
 		if err != nil {
-			return fmt.Errorf("Cannot create NexentaStor resolver: %v", err)
+			return fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
 		}
 	}
 
@@ -57,10 +55,10 @@ func (s *NodeServer) refreshConfig() error {
 
 func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
 	nsProvider, err := s.nsResolver.Resolve(datasetPath)
-	if err != nil {
+	if err != nil { //TODO check not found error
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
-			"Cannot resolve '%v' on any NexentaStor(s): %v",
+			"Cannot resolve '%s' on any NexentaStor(s): %s",
 			datasetPath,
 			err,
 		)
@@ -68,12 +66,29 @@ func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error)
 	return nsProvider, nil
 }
 
+// NodeGetId - get node id
+func (s *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
+	s.log.WithField("func", "NodeGetId()").Infof("request: '%+v'", req)
+
+	return &csi.NodeGetIdResponse{
+		NodeId: s.nodeID,
+	}, nil
+}
+
+// NodeGetInfo - get node info
+func (s *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	return &csi.NodeGetInfoResponse{
+		NodeId: s.nodeID,
+	}, nil
+}
+
 // NodeGetCapabilities - get node capabilities
 func (s *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (
 	*csi.NodeGetCapabilitiesResponse,
 	error,
 ) {
-	s.log.WithField("func", "NodeGetCapabilities()").Infof("request: %+v", req)
+	s.log.WithField("func", "NodeGetCapabilities()").Infof("request: '%+v'", req)
+
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			{
@@ -93,7 +108,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	error,
 ) {
 	l := s.log.WithField("func", "NodePublishVolume()")
-	l.Infof("request: %+v", req)
+	l.Infof("request: '%+v'", req)
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -108,7 +123,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	// read and validate config
 	err := s.refreshConfig()
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %v", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
 	nsProvider, err := s.resolveNS(volumeID)
@@ -116,14 +131,14 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, err
 	}
 
-	l.Infof("resolved NS: %v, %v", nsProvider, volumeID)
+	l.Infof("resolved NS: %s, %s", nsProvider, volumeID)
 
 	// get NexentaStor filesystem information
 	filesystem, err := nsProvider.GetFilesystem(volumeID)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.Internal,
-			"Cannot get filesystem '%v' volume: %v",
+			"Cannot get filesystem '%s' volume: %s",
 			volumeID,
 			err,
 		)
@@ -202,7 +217,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, err
 	}
 
-	l.Infof("volume '%v' has been published to '%v'", volumeID, targetPath)
+	l.Infof("volume '%s' has been published to '%s'", volumeID, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -219,7 +234,7 @@ func (s *NodeServer) mountNFS(
 			Filesystem: filesystem.Path,
 		})
 		if err != nil {
-			return status.Errorf(codes.Internal, "Cannot share filesystem '%v' over NFS: %v", filesystem.Path, err)
+			return status.Errorf(codes.Internal, "Cannot share filesystem '%s' over NFS: %s", filesystem.Path, err)
 		}
 
 		// select read-only or read-write mount options set
@@ -233,12 +248,12 @@ func (s *NodeServer) mountNFS(
 		// apply NS filesystem ACL (gets applied only for new volumes, not for already shared pre-provisioned volumes)
 		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
 		if err != nil {
-			return status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
+			return status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%s': %s", filesystem.Path, err)
 		}
 	}
 
 	// NFS style mount source
-	mountSource := fmt.Sprintf("%v:%v", dataIP, filesystem.MountPoint)
+	mountSource := fmt.Sprintf("%s:%s", dataIP, filesystem.MountPoint)
 
 	// NFS v3 is used by default if no version specified by user
 	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^vers=.*$"), "vers=3")
@@ -272,7 +287,7 @@ func (s *NodeServer) mountCIFS(
 			ShareName:  filesystem.GetDefaultSmbShareName(),
 		})
 		if err != nil {
-			return status.Errorf(codes.Internal, "Cannot share filesystem '%v' over SMB: %v", filesystem.Path, err)
+			return status.Errorf(codes.Internal, "Cannot share filesystem '%s' over SMB: %s", filesystem.Path, err)
 		}
 
 		//TODO check if we need ACL rules for SMB
@@ -289,7 +304,7 @@ func (s *NodeServer) mountCIFS(
 		// apply NS filesystem ACL (gets applied only for new volumes, not for already shared pre-provisioned volumes)
 		err = nsProvider.SetFilesystemACL(filesystem.Path, aclRuleSet)
 		if err != nil {
-			return status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%v': %v", filesystem.Path, err)
+			return status.Errorf(codes.Internal, "Cannot set filesystem ACL for '%s': %s", filesystem.Path, err)
 		}
 	}
 
@@ -300,7 +315,7 @@ func (s *NodeServer) mountCIFS(
 	}
 
 	// CIFS style mount source
-	mountSource := fmt.Sprintf("//%v/%v", dataIP, shareName)
+	mountSource := fmt.Sprintf("//%s/%s", dataIP, shareName)
 
 	return s.doMount(mountSource, req.GetTargetPath(), config.FsTypeCIFS, mountOptions)
 }
@@ -318,7 +333,7 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 			if err := os.MkdirAll(targetPath, 0750); err != nil {
 				return status.Errorf(
 					codes.Internal,
-					"Failed to mkdir to share target path '%v': %v",
+					"Failed to mkdir to share target path '%s': %s",
 					targetPath,
 					err,
 				)
@@ -327,7 +342,7 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 		} else {
 			return status.Errorf(
 				codes.Internal,
-				"Cannot ensure that target path '%v' can be used as a mount point: %v",
+				"Cannot ensure that target path '%s' can be used as a mount point: %s",
 				targetPath,
 				err,
 			)
@@ -335,7 +350,7 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 	}
 
 	if !notMountPoint { // already mounted
-		return status.Errorf(codes.Internal, "Target path '%v' is already a mount point", targetPath)
+		return status.Errorf(codes.Internal, "Target path '%s' is already a mount point", targetPath)
 	}
 
 	l.Infof(
@@ -352,7 +367,7 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 		if os.IsPermission(err) {
 			return status.Errorf(
 				codes.PermissionDenied,
-				"Permission denied to mount '%v' to '%v': %v",
+				"Permission denied to mount '%s' to '%s': %s",
 				mountSource,
 				targetPath,
 				err,
@@ -360,7 +375,7 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 		} else if strings.Contains(err.Error(), "invalid argument") {
 			return status.Errorf(
 				codes.InvalidArgument,
-				"Cannot mount '%v' to '%v', invalid argument: %v",
+				"Cannot mount '%s' to '%s', invalid argument: %s",
 				mountSource,
 				targetPath,
 				err,
@@ -368,7 +383,7 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 		}
 		return status.Errorf(
 			codes.Internal,
-			"Failed to mount '%v' to '%v': %v",
+			"Failed to mount '%s' to '%s': %s",
 			mountSource,
 			targetPath,
 			err,
@@ -384,7 +399,7 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 	error,
 ) {
 	l := s.log.WithField("func", "NodeUnpublishVolume()")
-	l.Infof("request: %+v", req)
+	l.Infof("request: '%+v'", req)
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -399,30 +414,30 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 	mounter := mount.New("")
 
 	if err := mounter.Unmount(targetPath); err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to unmount target path '%v': %v", targetPath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to unmount target path '%s': %s", targetPath, err)
 	}
 
 	notMountPoint, err := mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			l.Warnf("mount point '%v' already doesn't exist: '%v', return OK", targetPath, err)
+			l.Warnf("mount point '%s' already doesn't exist: '%s', return OK", targetPath, err)
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
 		return nil, status.Errorf(
 			codes.Internal,
-			"Cannot ensure that target path '%v' is a mount point: '%v'",
+			"Cannot ensure that target path '%s' is a mount point: '%s'",
 			targetPath,
 			err,
 		)
 	} else if !notMountPoint { // still mounted
-		return nil, status.Errorf(codes.Internal, "Target path '%v' is still mounted", targetPath)
+		return nil, status.Errorf(codes.Internal, "Target path '%s' is still mounted", targetPath)
 	}
 
 	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
-		return nil, status.Errorf(codes.Internal, "Cannot remove unmounted target path '%v': %v", targetPath, err)
+		return nil, status.Errorf(codes.Internal, "Cannot remove unmounted target path '%s': %s", targetPath, err)
 	}
 
-	l.Infof("volume '%v' has been unpublished from '%v'", volumeID, targetPath)
+	l.Infof("volume '%s' has been unpublished from '%s'", volumeID, targetPath)
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
@@ -432,7 +447,7 @@ func (s *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 	*csi.NodeStageVolumeResponse,
 	error,
 ) {
-	s.log.WithField("func", "NodeStageVolume()").Infof("request: %+v", req)
+	s.log.WithField("func", "NodeStageVolume()").Infof("request: '%+v'", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
@@ -442,7 +457,7 @@ func (s *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 	*csi.NodeUnstageVolumeResponse,
 	error,
 ) {
-	s.log.WithField("func", "NodeUnstageVolume()").Infof("request: %+v", req)
+	s.log.WithField("func", "NodeUnstageVolume()").Infof("request: '%+v'", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
@@ -458,13 +473,13 @@ func NewNodeServer(driver *Driver) (*NodeServer, error) {
 		Log:      l,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %v", err)
+		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
 	}
 
 	return &NodeServer{
-		DefaultNodeServer: csiCommon.NewDefaultNodeServer(driver.csiDriver),
-		nsResolver:        nsResolver,
-		config:            driver.config,
-		log:               l,
+		nodeID:     driver.nodeID,
+		nsResolver: nsResolver,
+		config:     driver.config,
+		log:        l,
 	}, nil
 }

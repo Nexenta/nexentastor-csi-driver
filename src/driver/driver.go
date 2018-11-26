@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
-	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
@@ -35,12 +34,12 @@ var DateTime string
 
 // Driver - K8s CSI driver for NexentaStor
 type Driver struct {
-	role      Role
-	endpoint  string
-	config    *config.Config
-	server    *grpc.Server
-	csiDriver *csiCommon.CSIDriver
-	log       *logrus.Entry
+	role     Role
+	nodeID   string
+	endpoint string
+	config   *config.Config
+	server   *grpc.Server
+	log      *logrus.Entry
 }
 
 // Run - run the driver
@@ -53,7 +52,7 @@ func (d *Driver) Run() error {
 	}
 
 	if parsedURL.Scheme != "unix" {
-		return fmt.Errorf("Only unix domain sockets supported")
+		return fmt.Errorf("Only unix domain sockets are supported")
 	}
 
 	socket := filepath.FromSlash(parsedURL.Path)
@@ -171,28 +170,12 @@ func NewDriver(args Args) (*Driver, error) {
 
 	l.Infof("create new driver: %v@%v-%v (%v)", Name, Version, Commit, DateTime)
 
-	csiDriver := csiCommon.NewCSIDriver(Name, Version, args.NodeID)
-
-	csiDriver.AddControllerServiceCapabilities(
-		[]csi.ControllerServiceCapability_RPC_Type{
-			csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
-			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-			//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
-			//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
-			//csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT, //TODO
-		},
-	)
-
-	csiDriver.AddVolumeCapabilityAccessModes(
-		[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER},
-	)
-
 	d := &Driver{
-		role:      args.Role,
-		endpoint:  args.Endpoint,
-		config:    args.Config,
-		log:       l,
-		csiDriver: csiDriver,
+		role:     args.Role,
+		nodeID:   args.NodeID,
+		endpoint: args.Endpoint,
+		config:   args.Config,
+		log:      l,
 	}
 
 	return d, nil

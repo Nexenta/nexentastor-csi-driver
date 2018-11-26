@@ -2,7 +2,6 @@ package driver
 
 import (
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
-	csiCommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -13,15 +12,26 @@ import (
 
 // IdentityServer - k8s csi driver identity server
 type IdentityServer struct {
-	*csiCommon.DefaultIdentityServer
-
 	config *config.Config
 	log    *logrus.Entry
 }
 
+// GetPluginInfo - return plugin info
+func (ids *IdentityServer) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (
+	*csi.GetPluginInfoResponse,
+	error,
+) {
+	ids.log.WithField("func", "GetPluginInfo()").Infof("request: '%+v'", req)
+
+	return &csi.GetPluginInfoResponse{
+		Name:          Name,
+		VendorVersion: Version,
+	}, nil
+}
+
 // Probe - return driver status (ready or not)
 func (ids *IdentityServer) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
-	ids.log.WithField("func", "Probe()").Infof("request: %+v", req)
+	ids.log.WithField("func", "Probe()").Infof("request: '%+v'", req)
 
 	// read and validate config (do we need it here?)
 	_, err := ids.config.Refresh()
@@ -32,14 +42,33 @@ func (ids *IdentityServer) Probe(ctx context.Context, req *csi.ProbeRequest) (*c
 	return &csi.ProbeResponse{}, nil
 }
 
+// GetPluginCapabilities - get plugin capabilities
+func (ids *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (
+	*csi.GetPluginCapabilitiesResponse,
+	error,
+) {
+	ids.log.WithField("func", "GetPluginCapabilities()").Infof("request: '%+v'", req)
+
+	return &csi.GetPluginCapabilitiesResponse{
+		Capabilities: []*csi.PluginCapability{
+			{
+				Type: &csi.PluginCapability_Service_{
+					Service: &csi.PluginCapability_Service{
+						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
+					},
+				},
+			},
+		},
+	}, nil
+}
+
 // NewIdentityServer - create an instance of identity server
 func NewIdentityServer(driver *Driver) *IdentityServer {
 	l := driver.log.WithField("cmp", "IdentityServer")
 	l.Info("create new IdentityServer...")
 
 	return &IdentityServer{
-		DefaultIdentityServer: csiCommon.NewDefaultIdentityServer(driver.csiDriver),
-		config:                driver.config,
-		log:                   l,
+		config: driver.config,
+		log:    l,
 	}
 }

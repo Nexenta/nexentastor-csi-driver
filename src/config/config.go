@@ -85,7 +85,6 @@ func (c *Config) Refresh() (changed bool, err error) {
 func (c *Config) Validate() error {
 	var errors []string
 
-	//TODO validate address schema too
 	if c.Address == "" {
 		errors = append(errors, fmt.Sprintf("parameter 'restIp' is missed"))
 	} else {

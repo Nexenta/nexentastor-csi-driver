@@ -1,3 +1,4 @@
+# tests container
 FROM golang:1.11
 
 # install deps

@@ -14,7 +14,7 @@ LDFLAGS ?= \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.DateTime=${DATETIME}
 
 .PHONY: all
-all: test-unit build
+all: test build
 
 .PHONY: build
 build:
@@ -24,24 +24,18 @@ build:
 container-build:
 	docker build -f $(DOCKER_FILE) -t $(IMAGE_NAME) .
 
-.PHONY: container-push
-container-push-remote:
-	docker tag  $(IMAGE_NAME) $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
-	docker push $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
-
 .PHONY: container-push-local
 container-push-local:
 	docker tag  $(IMAGE_NAME) $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(VERSION)
 	docker push $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(VERSION)
 
+.PHONY: container-push-remote
+container-push-remote:
+	docker tag  $(IMAGE_NAME) $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
+	docker push $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
+
 .PHONY: test
-test: test-unit test-e2e-ns
-
-.PHONY: test-local
-test-local: test-unit test-e2e-ns test-e2e-k8s-local
-
-.PHONY: test-remote
-test-remote: test-unit test-e2e-ns test-e2e-k8s-remote
+test: test-unit
 
 .PHONY: test-unit
 test-unit:
@@ -49,6 +43,10 @@ test-unit:
 	go test ./tests/unit/config -v -count 1 &&\
 	go test ./tests/unit/rest -v -count 1 &&\
 	go test ./tests/unit/ns -v -count 1
+.PHONY: test-unit-container
+test-unit-container:
+	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
+	docker run -i --rm -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-unit
 
 .PHONY: test-e2e-ns
 test-e2e-ns:
@@ -61,9 +59,14 @@ test-e2e-ns:
 		--address="https://10.3.199.254:8443" &&\
 	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \
 		--address="https://10.3.199.252:8443,https://10.3.199.253:8443"
+.PHONY: test-e2e-ns-container
+test-e2e-ns-container:
+	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-ns
 
-.PHONY: test-e2e-k8s-local
-test-e2e-k8s-local:
+# run e2e k8s tests using image from local docker registry
+.PHONY: test-e2e-k8s-local-image
+test-e2e-k8s-local-image:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
@@ -79,9 +82,14 @@ test-e2e-k8s-local:
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests"
+.PHONY: test-e2e-k8s-local-image-container
+test-e2e-k8s-local-image-container:
+	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-k8s-local-image
 
-.PHONY: test-e2e-k8s-remote
-test-e2e-k8s-remote:
+# run e2e k8s tests using image from hub.docker.com
+.PHONY: test-e2e-k8s-remote-image
+test-e2e-k8s-remote-image:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@10.3.196.219" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
@@ -97,26 +105,32 @@ test-e2e-k8s-remote:
 		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"
-
-.PHONY: container-test-local
-container-test-local:
+.PHONY: test-e2e-k8s-local-image-container
+test-e2e-k8s-remote-image-container:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-local
-
-.PHONY: container-test-remote
-container-test-remote:
-	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-remote
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-k8s-remote-image
 
 # csi-sanity tests:
 # - tests make requests to actual NS, config file: ./tests/csi-sanity/*.yaml
 # - create container with driver and csi-sanity (https://github.com/kubernetes-csi/csi-test)
 # - run container to execute tests
 # - nfs client requires running container as privileged one
-.PHONY: container-test-csi-sanity
-container-test-csi-sanity:
+.PHONY: test-csi-sanity-container
+test-csi-sanity-container:
 	docker build -f $(DOCKER_FILE_TEST_CSI_SANITY) -t $(IMAGE_NAME)-test-csi-sanity .
 	docker run --privileged=true -i --rm -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test-csi-sanity
+
+# run all tests (local registry image)
+.PHONY: test-all-local-image
+test-all-local-image: test-unit test-e2e-ns test-e2e-k8s-local-image
+.PHONY: test-all-local-image-container
+test-all-local-image-container: test-unit-container test-e2e-ns-container test-csi-sanity-container test-e2e-k8s-local-image-container
+
+# run all tests (hub.github.com image)
+.PHONY: test-all-remote-image
+test-all-remote-image: test-unit test-e2e-ns test-e2e-k8s-remote-image
+.PHONY: test-all-remote-image-container
+test-all-remote-image-container: test-unit-container test-e2e-ns-container test-csi-sanity-container test-e2e-k8s-remote-image-container
 
 .PHONY: clean
 clean:

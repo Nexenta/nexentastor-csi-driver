@@ -21,10 +21,11 @@ const (
 
 func main() {
 	var (
-		nodeID   = flag.String("nodeid", "", "Kubernetes node ID")
-		endpoint = flag.String("endpoint", defaultEndpoint, "CSI endpoint")
-		role     = flag.String("role", "", fmt.Sprintf("driver role: %v", driver.Roles))
-		version  = flag.Bool("version", false, "Print driver version")
+		nodeID    = flag.String("nodeid", "", "Kubernetes node ID")
+		endpoint  = flag.String("endpoint", defaultEndpoint, "CSI endpoint")
+		configDir = flag.String("config-dir", defaultConfigDir, "driver config endpoint")
+		role      = flag.String("role", "", fmt.Sprintf("driver role: %v", driver.Roles))
+		version   = flag.Bool("version", false, "Print driver version")
 	)
 
 	flag.Parse()
@@ -47,9 +48,10 @@ func main() {
 	})
 
 	l.Info("Run driver with CLI options:")
-	l.Infof("- CSI endpoint: '%s'", *endpoint)
-	l.Infof("- Node ID:      '%s'", *nodeID)
-	l.Infof("- Role:         '%s'", *role)
+	l.Infof("- Role:             '%s'", *role)
+	l.Infof("- Node ID:          '%s'", *nodeID)
+	l.Infof("- CSI endpoint:     '%s'", *endpoint)
+	l.Infof("- Config directory: '%s'", *configDir)
 
 	// validate driver instance role
 	validatedRole, err := driver.ParseRole(string(*role))
@@ -58,7 +60,7 @@ func main() {
 	}
 
 	// initial read and validate config file
-	cfg, err := config.New(defaultConfigDir)
+	cfg, err := config.New(*configDir)
 	if err != nil {
 		l.Fatalf("Cannot use config file: %s", err)
 	}

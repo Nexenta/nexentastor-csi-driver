@@ -375,7 +375,7 @@ spec:
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/
+            path: /var/lib/kubelet/plugins/ #TODO change to: /var/lib/kubelet/plugins_registry/ (v1.13?)
             type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:

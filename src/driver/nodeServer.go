@@ -112,12 +112,18 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
+		return nil, status.Error(codes.InvalidArgument, "req.VolumeId must be provided")
 	}
 
 	targetPath := req.GetTargetPath()
 	if len(targetPath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Target path must be provided")
+		return nil, status.Error(codes.InvalidArgument, "req.TargetPath must be provided")
+	}
+
+	//TODO validate VolumeCapability
+	volumeCapability := req.GetVolumeCapability()
+	if volumeCapability == nil {
+		return nil, status.Error(codes.InvalidArgument, "req.VolumeCapability must be provided")
 	}
 
 	// read and validate config

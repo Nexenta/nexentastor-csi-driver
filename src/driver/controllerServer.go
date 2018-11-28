@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
-	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -119,6 +118,17 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	l := s.log.WithField("func", "CreateVolume()")
 	l.Infof("request: '%+v'", req)
 
+	volumeName := req.GetName()
+	if len(volumeName) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "req.Name must be provided")
+	}
+
+	//TODO validate VolumeCapability
+	volumeCapabilities := req.GetVolumeCapabilities()
+	if volumeCapabilities == nil {
+		return nil, status.Error(codes.InvalidArgument, "req.VolumeCapabilities must be provided")
+	}
+
 	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
@@ -137,23 +147,18 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		datasetPath = s.config.DefaultDataset
 	}
 
-	// get volume name from runtime params, generate uuid if not specified
-	volumeName := req.GetName()
-	if len(volumeName) == 0 {
-		volumeName = fmt.Sprintf("csi-volume-%s", uuid.NewUUID().String())
-	}
-
-	volumePath := filepath.Join(datasetPath, volumeName)
-
-	// get requested volume size from runtime params, set default if not specified
-	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
-
 	nsProvider, err := s.resolveNS(datasetPath)
 	if err != nil {
 		return nil, err
 	}
 
 	l.Infof("resolved NS: %s, %s", nsProvider, datasetPath)
+
+	// use full path as volume ID
+	volumePath := filepath.Join(datasetPath, volumeName)
+
+	// get requested volume size from runtime params, set default if not specified
+	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
 
 	res := &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -299,14 +304,19 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 	l := s.log.WithField("func", "ValidateVolumeCapabilities()")
 	l.Infof("request: '%+v'", req)
 
+	volumePath := req.GetVolumeId()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "req.VolumeId must be provided")
+	}
+
+	volumeCapabilities := req.GetVolumeCapabilities()
+	if volumeCapabilities == nil {
+		return nil, status.Error(codes.InvalidArgument, "req.VolumeCapabilities must be provided")
+	}
+
 	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	}
-
-	volumePath := req.GetVolumeId()
-	if len(volumePath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
 	nsProvider, err := s.resolveNS(volumePath)
@@ -316,7 +326,7 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 
 	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)
 
-	for _, reqC := range req.GetVolumeCapabilities() {
+	for _, reqC := range volumeCapabilities {
 		reqMode := reqC.GetAccessMode().GetMode()
 		found := false
 		for _, volumeC := range supportedVolumeCapabilityAccessModes {

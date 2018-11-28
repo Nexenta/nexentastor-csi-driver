@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 const (

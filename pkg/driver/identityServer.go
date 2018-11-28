@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
 )
 
 // IdentityServer - k8s csi driver identity server

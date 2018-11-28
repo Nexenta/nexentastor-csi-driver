@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
 )
 
 var testConfigParams = map[string]string{

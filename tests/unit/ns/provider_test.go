@@ -3,7 +3,7 @@ package provider_test
 import (
 	"testing"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 func TestProvider_Filesystem(t *testing.T) {

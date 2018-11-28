@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/arrays"
 )
 
 func TestContainsString(t *testing.T) {

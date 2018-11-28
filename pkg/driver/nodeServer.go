@@ -19,9 +19,9 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
-	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/arrays"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 // NodeServer - k8s csi driver node server

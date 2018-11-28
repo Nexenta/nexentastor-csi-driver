@@ -3,7 +3,7 @@ package rest_test
 import (
 	"fmt"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/rest"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/rest"
 )
 
 func ExampleClient_BuildURI() {

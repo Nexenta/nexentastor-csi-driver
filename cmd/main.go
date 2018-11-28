@@ -9,8 +9,8 @@ import (
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/sirupsen/logrus"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
-	"github.com/Nexenta/nexentastor-csi-driver/src/driver"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/driver"
 )
 
 const (

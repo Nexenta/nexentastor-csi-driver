@@ -13,23 +13,23 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
-	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 // Name - driver name
 var Name = "com.nexenta.nexentastor-csi-driver"
 
 // Version - driver version, to set version set flags:
-// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/src/driver.Version=0.0.1"
+// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Version=0.0.1"
 var Version string
 
 // Commit - driver last commit, to set commit set flags:
-// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/src/driver.Commit=..."
+// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Commit=..."
 var Commit string
 
 // DateTime - driver build datetime, to set commit set flags:
-// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/src/driver.DateTime=..."
+// go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.DateTime=..."
 var DateTime string
 
 // Driver - K8s CSI driver for NexentaStor

@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/config"
-	"github.com/Nexenta/nexentastor-csi-driver/src/ns"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 // supportedControllerCapabilities - driver controller capabilities

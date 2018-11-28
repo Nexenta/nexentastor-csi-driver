@@ -11,7 +11,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/Nexenta/nexentastor-csi-driver/src/arrays"
+	"github.com/Nexenta/nexentastor-csi-driver/pkg/arrays"
 )
 
 const addressRegExp = "^https?://[^:]+:[0-9]{1,5}$"

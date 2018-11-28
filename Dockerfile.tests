@@ -1,9 +1,15 @@
-# build container
-FROM golang:1.11 as builder
-RUN apt-get update && apt-get install -y \
-    nfs-common \
-    && rm -rf /var/lib/apt/lists/*
+FROM golang:1.11
+
+# install deps
+RUN apt-get -q update &&\
+    apt-get -q install -y -o Dpkg::Options::="--force-confnew" rpcbind nfs-common cifs-utils &&\
+    apt-get -q autoremove &&\
+    apt-get -q clean -y &&\
+    rm -rf /var/lib/apt/lists/* &&\
+    rm -f /var/cache/apt/*.bin
+
 WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 COPY . ./
+
 ENTRYPOINT ["make"]
 CMD ["test"]

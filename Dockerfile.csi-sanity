@@ -1,0 +1,41 @@
+# build container
+FROM golang:1.11 AS builder
+WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
+COPY . ./
+RUN make build
+
+
+# run driver and csi-sanity tests
+FROM alpine:3.8
+WORKDIR /
+
+# install dependencies
+RUN apk update &&\
+    apk add curl rpcbind nfs-utils
+
+# download csi-sanity binaries
+ENV CSI_SANITY_VERSION="v0.3.0-4"
+ENV CSI_SANITY_TARFILE="csi-sanity-${CSI_SANITY_VERSION}.linux.amd64.tar.gz"
+ENV CSI_SANITY_LINK="https://github.com/kubernetes-csi/csi-test/releases/download/${CSI_SANITY_VERSION}/${CSI_SANITY_TARFILE}"
+RUN curl -s -L ${CSI_SANITY_LINK} -o ${CSI_SANITY_TARFILE} &&\
+    tar -xzf ${CSI_SANITY_TARFILE} &&\
+    rm ${CSI_SANITY_TARFILE}
+
+# copy driver from build container
+COPY --from=builder /go/src/github.com/Nexenta/nexentastor-csi-driver/bin/nexentastor-csi-driver /nexentastor-csi-driver
+
+# copy driver config file
+COPY ./tests/csi-sanity/driver-config-csi-sanity.yaml /config/driver-config-csi-sanity.yaml
+
+# test mount direactory
+RUN mkdir -p /tmp/mnt
+
+# driver UNIX socket
+ENV SOCK="unix:///csi.sock"
+
+# driver run script
+RUN echo '/nexentastor-csi-driver --config-dir=/config --endpoint=${SOCK} --nodeid=local &' > /run-driver
+RUN chmod +x /run-driver
+
+# other csi-sanity options: --ginkgo.v -ginkgo.noColor
+ENTRYPOINT ["/bin/sh", "-c", "/run-driver && /csi-sanity/csi-sanity --csi.endpoint=${SOCK} --csi.mountdir=/tmp/mnt"]

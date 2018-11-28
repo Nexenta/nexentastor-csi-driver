@@ -2,6 +2,7 @@ DRIVER_NAME=nexentastor-csi-driver
 IMAGE_NAME=$(DRIVER_NAME)
 DOCKER_FILE=Dockerfile
 DOCKER_FILE_TESTS=Dockerfile.tests
+DOCKER_FILE_TEST_CSI_SANITY=Dockerfile.csi-sanity
 REGISTRY=nexenta
 REGISTRY_LOCAL=10.3.199.92:5000
 VERSION ?= $(shell git rev-parse --abbrev-ref HEAD)
@@ -106,6 +107,16 @@ container-test-local:
 container-test-remote:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-remote
+
+# csi-sanity tests:
+# - tests make requests to actual NS, config file: ./tests/csi-sanity/*.yaml
+# - create container with driver and csi-sanity (https://github.com/kubernetes-csi/csi-test)
+# - run container to execute tests
+# - nfs client requires running container as privileged one
+.PHONY: container-test-csi-sanity
+container-test-csi-sanity:
+	docker build -f $(DOCKER_FILE_TEST_CSI_SANITY) -t $(IMAGE_NAME)-test-csi-sanity .
+	docker run --privileged=true -i --rm -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test-csi-sanity
 
 .PHONY: clean
 clean:

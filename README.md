@@ -305,9 +305,8 @@ See `Makefile` for more examples.
   ```
   MountVolume.MountDevice failed for volume "pvc-ns-<...>" : driver name com.nexenta.nexentastor-csi-driver not found in the list of registered CSI drivers
   ```
-  Make sure _kubelet_ configured with
-  `--feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true`
-  ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features))
+  Make sure _kubelet_ configured with `--root-dir=/var/lib/kubelet`, otherwise update paths in the driver yaml file
+  ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features)).
 - Driver logs
   ```bash
   kubectl logs -f nexentastor-csi-attacher-0 driver

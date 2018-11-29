@@ -1,6 +1,6 @@
 # NexentaStor CSI Driver
 #
-# This driver version works with Kubernetes version >=1.12.1
+# This driver version works with MicroK8s (Kubernetes version 1.12.2)
 #
 # In production, each CSI driver deployment has to be customized to avoid conflicts,
 # use non-default namespace and different names for non-namespaced entities like the ClusterRole
@@ -10,7 +10,7 @@
 # $ kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csinodeinfo.yaml
 #
 # Install to Kubernetes:
-# $ kubectl apply -f tests/e2e/driver/configs/driver-local.yaml
+# $ kubectl apply -f tests/deploy/microk8s/driver-local-manual.yaml
 #
 
 
@@ -125,7 +125,7 @@ spec:
             - --volume-name-prefix=pvc-ns
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/csi/sockets/pluginproxy
+              mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: driver
           image: 10.3.199.92:5000/nexentastor-csi-driver:master
           imagePullPolicy: Always
@@ -149,7 +149,7 @@ spec:
           emptyDir:
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config-tests
+            secretName: nexentastor-csi-driver-config-manual
 ---
 
 
@@ -262,7 +262,7 @@ spec:
           emptyDir:
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config-tests
+            secretName: nexentastor-csi-driver-config-manual
 ---
 
 
@@ -333,7 +333,7 @@ spec:
             - --pod-info-mount-version=""
             - --driver-requires-attachment=false
             - --csi-address=/csi/csi.sock
-            - --kubelet-registration-path=/var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock
+            - --kubelet-registration-path=/var/snap/microk8s/common/var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -367,22 +367,22 @@ spec:
             - name: secret
               mountPath: /config
             - name: pods-mount-dir
-              mountPath: /var/lib/kubelet/pods
+              mountPath: /var/snap/microk8s/common/var/lib/kubelet/pods
               mountPropagation: Bidirectional
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver
+            path: /var/snap/microk8s/common/var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: /var/lib/kubelet/plugins
+            path: /var/snap/microk8s/common/var/lib/kubelet/plugins
             type: Directory
         - name: pods-mount-dir
           hostPath:
-            path: /var/lib/kubelet/pods
+            path: /var/snap/microk8s/common/var/lib/kubelet/pods
             type: Directory
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config-tests
+            secretName: nexentastor-csi-driver-config-manual
 ---

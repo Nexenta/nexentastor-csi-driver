@@ -5,6 +5,7 @@ DOCKER_FILE_TESTS=Dockerfile.tests
 DOCKER_FILE_TEST_CSI_SANITY=Dockerfile.csi-sanity
 REGISTRY=nexenta
 REGISTRY_LOCAL=10.3.199.92:5000
+TEST_MACHINE_IP=10.3.196.219
 VERSION ?= $(shell git rev-parse --abbrev-ref HEAD)
 COMMIT ?= $(shell git rev-parse HEAD | cut -c 1-7)
 DATETIME ?= $(shell date +'%F_%T')
@@ -68,17 +69,17 @@ test-e2e-ns-container:
 .PHONY: test-e2e-k8s-local-image
 test-e2e-k8s-local-image:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.196.219" \
+		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.196.219" \
+		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.196.219" \
+		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests"
@@ -91,17 +92,17 @@ test-e2e-k8s-local-image-container:
 .PHONY: test-e2e-k8s-remote-image
 test-e2e-k8s-remote-image:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.196.219" \
+		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.196.219" \
+		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@10.3.196.219" \
+		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/master/nexentastor-csi-driver-master.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"

@@ -21,12 +21,17 @@ func (ids *IdentityServer) GetPluginInfo(ctx context.Context, req *csi.GetPlugin
 	*csi.GetPluginInfoResponse,
 	error,
 ) {
-	ids.log.WithField("func", "GetPluginInfo()").Infof("request: '%+v'", req)
+	l := ids.log.WithField("func", "GetPluginInfo()")
+	l.Infof("request: '%+v'", req)
 
-	return &csi.GetPluginInfoResponse{
+	res := csi.GetPluginInfoResponse{
 		Name:          Name,
 		VendorVersion: Version,
-	}, nil
+	}
+
+	l.Debugf("response: '%+v'", res)
+
+	return &res, nil
 }
 
 // Probe - return driver status (ready or not)

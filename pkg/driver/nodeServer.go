@@ -77,6 +77,8 @@ func (s *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (
 
 // NodeGetInfo - get node info
 func (s *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	s.log.WithField("func", "NodeGetInfo()").Infof("request: '%+v'", req)
+
 	return &csi.NodeGetInfoResponse{
 		NodeId: s.nodeID,
 	}, nil

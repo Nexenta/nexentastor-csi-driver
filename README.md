@@ -16,6 +16,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 |-----------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Kubernetes 1.10.5 to 1.12.0 | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) |
 | Kubernetes >=1.12.1         | master                                                                | master                                                                |
+
 ## Requirements
 
 - [This page explains](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md)
@@ -300,6 +301,13 @@ See `Makefile` for more examples.
   kubectl get csidrivers.csi.storage.k8s.io
   kubectl describe csidrivers.csi.storage.k8s.io
   ```
+- Error:
+  ```
+  MountVolume.MountDevice failed for volume "pvc-ns-<...>" : driver name com.nexenta.nexentastor-csi-driver not found in the list of registered CSI drivers
+  ```
+  Make sure _kubelet_ configured with
+  `--feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true`
+  ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features))
 - Driver logs
   ```bash
   kubectl logs -f nexentastor-csi-attacher-0 driver

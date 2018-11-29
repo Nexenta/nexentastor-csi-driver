@@ -303,7 +303,8 @@ See `Makefile` for more examples.
   ```
 - Error:
   ```
-  MountVolume.MountDevice failed for volume "pvc-ns-<...>" : driver name com.nexenta.nexentastor-csi-driver not found in the list of registered CSI drivers
+  MountVolume.MountDevice failed for volume "pvc-ns-<...>" :
+  driver name com.nexenta.nexentastor-csi-driver not found in the list of registered CSI drivers
   ```
   Make sure _kubelet_ configured with `--root-dir=/var/lib/kubelet`, otherwise update paths in the driver yaml file
   ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features)).
@@ -321,6 +322,7 @@ See `Makefile` for more examples.
   ```
 - Configure Docker to trust insecure registries:
   ```bash
-  echo "{\"insecure-registries\":[\"10.3.199.92:5000\"]}" > /etc/docker/daemon.json
+  # add `{"insecure-registries":["10.3.199.92:5000"]}` to:
+  vim /etc/docker/daemon.json
   service docker restart
   ```

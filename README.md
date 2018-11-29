@@ -130,10 +130,10 @@ parameters:
 Run Nginx server using _StorageClass_:
 
 ```bash
-kubectl apply -f ./examples/nginx-storage-class.yaml
+kubectl apply -f ./deploy/kubernetes/examples/nginx-storage-class.yaml
 
 # to delete this pod:
-kubectl delete -f ./examples/nginx-storage-class.yaml
+kubectl delete -f ./deploy/kubernetes/examples/nginx-storage-class.yaml
 ```
 
 ### Pre-provisioned volumes
@@ -195,10 +195,10 @@ Run nginx server using PersistentVolume.
 `csiDriverPool/csiDriverDataset/nginx-persistent`.
 
 ```bash
-kubectl apply -f ./examples/nginx-persistent-volume.yaml
+kubectl apply -f ./deploy/kubernetes/examples/nginx-persistent-volume.yaml
 
 # to delete this pod:
-kubectl delete -f ./examples/nginx-persistent-volume.yaml
+kubectl delete -f ./deploy/kubernetes/examples/nginx-persistent-volume.yaml
 ```
 
 ## Uninstall

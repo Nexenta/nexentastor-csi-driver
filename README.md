@@ -3,8 +3,6 @@
 [![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
 
-NexentaStor CSI driver for Kubernetes.
-
 This is a **development branch**, for the most recent stable version see
 [documentation](https://nexenta.github.io/nexentastor-csi-driver/).
 
@@ -249,11 +247,13 @@ make container-push-remote
 
 ### Tests
 
+See [Makefile](Makefile) for more examples.
+
 ```bash
 # run all tests using local registry (`REGISTRY_LOCAL` in `Makefile`)
-make test-local
+make test-all-local-image
 # run all tests using hub.docker.com registry (`REGISTRY` in `Makefile`)
-make test-remote
+make test-all-remote-image
 
 # run tests in container:
 # - RSA keys from host's ~/.ssh directory will be used by container.
@@ -262,19 +262,15 @@ make test-remote
 # - "export NOCOLORS=true" to run w/o colors
 #
 # for local image
-make container-test-local
+make test-all-local-image-container
 # for remote image from hub.docker.com
-make container-test-remote
+make test-all-remote-image-container
+```
 
-# add red for fails
-make test | grep --color 'FAIL\|$'
-
-# Unit tests with options
-go test ./tests/unit/rest -v -count 1
-go test ./tests/unit/config -v -count 1
-
-# Tests check NexentaStor API provider (same options for `./resolver_test.go`)
-go test ./tests/e2e/ns/provider_test.go -v -count 1 \
+End-to-end NexentaStor/K8s test parameters:
+```bash
+# Tests for NexentaStor API provider (same options for `./resolver/resolver_test.go`)
+go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
     --address="https://10.3.199.254:8443" \
     --username="admin" \
     --password="pass" \
@@ -291,8 +287,6 @@ go test tests/e2e/driver/driver_test.go -v -count 1 \
     --k8sDeploymentFile="./_configs/driver-local.yaml" \
     --k8sSecretFile="./_configs/driver-config-single.yaml"
 ```
-
-See `Makefile` for more examples.
 
 ## Troubleshooting
 

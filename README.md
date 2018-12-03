@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 
 This is a **development branch**, for the most recent stable version see
 [documentation](https://nexenta.github.io/nexentastor-csi-driver/).
@@ -213,6 +214,8 @@ kubectl delete secret nexentastor-csi-driver-config
 ```
 
 ## Development
+
+Commits should follow [Conventional Commits Spec](https://conventionalcommits.org).
 
 ### Build
 

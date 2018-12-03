@@ -291,6 +291,21 @@ go test tests/e2e/driver/driver_test.go -v -count 1 \
     --k8sSecretFile="./_configs/driver-config-single.yaml"
 ```
 
+### Release
+
+```bash
+# go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+git-chglog --next-tag X.X.X -o CHANGELOG.md
+git add CHANGELOG.md
+git commit -m "release X.X.X"
+git push
+git co -b X.X.X
+git branch --set-upstream-to=origin/X.X.X X.X.X
+git tag X.X.X
+git push
+git push --follow-tags
+```
+
 ## Troubleshooting
 
 - Show installed drivers:

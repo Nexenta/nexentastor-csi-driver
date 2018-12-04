@@ -2,7 +2,7 @@
 
 NexentaStor CSI driver for Kubernetes.
 
-[![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
+[![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=0.1.0)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
 
 - [Most recent stable version documentation](https://nexenta.github.io/nexentastor-csi-driver/)
@@ -10,9 +10,9 @@ NexentaStor CSI driver for Kubernetes.
 
 ## Supported versions
 
-|                     | NexentaStor 5.1      | NexentaStor 5.2      |
-| ------------------- | -------------------- | -------------------- |
-| Kubernetes <1.12.1  | 0.1.x                | 0.1.x                |
+|                             | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
+| --------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Kubernetes >=1.10.5 <1.12.1 | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) |
 
 
 ## Installation

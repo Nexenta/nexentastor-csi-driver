@@ -1,11 +1,8 @@
-# nexentastor-csi-driver
+# nexentastor-csi-driver (v0.2.0)
 
-[![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
+[![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=0.2.0)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
-
-This is a **development branch**, for the most recent stable version see
-[documentation](https://nexenta.github.io/nexentastor-csi-driver/).
 
 NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nexenta.com/products/nexentastor).
 
@@ -14,7 +11,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 |                             | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
 |-----------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Kubernetes 1.10.5 to 1.12.0 | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) |
-| Kubernetes >=1.12.1         | master                                                                | master                                                                |
+| Kubernetes >=1.12.1 to 1.13 | [0.2.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.2.0) | [0.2.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.2.0) |
 
 ## Requirements
 
@@ -49,7 +46,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
    ```
-3. Edit `./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
+3. Edit `./deploy/kubernetes/0.2.0/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml
    restIp: https://10.3.3.4:8443,https://10.3.3.5:8443     # [required] NexentaStor REST API endpoint(s)
    username: admin                                         # [required] NexentaStor REST API username
@@ -87,11 +84,11 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 4. Create Kubernetes secret from the file:
    ```bash
-   kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml
+   kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/0.2.0/nexentastor-csi-driver-config.yaml
    ```
 5. Register driver to Kubernetes:
    ```bash
-   kubectl apply -f ./deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
+   kubectl apply -f ./deploy/kubernetes/0.2.0/nexentastor-csi-driver-0.2.0.yaml
    ```
 
 ## Usage
@@ -207,7 +204,7 @@ Using the same files as for installation:
 
 ```bash
 # delete driver
-kubectl delete -f ./deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
+kubectl delete -f ./deploy/kubernetes/0.2.0/nexentastor-csi-driver-0.2.0.yaml
 
 # delete secret
 kubectl delete secret nexentastor-csi-driver-config

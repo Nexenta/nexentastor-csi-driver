@@ -14,7 +14,8 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 |                             | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
 |-----------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Kubernetes 1.10.5 to 1.12.0 | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) | [0.1.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) |
-| Kubernetes >=1.12.1         | master                                                                | master                                                                |
+| Kubernetes 1.12.1 to 1.13   | [0.2.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.2.0) | [0.2.x](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.2.0) |
+| Kubernetes >=1.13           | master                                                                | master                                                                |
 
 ## Requirements
 
@@ -300,10 +301,12 @@ git add CHANGELOG.md
 git commit -m "release X.X.X"
 git push
 git co -b X.X.X
-git branch --set-upstream-to=origin/X.X.X X.X.X
-git tag X.X.X
+vim README.md
+git add README.md
+git ci -m "release X.X.X"
 git push
-git push --follow-tags
+git tag vX.X.X
+git push --tags
 ```
 
 ## Troubleshooting

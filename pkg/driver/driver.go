@@ -18,7 +18,7 @@ import (
 )
 
 // Name - driver name
-var Name = "com.nexenta.nexentastor-csi-driver"
+var Name = "nexentastor-csi-driver.nexenta.com"
 
 // Version - driver version, to set version set flags:
 // go build -ldflags "-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Version=0.0.1"

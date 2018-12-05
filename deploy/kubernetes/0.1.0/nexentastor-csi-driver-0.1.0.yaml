@@ -99,7 +99,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - '--connection-timeout=25s'
-            - '--provisioner=com.nexenta.nexentastor-csi-driver'
+            - '--provisioner=nexentastor-csi-driver.nexenta.com'
             - '--csi-address=$(ADDRESS)'
           env:
             - name: ADDRESS
@@ -366,7 +366,7 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver
+            path: /var/lib/kubelet/plugins/nexentastor-csi-driver.nexenta.com
             type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:

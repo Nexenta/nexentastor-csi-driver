@@ -9,7 +9,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-sc-nginx-manual
-provisioner: com.nexenta.nexentastor-csi-driver
+provisioner: nexentastor-csi-driver.nexenta.com
 #mountOptions: #TODO test this in k8s v1.13 - https://github.com/kubernetes/kubernetes/pull/67898
 #  - noatime
 parameters:

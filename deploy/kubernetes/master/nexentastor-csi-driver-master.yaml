@@ -21,7 +21,7 @@
 apiVersion: csi.storage.k8s.io/v1alpha1
 kind: CSIDriver
 metadata:
-  name: com.nexenta.nexentastor-csi-driver
+  name: nexentastor-csi-driver.nexenta.com
 spec:
   attachRequired: false
   podInfoOnMountVersion: ''
@@ -120,7 +120,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --connection-timeout=25s
-            - --provisioner=com.nexenta.nexentastor-csi-driver
+            - --provisioner=nexentastor-csi-driver.nexenta.com
             - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
             - --volume-name-prefix=pvc-ns
           volumeMounts:
@@ -333,7 +333,7 @@ spec:
             - --pod-info-mount-version=""
             - --driver-requires-attachment=false
             - --csi-address=/csi/csi.sock
-            - --kubelet-registration-path=/var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/nexentastor-csi-driver.nexenta.com/csi.sock
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -372,7 +372,7 @@ spec:
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver
+            path: /var/lib/kubelet/plugins/nexentastor-csi-driver.nexenta.com
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:

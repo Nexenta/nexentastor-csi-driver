@@ -107,7 +107,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-dynamic-provisioning
-provisioner: com.nexenta.nexentastor-csi-driver
+provisioner: nexentastor-csi-driver.nexenta.com
 mountOptions:                        # only for Kubernetes >=v1.13
   - noatime
 parameters:
@@ -319,7 +319,7 @@ git push --tags
 - Error:
   ```
   MountVolume.MountDevice failed for volume "pvc-ns-<...>" :
-  driver name com.nexenta.nexentastor-csi-driver not found in the list of registered CSI drivers
+  driver name nexentastor-csi-driver.nexenta.com not found in the list of registered CSI drivers
   ```
   Make sure _kubelet_ configured with `--root-dir=/var/lib/kubelet`, otherwise update paths in the driver yaml file
   ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features)).

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultEndpoint  = "unix:///var/lib/kubelet/plugins/com.nexenta.nexentastor-csi-driver/csi.sock"
+	defaultEndpoint  = "unix:///var/lib/kubelet/plugins/nexentastor-csi-driver.nexenta.com/csi.sock"
 	defaultConfigDir = "/config"
 	defaultRole      = driver.RoleAll
 )

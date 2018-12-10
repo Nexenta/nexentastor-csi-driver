@@ -14,7 +14,7 @@ RUN apk update &&\
     apk add curl rpcbind nfs-utils
 
 # download csi-sanity binaries
-ENV CSI_SANITY_VERSION="v0.3.0-4"
+ENV CSI_SANITY_VERSION="v1.0.2"
 ENV CSI_SANITY_TARFILE="csi-sanity-${CSI_SANITY_VERSION}.linux.amd64.tar.gz"
 ENV CSI_SANITY_LINK="https://github.com/kubernetes-csi/csi-test/releases/download/${CSI_SANITY_VERSION}/${CSI_SANITY_TARFILE}"
 RUN curl -s -L ${CSI_SANITY_LINK} -o ${CSI_SANITY_TARFILE} &&\
@@ -36,6 +36,10 @@ ENV SOCK="unix:///csi.sock"
 # driver run script
 RUN echo '/nexentastor-csi-driver --config-dir=/config --endpoint=${SOCK} --nodeid=local &' > /run-driver
 RUN chmod +x /run-driver
+
+# keep this while https://github.com/kubernetes-csi/csi-test/issues/149 is open
+# solution details: https://stackoverflow.com/questions/34729748/installed-go-binary-not-found-in-path-on-alpine-linux-docker
+RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
 # other csi-sanity options: --ginkgo.v -ginkgo.noColor
 ENTRYPOINT ["/bin/sh", "-c", "/run-driver && /csi-sanity/csi-sanity --csi.endpoint=${SOCK} --csi.mountdir=/tmp/mnt"]

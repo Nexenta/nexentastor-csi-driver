@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 
-	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -57,22 +57,13 @@ func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error)
 	nsProvider, err := s.nsResolver.Resolve(datasetPath)
 	if err != nil { //TODO check not found error
 		return nil, status.Errorf(
-			codes.FailedPrecondition,
+			codes.NotFound,
 			"Cannot resolve '%s' on any NexentaStor(s): %s",
 			datasetPath,
 			err,
 		)
 	}
 	return nsProvider, nil
-}
-
-// NodeGetId - get node id
-func (s *NodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
-	s.log.WithField("func", "NodeGetId()").Infof("request: '%+v'", req)
-
-	return &csi.NodeGetIdResponse{
-		NodeId: s.nodeID,
-	}, nil
 }
 
 // NodeGetInfo - get node info
@@ -96,7 +87,7 @@ func (s *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCa
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_UNKNOWN,
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 					},
 				},
 			},
@@ -144,18 +135,13 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	// get NexentaStor filesystem information
 	filesystem, err := nsProvider.GetFilesystem(volumeID)
 	if err != nil {
-		return nil, status.Errorf(
-			codes.Internal,
-			"Cannot get filesystem '%s' volume: %s",
-			volumeID,
-			err,
-		)
+		return nil, status.Errorf(codes.NotFound, "Cannot find filesystem '%s': %s", volumeID, err)
 	}
 
 	// volume attributes are passed from ControllerServer.CreateVolume()
-	volumeAttributes := req.GetVolumeAttributes()
-	if volumeAttributes == nil {
-		volumeAttributes = make(map[string]string)
+	volumeContext := req.GetVolumeContext()
+	if volumeContext == nil {
+		volumeContext = make(map[string]string)
 	}
 
 	// get mount options by priority:
@@ -170,7 +156,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	}
 	if len(mountOptions) == 0 {
 		var configMountOptions string
-		if v, ok := volumeAttributes["mountOptions"]; ok && v != "" {
+		if v, ok := volumeContext["mountOptions"]; ok && v != "" {
 			// `k8s.StorageClass.parameters` in volume definition
 			configMountOptions = v
 		} else {
@@ -194,7 +180,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	// 	- runtime volume attributes: `k8s.StorageClass.parameters.dataIP`
 	// 	- driver config file (k8s secret): `defaultDataIP`
 	var dataIP string
-	if v, ok := volumeAttributes["dataIP"]; ok && v != "" {
+	if v, ok := volumeContext["dataIP"]; ok && v != "" {
 		dataIP = v
 	} else {
 		dataIP = s.config.DefaultDataIP
@@ -205,7 +191,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	// 	- driver config file (k8s secret): `defaultMountFsType`
 	// 	- fallback to NFS as default mount filesystem type
 	var fsType string
-	if v, ok := volumeAttributes["mountFsType"]; ok && v != "" {
+	if v, ok := volumeContext["mountFsType"]; ok && v != "" {
 		fsType = v
 	} else if s.config.DefaultMountFsType != "" {
 		fsType = s.config.DefaultMountFsType
@@ -447,6 +433,50 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 
 	l.Infof("volume '%s' has been unpublished from '%s'", volumeID, targetPath)
 	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+// NodeGetVolumeStats - volume stats (available capacity)
+//TODO https://github.com/container-storage-interface/spec/blob/master/spec.md#nodegetvolumestats
+func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (
+	*csi.NodeGetVolumeStatsResponse,
+	error,
+) {
+	l := s.log.WithField("func", "NodeGetVolumeStats()")
+	l.Infof("request: '%+v'", req)
+
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "req.VolumeId must be provided")
+	}
+
+	// read and validate config
+	err := s.refreshConfig()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
+
+	nsProvider, err := s.resolveNS(volumeID)
+	if err != nil {
+		return nil, err
+	}
+
+	l.Infof("resolved NS: %s, %s", nsProvider, volumeID)
+
+	// get NexentaStor filesystem information
+	available, err := nsProvider.GetFilesystemAvailableCapacity(volumeID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "Cannot find filesystem '%s': %s", volumeID, err)
+	}
+
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			&csi.VolumeUsage{
+				Unit:      csi.VolumeUsage_BYTES,
+				Available: available,
+				//TODO add used, total
+			},
+		},
+	}, nil
 }
 
 // NodeStageVolume - stage volume

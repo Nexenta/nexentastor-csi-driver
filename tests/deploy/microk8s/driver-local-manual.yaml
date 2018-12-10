@@ -333,7 +333,7 @@ spec:
             - --pod-info-mount-version=""
             - --driver-requires-attachment=false
             - --csi-address=/csi/csi.sock
-            - --kubelet-registration-path=/var/snap/microk8s/common/var/lib/kubelet/plugins/nexentastor-csi-driver.nexenta.com/csi.sock
+            - --kubelet-registration-path=/var/snap/microk8s/common/var/lib/kubelet/plugins_registry/nexentastor-csi-driver.nexenta.com/csi.sock
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -372,11 +372,11 @@ spec:
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/snap/microk8s/common/var/lib/kubelet/plugins/nexentastor-csi-driver.nexenta.com
+            path: /var/snap/microk8s/common/var/lib/kubelet/plugins_registry/nexentastor-csi-driver.nexenta.com
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: /var/snap/microk8s/common/var/lib/kubelet/plugins
+            path: /var/snap/microk8s/common/var/lib/kubelet/plugins_registry
             type: Directory
         - name: pods-mount-dir
           hostPath:

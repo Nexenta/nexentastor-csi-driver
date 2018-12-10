@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -23,13 +23,23 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	//csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT, //TODO
 }
 
-// supportedVolumeCapabilityAccessModes - driver volume capabilities
-var supportedVolumeCapabilityAccessModes = []csi.VolumeCapability_AccessMode{
-	csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY},
-	csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER},
-	csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY},
-	csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER},
-	csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER},
+// supportedVolumeCapabilities - driver volume capabilities
+var supportedVolumeCapabilities = []*csi.VolumeCapability{
+	&csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY},
+	},
+	&csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER},
+	},
+	&csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY},
+	},
+	&csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER},
+	},
+	&csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER},
+	},
 }
 
 // ControllerServer - k8s csi driver controller server
@@ -101,7 +111,7 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	entries := make([]*csi.ListVolumesResponse_Entry, len(filesystems))
 	for i, item := range filesystems {
 		entries[i] = &csi.ListVolumesResponse_Entry{
-			Volume: &csi.Volume{Id: item.Path},
+			Volume: &csi.Volume{VolumeId: item.Path},
 		}
 	}
 
@@ -129,6 +139,14 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	volumeCapabilities := req.GetVolumeCapabilities()
 	if volumeCapabilities == nil {
 		return nil, status.Error(codes.InvalidArgument, "req.VolumeCapabilities must be provided")
+	}
+	for _, reqC := range volumeCapabilities {
+		supported := validateVolumeCapability(reqC)
+		if !supported {
+			message := fmt.Sprintf("Driver does not support volume capability mode: %s", reqC.GetAccessMode().GetMode())
+			l.Warn(message)
+			return nil, status.Error(codes.FailedPrecondition, message)
+		}
 	}
 
 	err := s.refreshConfig()
@@ -164,9 +182,9 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	res := &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			Id:            volumePath,
+			VolumeId:      volumePath,
 			CapacityBytes: capacityBytes,
-			Attributes: map[string]string{
+			VolumeContext: map[string]string{
 				"dataIp":       reqParams["dataIp"],
 				"mountOptions": reqParams["mountOptions"],
 			},
@@ -184,7 +202,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		existingFilesystem, err := nsProvider.GetFilesystem(volumePath)
 		if err != nil {
 			return nil, status.Errorf(
-				codes.AlreadyExists,
+				codes.Internal,
 				"Volume '%s' already exists, but volume properties request failed: %s",
 				volumePath,
 				err,
@@ -198,6 +216,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 				existingFilesystem.GetReferencedQuotaSize(),
 			)
 		}
+
 		l.Infof("volume '%s' already exists and can be used", volumePath)
 		return res, nil
 	}
@@ -298,7 +317,8 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ValidateVolumeCapabilities - validate volume
+// ValidateVolumeCapabilities - validate volume capabilities, shall return confirmed only if all the volume
+// capabilities specified in the request are supported
 func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
 	*csi.ValidateVolumeCapabilitiesResponse,
 	error,
@@ -316,6 +336,9 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 		return nil, status.Error(codes.InvalidArgument, "req.VolumeCapabilities must be provided")
 	}
 
+	// volume attributes are passed from ControllerServer.CreateVolume()
+	volumeContext := req.GetVolumeContext()
+
 	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
@@ -329,25 +352,22 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)
 
 	for _, reqC := range volumeCapabilities {
-		reqMode := reqC.GetAccessMode().GetMode()
-		found := false
-		for _, volumeC := range supportedVolumeCapabilityAccessModes {
-			if volumeC.GetMode() == reqMode {
-				found = true
-			}
-		}
-		l.Infof("requested capability: '%s', supported: %t", reqMode, found)
-		if !found {
-			message := fmt.Sprintf("Driver does not support mode: %s", reqMode)
+		supported := validateVolumeCapability(reqC)
+		l.Infof("requested capability: '%s', supported: %t", reqC.GetAccessMode().GetMode(), supported)
+		if !supported {
+			message := fmt.Sprintf("Driver does not support volume capability mode: %s", reqC.GetAccessMode().GetMode())
+			l.Warn(message)
 			return &csi.ValidateVolumeCapabilitiesResponse{
-				Supported: false,
-				Message:   message,
-			}, status.Error(codes.InvalidArgument, message)
+				Message: message,
+			}, nil
 		}
 	}
 
 	return &csi.ValidateVolumeCapabilitiesResponse{
-		Supported: true,
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeCapabilities: supportedVolumeCapabilities,
+			VolumeContext:      volumeContext,
+		},
 	}, nil
 }
 
@@ -376,6 +396,16 @@ func newControllerServiceCapability(cap csi.ControllerServiceCapability_RPC_Type
 			},
 		},
 	}
+}
+
+func validateVolumeCapability(requestedVolumeCapability *csi.VolumeCapability) bool {
+	requestedMode := requestedVolumeCapability.GetAccessMode().GetMode()
+	for _, volumeCapability := range supportedVolumeCapabilities {
+		if volumeCapability.GetAccessMode().GetMode() == requestedMode {
+			return true
+		}
+	}
+	return false
 }
 
 // NewControllerServer - create an instance of controller service

@@ -45,7 +45,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 ## Installation
 
 1. Create NexentaStor dataset for the driver, example: `csiDriverPool/csiDriverDataset`.
-   By default driver will create filesystems in this dataset, and share them in order to create Kubernetes volumes.
+   By default, the driver will create filesystems in this dataset and mount them to use as Kubernetes volumes.
 2. Clone driver repository
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
@@ -258,7 +258,7 @@ Without installation to k8s cluster only version command works:
 ### Publish
 
 ```bash
-# push the latest built container to local registry (see `Makefile`)
+# push the latest built container to the local registry (see `Makefile`)
 make container-push-local
 
 # push the latest built container to hub.docker.com

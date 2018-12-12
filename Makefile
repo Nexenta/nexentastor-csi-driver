@@ -93,17 +93,17 @@ test-e2e-k8s-local-image-container:
 test-e2e-k8s-remote-image:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
-		--k8sDeploymentFile="../../../deploy/kubernetes/${VERSION}/nexentastor-csi-driver-${VERSION}.yaml" \
+		--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
-		--k8sDeploymentFile="../../../deploy/kubernetes/${VERSION}/nexentastor-csi-driver-${VERSION}.yaml" \
+		--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_MACHINE_IP}" \
-		--k8sDeploymentFile="../../../deploy/kubernetes/${VERSION}/nexentastor-csi-driver-${VERSION}.yaml" \
+		--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"
 .PHONY: test-e2e-k8s-local-image-container

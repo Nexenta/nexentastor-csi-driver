@@ -45,7 +45,7 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
    ```
-3. Edit `./deploy/kubernetes/1.0.0/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
+3. Edit `./deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml
    restIp: https://10.3.3.4:8443,https://10.3.3.5:8443     # [required] NexentaStor REST API endpoint(s)
    username: admin                                         # [required] NexentaStor REST API username
@@ -83,11 +83,11 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
 
 4. Create Kubernetes secret from the file:
    ```bash
-   kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/1.0.0/nexentastor-csi-driver-config.yaml
+   kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/nexentastor-csi-driver-config.yaml
    ```
 5. Register driver to Kubernetes:
    ```bash
-   kubectl apply -f ./deploy/kubernetes/1.0.0/nexentastor-csi-driver-1.0.0.yaml
+   kubectl apply -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
    ```
 
 ## Usage
@@ -205,7 +205,7 @@ Using the same files as for installation:
 
 ```bash
 # delete driver
-kubectl delete -f ./deploy/kubernetes/1.0.0/nexentastor-csi-driver-1.0.0.yaml
+kubectl delete -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
 
 # delete secret
 kubectl delete secret nexentastor-csi-driver-config

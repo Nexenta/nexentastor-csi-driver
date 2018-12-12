@@ -1,5 +1,5 @@
 # build container
-FROM golang:1.11 AS builder
+FROM golang:1.11 as builder
 WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 COPY . ./
 RUN make build

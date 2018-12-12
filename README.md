@@ -50,8 +50,10 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
+   #git branch       # to use other that master branch
+   #git checkout ...
    ```
-3. Edit `./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
+3. Edit `./deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml
    restIp: https://10.3.3.4:8443,https://10.3.3.5:8443     # [required] NexentaStor REST API endpoint(s)
    username: admin                                         # [required] NexentaStor REST API username
@@ -89,11 +91,11 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 4. Create Kubernetes secret from the file:
    ```bash
-   kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/master/nexentastor-csi-driver-config.yaml
+   kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/nexentastor-csi-driver-config.yaml
    ```
 5. Register driver to Kubernetes:
    ```bash
-   kubectl apply -f ./deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
+   kubectl apply -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
    ```
 
 ## Usage
@@ -211,7 +213,7 @@ Using the same files as for installation:
 
 ```bash
 # delete driver
-kubectl delete -f ./deploy/kubernetes/master/nexentastor-csi-driver-master.yaml
+kubectl delete -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
 
 # delete secret
 kubectl delete secret nexentastor-csi-driver-config
@@ -301,7 +303,6 @@ go test tests/e2e/driver/driver_test.go -v -count 1 \
 # go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 git-chglog --next-tag X.X.X -o CHANGELOG.md
 git add CHANGELOG.md
-cp -r deploy/kubernetes/master deploy/kubernetes/X.X.X
 git commit -m "release X.X.X"
 git push
 git co -b X.X.X

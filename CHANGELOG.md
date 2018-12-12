@@ -1,5 +1,5 @@
 <a name="1.0.0"></a>
-## [1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.2.0...1.0.0) (2018-12-12)
+## [1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.2.0...v1.0.0) (2018-12-12)
 
 ### Features
 
@@ -7,7 +7,7 @@
 
 
 <a name="0.2.0"></a>
-## [0.2.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/0.1.0...0.2.0) (2018-12-04)
+## [0.2.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.1.0...v0.2.0) (2018-12-04)
 
 ### Features
 

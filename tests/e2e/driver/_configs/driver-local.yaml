@@ -1,16 +1,7 @@
 # NexentaStor CSI Driver
 #
-# This driver version works with Kubernetes version >=1.13
-#
-# In production, each CSI driver deployment has to be customized to avoid conflicts,
-# use non-default namespace and different names for non-namespaced entities like the ClusterRole
-#
-# Before installation, make sure "csidrivers" and "csinodeinfos" resource types exist:
-# $ kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csidriver.yaml
-# $ kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csinodeinfo.yaml
-#
 # Install to Kubernetes:
-# $ kubectl apply -f tests/e2e/driver/configs/driver-local.yaml
+# $ kubectl apply -f ./tests/e2e/driver/_configs/driver-local.yaml
 #
 
 

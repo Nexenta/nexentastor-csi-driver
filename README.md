@@ -1,4 +1,4 @@
-# nexentastor-csi-driver
+# nexentastor-csi-driver (v1.0.0)
 
 [![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=1.0.0)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)

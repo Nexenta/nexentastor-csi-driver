@@ -50,7 +50,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
-   #git branch       # to use other that master branch
+   #git branch       # to use other than master branch
    #git checkout ...
    ```
 3. Edit `./deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
@@ -98,11 +98,22 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    kubectl apply -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
    ```
 
+NexentaStor CSI driver's pods should be running after installation:
+
+```bash
+$ kubectl get pods
+NAME                            READY   STATUS    RESTARTS   AGE
+nexentastor-csi-attacher-0      2/2     Running   0          19s
+nexentastor-csi-driver-XXXXX    2/2     Running   0          19s
+nexentastor-csi-provisioner-0   2/2     Running   0          19s
+```
+
 ## Usage
 
 ### Dynamically provisioned volumes
 
 For dynamic volume provisioning, the administrator needs to set up a _StorageClass_ pointing to the driver.
+In this case Kubernetes generates volume name automatically (for example `pvc-ns-cfc67950-fe3c-11e8-a3ca-005056b857f8`).
 Default driver configuration may be overwritten in `parameters` section:
 
 ```yaml

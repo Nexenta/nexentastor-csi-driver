@@ -1,3 +1,10 @@
+<a name="1.0.0"></a>
+## [1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.2.0...1.0.0) (2018-12-12)
+
+### Features
+
+* NEX-19172 - support Kubernetes 1.13, migrate to CSI v1.0.0
+
 
 <a name="0.2.0"></a>
 ## [0.2.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/0.1.0...0.2.0) (2018-12-04)

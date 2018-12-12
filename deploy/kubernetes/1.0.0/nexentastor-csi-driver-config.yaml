@@ -1,0 +1,21 @@
+# nexentastor-csi-driver config file to create k8s secret
+#
+# $ kubectl create secret generic nexentastor-csi-driver-config \
+#   --from-file=./deploy/kubernetes/1.0.0/nexentastor-csi-driver-config.yaml
+#
+
+restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)
+username: admin                                             # [required] NexentaStor REST API username
+password: Nexenta@1                                         # [required] NexentaStor REST API password
+defaultDataset: csiDriverPool/csiDriverDataset              # default dataset for driver's fs/volume [pool/dataset]
+defaultDataIp: 20.20.20.252                                 # default NexentaStor data IP or HA VIP
+
+# for NFS mounts
+defaultMountFsType: nfs                                     # default mount fs type [nfs|cifs]
+#defaultMountOptions: noatime                               # default mount options (mount -o ...)
+
+# for CIFS mounts
+#defaultMountFsType: cifs                                   # default mount fs type [nfs|cifs]
+#defaultMountOptions: username=admin,password=Nexenta@1     # username/password must be defined for CIFS
+
+#debug: true                                                # more logs

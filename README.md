@@ -301,9 +301,11 @@ go test tests/e2e/driver/driver_test.go -v -count 1 \
 # go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 git-chglog --next-tag X.X.X -o CHANGELOG.md
 git add CHANGELOG.md
+cp -r deploy/kubernetes/master deploy/kubernetes/X.X.X
 git commit -m "release X.X.X"
 git push
 git co -b X.X.X
+make container-build && make container-push-local && make test-all-local-image-container && make container-push-remote
 vim README.md
 git add README.md
 git ci -m "release X.X.X"

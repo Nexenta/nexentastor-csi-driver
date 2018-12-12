@@ -20,8 +20,10 @@ spec:
   capacity:
     storage: 1Gi
   csi:
-    driver: nexentastor-csi-driver
+    driver: nexentastor-csi-driver.nexenta.com
     volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+  #mountOptions:  # list of options for `mount` command
+  #  - noatime    #
 ---
 
 

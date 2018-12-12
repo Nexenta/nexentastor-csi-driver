@@ -108,8 +108,8 @@ kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-dynamic-provisioning
 provisioner: nexentastor-csi-driver.nexenta.com
-mountOptions:                        # only for Kubernetes >=v1.13
-  - noatime
+mountOptions:                        # list of options for `mount -o ...` command
+  - noatime                          #
 parameters:
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
@@ -157,16 +157,18 @@ spec:
   capacity:
     storage: 1Gi
   csi:
-    driver: nexentastor-csi-driver
+    driver: nexentastor-csi-driver.nexenta.com
     volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+  mountOptions: # list of options for `mount -o ...` command
+    - noatime   #
 ```
 
 CSI Parameters:
 
-| Name           | Description                                                       | Example                  |
-|----------------|-------------------------------------------------------------------|--------------------------|
-| `driver`       | installed driver name "nexentastor-csi-driver"                    | `nexentastor-csi-driver` |
-| `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `PoolA/datasetA/nginx`   |
+| Name           | Description                                                       | Example                              |
+|----------------|-------------------------------------------------------------------|--------------------------------------|
+| `driver`       | installed driver name "nexentastor-csi-driver.nexenta.com"        | `nexentastor-csi-driver.nexenta.com` |
+| `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `PoolA/datasetA/nginx`               |
 
 #### _PersistentVolumeClaim_ (pointed to created _PersistentVolume_)
 

@@ -10,8 +10,8 @@ kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-sc-nginx-manual
 provisioner: nexentastor-csi-driver.nexenta.com
-#mountOptions: #TODO test this in k8s v1.13 - https://github.com/kubernetes/kubernetes/pull/67898
-#  - noatime
+mountOptions:
+  - noatime
 parameters:
   #dataset: csiDriverPool/test # to overwrite "defaultDataset" in config secret
   #dataIp: 10.3.199.252        # to overwrite "defaultDataIp" in config secret

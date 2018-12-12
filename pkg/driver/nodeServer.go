@@ -144,10 +144,10 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		volumeContext = make(map[string]string)
 	}
 
-	// get mount options by priority:
+	// get mount options by this priority (takes first one that found):
 	// 	- k8s runtime volume mount options:
 	//		- `k8s.PersistentVolume.spec.mountOptions` definition
-	// 		- `k8s.StorageClass.mountOptions` (should work in k8s v1.13) //TODO test it
+	// 		- `k8s.StorageClass.mountOptions` (works in k8s >=v1.13)
 	// 	- runtime volume attributes: `k8s.StorageClass.parameters.mountOptions`
 	// 	- driver config file (k8s secret): `defaultMountOptions`
 	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()

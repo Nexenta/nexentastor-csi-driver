@@ -325,13 +325,10 @@ spec:
         # 1) registers the CSI driver with kubelet
         # 2) adds the drivers custom NodeId to a label on the Kubernetes Node API Object
         - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:v1.0-canary
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.1
           imagePullPolicy: IfNotPresent
           args:
             - --v=3
-            - --mode=node-register
-            - --pod-info-mount-version=""
-            - --driver-requires-attachment=false
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins_registry/nexentastor-csi-driver.nexenta.com/csi.sock
           env:

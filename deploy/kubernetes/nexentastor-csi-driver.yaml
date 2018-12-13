@@ -232,7 +232,7 @@ spec:
         # csi-attacher: sidecar container that watches Kubernetes VolumeAttachment objects
         # and triggers ControllerPublish/Unpublish against a CSI endpoint
         - name: csi-attacher
-          image: quay.io/k8scsi/csi-attacher:v1.0-canary
+          image: quay.io/k8scsi/csi-attacher:v1.0.1
           imagePullPolicy: IfNotPresent
           args:
             - --v=3

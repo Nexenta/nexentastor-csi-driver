@@ -102,10 +102,9 @@ NexentaStor CSI driver's pods should be running after installation:
 
 ```bash
 $ kubectl get pods
-NAME                            READY   STATUS    RESTARTS   AGE
-nexentastor-csi-attacher-0      2/2     Running   0          19s
-nexentastor-csi-driver-XXXXX    2/2     Running   0          19s
-nexentastor-csi-provisioner-0   2/2     Running   0          19s
+NAME                           READY   STATUS    RESTARTS   AGE
+nexentastor-csi-controller-0   3/3     Running   0          42s
+nexentastor-csi-node-cwp4v     2/2     Running   0          42s
 ```
 
 ## Usage
@@ -342,15 +341,14 @@ git push --tags
   ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features)).
 - Driver logs
   ```bash
-  kubectl logs -f nexentastor-csi-attacher-0 driver
-  kubectl logs -f nexentastor-csi-provisioner-0 driver
-  kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-driver/ {print $1;exit}') driver
+  kubectl logs -f nexentastor-csi-controller-0 driver
+  kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-node/ {print $1;exit}') driver
   # combine all pods:
   kubectl get pods | awk '/nexentastor-csi-/ {system("kubectl logs " $1 " driver &")}'
   ```
 - Show termination message in case driver failed to run:
   ```bash
-  kubectl get pod nexentastor-csi-attacher-0 -o go-template="{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}"
+  kubectl get pod nexentastor-csi-controller-0 -o go-template="{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}"
   ```
 - Configure Docker to trust insecure registries:
   ```bash

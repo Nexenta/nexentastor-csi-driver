@@ -98,9 +98,8 @@ func TestDriver_deploy(t *testing.T) {
 		}
 
 		waitPods := []string{
-			"nexentastor-csi-attacher-.*Running",
-			"nexentastor-csi-provisioner-.*Running",
-			"nexentastor-csi-driver-.*Running",
+			"nexentastor-csi-controller-.*Running",
+			"nexentastor-csi-node-.*Running",
 		}
 
 		if err := k8sDriver.Apply(waitPods); err != nil {

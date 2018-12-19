@@ -13,8 +13,6 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 |                             | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
 |-----------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Kubernetes >=1.10.5 <1.12.1 | [0.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) | [0.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.1.0) |
-| Kubernetes >=1.12.1 <1.13   | [0.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.2.0) | [0.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/0.2.0) |
 | Kubernetes >=1.13           | [1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.0) | [1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.0) |
 | Kubernetes >=1.13           | master                                                                | master                                                                |
 

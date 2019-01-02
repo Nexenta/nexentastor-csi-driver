@@ -2,6 +2,7 @@ package ns
 
 import (
 	"strings"
+	"time"
 )
 
 // ACLRuleSet - filesystem ACL rule set
@@ -48,10 +49,10 @@ func (fs *Filesystem) GetReferencedQuotaSize() int64 {
 
 // Snapshot - NexentaStor snapshot
 type Snapshot struct {
-	Path         string `json:"path"`
-	Name         string `json:"name"`
-	Parent       string `json:"parent"`
-	CreationTime string `json:"creationTime"`
+	Path         string    `json:"path"`
+	Name         string    `json:"name"`
+	Parent       string    `json:"parent"`
+	CreationTime time.Time `json:"creationTime"`
 }
 
 func (snapshot *Snapshot) String() string {

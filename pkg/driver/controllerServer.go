@@ -354,18 +354,19 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 		return nil, status.Errorf(codes.Internal, "Cannot create snapshot '%s': %s", snapshotPath, err)
 	}
 
-	_, err = nsProvider.GetSnapshot(snapshotPath)
+	createdSnapshot, err := nsProvider.GetSnapshot(snapshotPath)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.Internal,
-			"Snapshot '%s' already exists, but snapshot properties request failed: %s",
+			"Snapshot '%s' has been created, but snapshot properties request failed: %s",
 			snapshotPath,
 			err,
 		)
-		//TODO check that props are the same as requested
 	}
 
-	creationTime := &timestamp.Timestamp{Seconds: 0} //TODO use actual creation time
+	creationTime := &timestamp.Timestamp{
+		Seconds: createdSnapshot.CreationTime.Unix(),
+	}
 
 	res := &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
@@ -373,7 +374,7 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 			SourceVolumeId: volumePath,
 			CreationTime:   creationTime,
 			ReadyToUse:     true, //TODO use actual state
-			//SizeByte: 0
+			//SizeByte: 0 // size of zero means it is unspecified
 		},
 	}
 
@@ -424,16 +425,6 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 	}
 
 	l.Infof("resolved NS: %s, %s", nsProvider, snapshotPath)
-
-	// find all snapshots
-	existingSnapshots, err := nsProvider.GetSnapshots(volumePath, false)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot get snapshot list: %s", err)
-	}
-
-	l.Warnf("existing snapshots: %+v", existingSnapshots)
-
-	//TODO check unique snapshots in the same volume or parent?
 
 	// if here, than volumePath exists on some NS
 	err = nsProvider.DestroySnapshot(snapshotPath)

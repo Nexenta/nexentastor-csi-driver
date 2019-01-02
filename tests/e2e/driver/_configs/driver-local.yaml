@@ -1,7 +1,7 @@
 # NexentaStor CSI Driver
 #
 # Install to Kubernetes:
-# $ kubectl apply -f ./tests/e2e/driver/_configs/driver-local.yaml
+# $ kubectl apply -f tests/e2e/driver/_configs/driver-local.yaml
 #
 
 

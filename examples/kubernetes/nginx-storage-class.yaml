@@ -1,6 +1,6 @@
-# Nginx pod with dynamically storage creation using NexentaStor CSI driver
+# Nginx pod with dynamic storage creation using NexentaStor CSI driver
 #
-# $ kubectl apply -f ./deploy/kubernetes/examples/nginx-storage-class.yaml
+# $ kubectl apply -f examples/kubernetes/nginx-storage-class.yaml
 #
 
 

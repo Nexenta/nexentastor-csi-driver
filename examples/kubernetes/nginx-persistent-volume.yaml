@@ -1,6 +1,6 @@
 # Nginx pod with pre provisioned storage using NexentaStor CSI driver
 #
-# $ kubectl apply -f ./deploy/kubernetes/examples/nginx-persistent-volume.yaml
+# $ kubectl apply -f examples/kubernetes/nginx-persistent-volume.yaml
 #
 
 
@@ -11,9 +11,9 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: nexentastor-csi-driver-nginx-pv
+  name: nexentastor-csi-driver-pv-nginx
   labels:
-    name: nexentastor-csi-driver-nginx-pv
+    name: nexentastor-csi-driver-pv-nginx
 spec:
   accessModes:
     - ReadWriteMany
@@ -34,7 +34,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: nexentastor-csi-driver-nginx-pvc
+  name: nexentastor-csi-driver-pvc-nginx
 spec:
   accessModes:
     - ReadWriteMany
@@ -45,7 +45,7 @@ spec:
     matchExpressions:
       - key: name
         operator: In
-        values: ['nexentastor-csi-driver-nginx-pv']
+        values: ['nexentastor-csi-driver-pv-nginx']
 ---
 
 
@@ -59,8 +59,8 @@ metadata:
   name: nginx-persistent-volume
 spec:
   containers:
-    - image: maersk/nginx
-      imagePullPolicy: Always
+    - image: nginx
+      imagePullPolicy: IfNotPresent
       name: nginx
       ports:
         - containerPort: 80
@@ -71,4 +71,5 @@ spec:
   volumes:
     - name: nexentastor-csi-driver-data
       persistentVolumeClaim:
-        claimName: nexentastor-csi-driver-nginx-pvc
+        claimName: nexentastor-csi-driver-pvc-nginx
+        readOnly: false

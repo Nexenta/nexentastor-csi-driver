@@ -1,7 +1,7 @@
 # NexentaStor CSI Driver
 #
 # Install to Kubernetes:
-# $ kubectl apply -f ./tests/deploy/microk8s/driver-local-manual.yaml
+# $ kubectl apply -f tests/deploy/microk8s/driver-local-manual.yaml
 #
 
 

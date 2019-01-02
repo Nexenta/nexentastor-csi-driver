@@ -51,7 +51,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    #git branch       # to use other than master branch
    #git checkout ...
    ```
-3. Edit `./deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
+3. Edit `deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml
    restIp: https://10.3.3.4:8443,https://10.3.3.5:8443     # [required] NexentaStor REST API endpoint(s)
    username: admin                                         # [required] NexentaStor REST API username
@@ -89,11 +89,11 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 4. Create Kubernetes secret from the file:
    ```bash
-   kubectl create secret generic nexentastor-csi-driver-config --from-file=./deploy/kubernetes/nexentastor-csi-driver-config.yaml
+   kubectl create secret generic nexentastor-csi-driver-config --from-file=deploy/kubernetes/nexentastor-csi-driver-config.yaml
    ```
 5. Register driver to Kubernetes:
    ```bash
-   kubectl apply -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
+   kubectl apply -f deploy/kubernetes/nexentastor-csi-driver.yaml
    ```
 
 NexentaStor CSI driver's pods should be running after installation:
@@ -142,10 +142,10 @@ parameters:
 Run Nginx server using _StorageClass_:
 
 ```bash
-kubectl apply -f ./deploy/kubernetes/examples/nginx-storage-class.yaml
+kubectl apply -f examples/kubernetes/nginx-storage-class.yaml
 
 # to delete this pod:
-kubectl delete -f ./deploy/kubernetes/examples/nginx-storage-class.yaml
+kubectl delete -f examples/kubernetes/nginx-storage-class.yaml
 ```
 
 ### Pre-provisioned volumes
@@ -209,10 +209,23 @@ Run nginx server using PersistentVolume.
 `csiDriverPool/csiDriverDataset/nginx-persistent`.
 
 ```bash
-kubectl apply -f ./deploy/kubernetes/examples/nginx-persistent-volume.yaml
+kubectl apply -f examples/kubernetes/nginx-persistent-volume.yaml
 
 # to delete this pod:
-kubectl delete -f ./deploy/kubernetes/examples/nginx-persistent-volume.yaml
+kubectl delete -f examples/kubernetes/nginx-persistent-volume.yaml
+```
+
+## Snapshots
+
+```bash
+# snapshot classes
+kubectl get volumesnapshotclasses.snapshot.storage.k8s.io
+
+# snapshot list
+kubectl get volumesnapshots.snapshot.storage.k8s.io
+
+#
+kubectl get volumesnapshotcontents.snapshot.storage.k8s.io
 ```
 
 ## Uninstall
@@ -221,7 +234,7 @@ Using the same files as for installation:
 
 ```bash
 # delete driver
-kubectl delete -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
+kubectl delete -f deploy/kubernetes/nexentastor-csi-driver.yaml
 
 # delete secret
 kubectl delete secret nexentastor-csi-driver-config

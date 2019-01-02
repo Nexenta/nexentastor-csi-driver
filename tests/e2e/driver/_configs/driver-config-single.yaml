@@ -1,5 +1,5 @@
 # $ kubectl create secret generic nexentastor-csi-driver-config-local \
-#     --from-file=./tests/e2e/driver/_configs/driver-config-single.yaml
+#     --from-file=tests/e2e/driver/_configs/driver-config-single.yaml
 
 restIp: https://10.3.199.254:8443               # [required] NexentaStor REST API endpoint(s)
 username: admin                                 # [required] NexentaStor REST API username

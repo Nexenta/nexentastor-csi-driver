@@ -5,6 +5,6 @@
 #
 
 { \
-    kubectl logs -f nexentastor-csi-controller-0 driver & \
-    kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-driver/ {print $1;exit}') driver; \
+    kubectl logs -f --all-containers=true nexentastor-csi-controller-0 & \
+    kubectl logs -f --all-containers=true $(kubectl get pods | awk '/nexentastor-csi-driver/ {print $1;exit}'); \
 }

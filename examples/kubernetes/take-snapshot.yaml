@@ -1,0 +1,17 @@
+# Take a new snapshot
+#
+# !!! Make sure to run nginx-persistent-volume.yaml before running this example
+# !!! Make sure to run snapshot-class.yaml before running this example
+#
+# $ kubectl apply -f examples/kubernetes/take-snapshot.yaml
+#
+
+apiVersion: snapshot.storage.k8s.io/v1alpha1
+kind: VolumeSnapshot
+metadata:
+  name: snapshot-test-6
+spec:
+  snapshotClassName: nexentastor-csi-snapshot-class
+  source:
+    name: nexentastor-csi-driver-pvc-nginx
+    kind: PersistentVolumeClaim

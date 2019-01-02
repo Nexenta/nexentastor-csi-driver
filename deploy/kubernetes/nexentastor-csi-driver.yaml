@@ -10,7 +10,7 @@
 # $ kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csinodeinfo.yaml
 #
 # Install to Kubernetes:
-# $ kubectl apply -f ./deploy/kubernetes/nexentastor-csi-driver.yaml
+# $ kubectl apply -f deploy/kubernetes/nexentastor-csi-driver.yaml
 #
 
 

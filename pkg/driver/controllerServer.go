@@ -3,8 +3,10 @@ package driver
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -18,9 +20,9 @@ import (
 var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type{
 	csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 	//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
 	//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
-	//csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT, //TODO
 }
 
 // supportedVolumeCapabilities - driver volume capabilities
@@ -298,7 +300,90 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 	*csi.CreateSnapshotResponse,
 	error,
 ) {
-	return nil, status.Error(codes.Unimplemented, "")
+	l := s.log.WithField("func", "CreateSnapshot()")
+	l.Infof("request: '%+v'", req)
+
+	err := s.refreshConfig()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
+
+	volumePath := req.GetSourceVolumeId()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot source volume ID must be provided")
+	}
+
+	name := req.GetName()
+	if len(name) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot name must be provided")
+	}
+
+	//TODO req.GetParameters() - read recursive param?
+
+	nsProvider, err := s.resolveNS(volumePath)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "volume '%s' not found, cannot take a snapshot: %s", volumePath, err)
+	}
+
+	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)
+
+	//K8s doesn't allow to have same named snapshots for different volumes
+	parentVolumePath := filepath.Dir(volumePath)
+	existingSnapshots, err := nsProvider.GetSnapshots(parentVolumePath, true)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot get snapshots list: %s", err)
+	}
+	for _, s := range existingSnapshots {
+		if s.Name == name && s.Parent != volumePath {
+			return nil, status.Errorf(
+				codes.AlreadyExists,
+				"Snapshot '%s' already exists for filesystem: %s",
+				name,
+				s.Path,
+			)
+		}
+	}
+
+	snapshotPath := fmt.Sprintf("%s@%s", volumePath, name)
+
+	// if here, than volumePath exists on some NS
+	err = nsProvider.CreateSnapshot(ns.CreateSnapshotParams{
+		Path: snapshotPath,
+	})
+	if err != nil && !ns.IsAlreadyExistNefError(err) {
+		return nil, status.Errorf(codes.Internal, "Cannot create snapshot '%s': %s", snapshotPath, err)
+	}
+
+	_, err = nsProvider.GetSnapshot(snapshotPath)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"Snapshot '%s' already exists, but snapshot properties request failed: %s",
+			snapshotPath,
+			err,
+		)
+		//TODO check that props are the same as requested
+	}
+
+	creationTime := &timestamp.Timestamp{Seconds: 0} //TODO use actual creation time
+
+	res := &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SnapshotId:     snapshotPath,
+			SourceVolumeId: volumePath,
+			CreationTime:   creationTime,
+			ReadyToUse:     true, //TODO use actual state
+			//SizeByte: 0
+		},
+	}
+
+	if ns.IsAlreadyExistNefError(err) {
+		l.Infof("snapshot '%s' already exists and can be used", snapshotPath)
+		return res, nil
+	}
+
+	l.Infof("snapshot '%s' has been created", snapshotPath)
+	return res, nil
 }
 
 // DeleteSnapshot - not implemented
@@ -306,10 +391,66 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 	*csi.DeleteSnapshotResponse,
 	error,
 ) {
-	return nil, status.Error(codes.Unimplemented, "")
+	l := s.log.WithField("func", "DeleteSnapshot()")
+	l.Infof("request: '%+v'", req)
+
+	err := s.refreshConfig()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
+
+	snapshotPath := req.GetSnapshotId()
+	if len(snapshotPath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot ID must be provided")
+	}
+
+	volumePath := ""
+	splittedString := strings.Split(snapshotPath, "@")
+	if len(splittedString) == 2 {
+		volumePath = splittedString[0]
+	} else {
+		l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
+		return &csi.DeleteSnapshotResponse{}, nil
+	}
+
+	nsProvider, err := s.resolveNS(volumePath)
+	if err != nil {
+		// codes.FailedPrecondition error means no NS found with this volumePath - that's OK
+		if status.Code(err) == codes.FailedPrecondition {
+			l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
+		return nil, err
+	}
+
+	l.Infof("resolved NS: %s, %s", nsProvider, snapshotPath)
+
+	// find all snapshots
+	existingSnapshots, err := nsProvider.GetSnapshots(volumePath, false)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot get snapshot list: %s", err)
+	}
+
+	l.Warnf("existing snapshots: %+v", existingSnapshots)
+
+	//TODO check unique snapshots in the same volume or parent?
+
+	// if here, than volumePath exists on some NS
+	err = nsProvider.DestroySnapshot(snapshotPath)
+	if err != nil && !ns.IsNotExistNefError(err) {
+		return nil, status.Errorf(
+			codes.Internal,
+			"Cannot delete '%s' snapshot: %s",
+			snapshotPath,
+			err,
+		)
+	}
+
+	l.Infof("snapshot '%s' has been deleted", snapshotPath)
+	return &csi.DeleteSnapshotResponse{}, nil
 }
 
-// ListSnapshots - not implemented
+// ListSnapshots - list of snapshots
 func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (
 	*csi.ListSnapshotsResponse,
 	error,

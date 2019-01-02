@@ -158,7 +158,13 @@ func (nsp *Provider) DestroyFilesystem(path string) error {
 		return fmt.Errorf("Filesystem path is required")
 	}
 
-	uri := fmt.Sprintf("/storage/filesystems/%s", url.PathEscape(path))
+	uri := nsp.RestClient.BuildURI(
+		fmt.Sprintf("/storage/filesystems/%s", url.PathEscape(path)),
+		map[string]string{
+			"force":     "true",
+			"snapshots": "true", //TODO figured out if we can keep snapshots
+		},
+	)
 
 	return nsp.sendRequest("DELETE", uri, nil)
 }
@@ -281,6 +287,89 @@ func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error 
 	}
 
 	return nsp.sendRequest("POST", uri, data)
+}
+
+// CreateSnapshotParams - params to create filesystem
+type CreateSnapshotParams struct {
+	// snapshot path w/o leading slash
+	Path string `json:"path"`
+}
+
+// CreateSnapshot - create snapshot by filesystem path
+func (nsp *Provider) CreateSnapshot(params CreateSnapshotParams) error {
+	if len(params.Path) == 0 {
+		return fmt.Errorf("Parameter 'CreateSnapshotParams.Path' is required")
+	}
+
+	return nsp.sendRequest("POST", "/storage/snapshots", params)
+}
+
+// GetSnapshot - get snapshot by its path
+func (nsp *Provider) GetSnapshot(path string) (snapshot Snapshot, err error) {
+	if len(path) == 0 {
+		return snapshot, fmt.Errorf("Snapshot path is empty")
+	}
+
+	uri := nsp.RestClient.BuildURI("/storage/snapshots", map[string]string{
+		"path":   path,
+		"fields": "path,name,creationTime",
+	})
+
+	response := nefStorageSnapshotsResponse{}
+	err = nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response) //TODO use http.Method* everythere
+	if err != nil {
+		return snapshot, err
+	}
+
+	if len(response.Data) == 0 {
+		return snapshot, fmt.Errorf("Snapshot '%s' not found", path)
+	}
+
+	return response.Data[0], nil
+}
+
+// GetSnapshots - get snapshot by its path
+func (nsp *Provider) GetSnapshots(volumePath string, recursive bool) ([]Snapshot, error) {
+	if len(volumePath) == 0 {
+		return []Snapshot{}, fmt.Errorf("Snapshots volume path is empty")
+	}
+
+	fields := "path,name,parent,creationTime"
+
+	var params map[string]string
+	if recursive {
+		params = map[string]string{
+			"parent":    volumePath,
+			"fields":    fields,
+			"recursive": "true",
+		}
+	} else {
+		params = map[string]string{
+			"path":   volumePath,
+			"fields": fields,
+		}
+	}
+
+	uri := nsp.RestClient.BuildURI("/storage/snapshots", params)
+
+	response := nefStorageSnapshotsResponse{}
+	err := nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
+	if err != nil {
+		return []Snapshot{}, err
+	}
+
+	return response.Data, nil
+}
+
+// DestroySnapshot - destroy snapshot by path
+func (nsp *Provider) DestroySnapshot(path string) error {
+	if path == "" {
+		return fmt.Errorf("Snapshot path is required")
+	}
+
+	uri := fmt.Sprintf("/storage/snapshots/%s", url.PathEscape(path))
+
+	return nsp.sendRequest(http.MethodDelete, uri, nil)
 }
 
 // GetRSFClusters - get RSF clusters from NS

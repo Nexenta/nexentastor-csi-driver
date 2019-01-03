@@ -16,7 +16,7 @@ func (nsp *Provider) LogIn() error {
 		Password: nsp.Password,
 	}
 
-	_, bodyBytes, err := nsp.RestClient.Send("POST", "auth/login", data)
+	_, bodyBytes, err := nsp.RestClient.Send(http.MethodPost, "auth/login", data)
 	if err != nil {
 		// try to parse error from rest response
 		nefError := nsp.parseNefError(bodyBytes, "Login request")
@@ -48,7 +48,7 @@ func (nsp *Provider) LogIn() error {
 
 // GetLicense - return NexentaStor license
 func (nsp *Provider) GetLicense() (license License, err error) {
-	err = nsp.sendRequestWithStruct("GET", "/settings/license", nil, &license)
+	err = nsp.sendRequestWithStruct(http.MethodGet, "/settings/license", nil, &license)
 	return license, err
 }
 
@@ -59,7 +59,7 @@ func (nsp *Provider) GetPools() ([]Pool, error) {
 	})
 
 	response := nefStoragePoolsResponse{}
-	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
+	err := nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (nsp *Provider) GetFilesystemAvailableCapacity(path string) (int64, error) 
 	})
 
 	response := nefStorageFilesystemsResponse{}
-	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
+	err := nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
 	if err != nil {
 		return 0, err
 	}
@@ -100,7 +100,7 @@ func (nsp *Provider) GetFilesystem(path string) (filesystem Filesystem, err erro
 	})
 
 	response := nefStorageFilesystemsResponse{}
-	err = nsp.sendRequestWithStruct("GET", uri, nil, &response)
+	err = nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
 	if err != nil {
 		return filesystem, err
 	}
@@ -120,7 +120,7 @@ func (nsp *Provider) GetFilesystems(parent string) ([]Filesystem, error) {
 	})
 
 	response := nefStorageFilesystemsResponse{}
-	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
+	err := nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (nsp *Provider) CreateFilesystem(params CreateFilesystemParams) error {
 		return fmt.Errorf("Parameter 'CreateFilesystemParams.Path' is required")
 	}
 
-	return nsp.sendRequest("POST", "/storage/filesystems", params)
+	return nsp.sendRequest(http.MethodPost, "/storage/filesystems", params)
 }
 
 // DestroyFilesystem - destroy filesystem by path
@@ -166,7 +166,7 @@ func (nsp *Provider) DestroyFilesystem(path string) error {
 		},
 	)
 
-	return nsp.sendRequest("DELETE", uri, nil)
+	return nsp.sendRequest(http.MethodDelete, uri, nil)
 }
 
 // CreateNfsShareParams - params to create NFS share
@@ -195,7 +195,7 @@ func (nsp *Provider) CreateNfsShare(params CreateNfsShareParams) error {
 		},
 	}
 
-	return nsp.sendRequest("POST", "nas/nfs", data)
+	return nsp.sendRequest(http.MethodPost, "nas/nfs", data)
 }
 
 // DeleteNfsShare - destroy NFS chare by filesystem path
@@ -206,7 +206,7 @@ func (nsp *Provider) DeleteNfsShare(path string) error {
 
 	uri := fmt.Sprintf("/nas/nfs/%s", url.PathEscape(path))
 
-	return nsp.sendRequest("DELETE", uri, nil)
+	return nsp.sendRequest(http.MethodDelete, uri, nil)
 }
 
 // CreateSmbShareParams - params to create SMB share
@@ -227,7 +227,7 @@ func (nsp *Provider) CreateSmbShare(params CreateSmbShareParams) error {
 		return fmt.Errorf("CreateSmbShareParams.Filesystem is required")
 	}
 
-	return nsp.sendRequest("POST", "nas/smb", params)
+	return nsp.sendRequest(http.MethodPost, "nas/smb", params)
 }
 
 // GetSmbShareName - get share name for filesystem that shared over SMB
@@ -242,7 +242,7 @@ func (nsp *Provider) GetSmbShareName(path string) (string, error) {
 	)
 
 	response := nefNasSmbResponse{}
-	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
+	err := nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +258,7 @@ func (nsp *Provider) DeleteSmbShare(path string) error {
 
 	uri := fmt.Sprintf("/nas/smb/%s", url.PathEscape(path))
 
-	return nsp.sendRequest("DELETE", uri, nil)
+	return nsp.sendRequest(http.MethodDelete, uri, nil)
 }
 
 // SetFilesystemACL - set filesystem ACL, so NFS share can allow user to write w/o checking UNIX user uid
@@ -286,7 +286,7 @@ func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error 
 		Permissions: permissions,
 	}
 
-	return nsp.sendRequest("POST", uri, data)
+	return nsp.sendRequest(http.MethodPost, uri, data)
 }
 
 // CreateSnapshotParams - params to create filesystem
@@ -301,7 +301,7 @@ func (nsp *Provider) CreateSnapshot(params CreateSnapshotParams) error {
 		return fmt.Errorf("Parameter 'CreateSnapshotParams.Path' is required")
 	}
 
-	return nsp.sendRequest("POST", "/storage/snapshots", params)
+	return nsp.sendRequest(http.MethodPost, "/storage/snapshots", params)
 }
 
 // GetSnapshot - get snapshot by its path
@@ -316,7 +316,7 @@ func (nsp *Provider) GetSnapshot(path string) (snapshot Snapshot, err error) {
 	})
 
 	response := nefStorageSnapshotsResponse{}
-	err = nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response) //TODO use http.Method* everythere
+	err = nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
 	if err != nil {
 		return snapshot, err
 	}
@@ -379,7 +379,7 @@ func (nsp *Provider) GetRSFClusters() ([]RSFCluster, error) {
 	})
 
 	response := nefRsfClustersResponse{}
-	err := nsp.sendRequestWithStruct("GET", uri, nil, &response)
+	err := nsp.sendRequestWithStruct(http.MethodGet, uri, nil, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (nsp *Provider) GetRSFClusters() ([]RSFCluster, error) {
 func (nsp *Provider) IsJobDone(jobID string) (bool, error) {
 	uri := fmt.Sprintf("/jobStatus/%s", jobID)
 
-	statusCode, bodyBytes, err := nsp.RestClient.Send("GET", uri, nil)
+	statusCode, bodyBytes, err := nsp.RestClient.Send(http.MethodGet, uri, nil)
 	if err != nil { // request failed
 		return false, err
 	} else if statusCode == http.StatusOK || statusCode == http.StatusCreated { // job is completed

@@ -329,7 +329,8 @@ git push
 git co -b X.X.X
 make container-build && make container-push-local && make test-all-local-image-container && make container-push-remote
 vim README.md
-git add README.md
+vim Jenkinsfile # update branch to X.X.X
+git add README.md Jenkinsfile
 git ci -m "release X.X.X"
 git push
 git tag vX.X.X

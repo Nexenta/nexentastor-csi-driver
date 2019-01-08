@@ -55,9 +55,13 @@ func (s *NodeServer) refreshConfig() error {
 
 func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
 	nsProvider, err := s.nsResolver.Resolve(datasetPath)
-	if err != nil { //TODO check not found error
+	if err != nil {
+		code := codes.Internal
+		if ns.IsNotExistNefError(err) {
+			code = codes.NotFound
+		}
 		return nil, status.Errorf(
-			codes.NotFound,
+			code,
 			"Cannot resolve '%s' on any NexentaStor(s): %s",
 			datasetPath,
 			err,

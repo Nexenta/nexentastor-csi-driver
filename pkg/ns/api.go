@@ -106,7 +106,7 @@ func (nsp *Provider) GetFilesystem(path string) (filesystem Filesystem, err erro
 	}
 
 	if len(response.Data) == 0 {
-		return filesystem, fmt.Errorf("Filesystem '%s' not found", path)
+		return filesystem, &NefError{Code: "ENOENT", Err: fmt.Errorf("Filesystem '%s' not found", path)}
 	}
 
 	return response.Data[0], nil

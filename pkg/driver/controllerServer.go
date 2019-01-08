@@ -21,8 +21,8 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+	csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 	//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
-	//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
 }
 
 // supportedVolumeCapabilities - driver volume capabilities
@@ -74,9 +74,13 @@ func (s *ControllerServer) refreshConfig() error {
 
 func (s *ControllerServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
 	nsProvider, err := s.nsResolver.Resolve(datasetPath)
-	if err != nil { //TODO check not found error
+	if err != nil {
+		code := codes.Internal
+		if ns.IsNotExistNefError(err) {
+			code = codes.NotFound
+		}
 		return nil, status.Errorf(
-			codes.FailedPrecondition,
+			code,
 			"Cannot resolve '%s' on any NexentaStor(s): %s",
 			datasetPath,
 			err,
@@ -246,8 +250,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 
 	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
-		// codes.FailedPrecondition error means no NS found with this volumePath - that's OK
-		if status.Code(err) == codes.FailedPrecondition {
+		if status.Code(err) == codes.NotFound {
 			l.Infof("volume '%s' not found, that's OK for deletion request", volumePath)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
@@ -322,7 +325,7 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 
 	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "volume '%s' not found, cannot take a snapshot: %s", volumePath, err)
+		return nil, err
 	}
 
 	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)
@@ -374,7 +377,7 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 			SourceVolumeId: volumePath,
 			CreationTime:   creationTime,
 			ReadyToUse:     true, //TODO use actual state
-			//SizeByte: 0 // size of zero means it is unspecified
+			//SizeByte: 0 //TODO size of zero means it is unspecified
 		},
 	}
 
@@ -416,8 +419,7 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 
 	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
-		// codes.FailedPrecondition error means no NS found with this volumePath - that's OK
-		if status.Code(err) == codes.FailedPrecondition {
+		if status.Code(err) == codes.NotFound {
 			l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
@@ -441,16 +443,103 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
-// ListSnapshots - list of snapshots
+// ListSnapshots returns the list of snapshots
 func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (
 	*csi.ListSnapshotsResponse,
 	error,
 ) {
-	return nil, status.Error(codes.Unimplemented, "")
+	l := s.log.WithField("func", "ListSnapshots()")
+	l.Infof("request: '%+v'", req)
+
+	err := s.refreshConfig()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
+
+	var volumePath string
+	snapshotPath := req.GetSnapshotId()
+	if snapshotPath != "" {
+		splittedString := strings.Split(snapshotPath, "@")
+		if len(splittedString) == 2 {
+			volumePath = splittedString[0]
+		} else {
+			// bad snapshotID format, but it's ok, driver should return empty response
+			volumePath = ""
+		}
+	} else if req.GetSourceVolumeId() != "" {
+		volumePath = req.GetSourceVolumeId()
+	} else if s.config.DefaultDataset != "" {
+		volumePath = s.config.DefaultDataset
+	}
+
+	// no volume id provided, return empty list
+	if volumePath == "" {
+		return &csi.ListSnapshotsResponse{
+			Entries: []*csi.ListSnapshotsResponse_Entry{},
+		}, nil
+	}
+
+	nsProvider, err := s.resolveNS(volumePath)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			l.Infof("volume '%s' not found, that's OK for list request", volumePath)
+			return &csi.ListSnapshotsResponse{
+				Entries: []*csi.ListSnapshotsResponse_Entry{},
+			}, nil
+		}
+		return nil, err
+	}
+
+	snapshots, err := nsProvider.GetSnapshots(volumePath, true)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot get snapshot list: %s", err)
+	}
+
+	nextToken := ""
+	startingToken := req.GetStartingToken()
+	maxEntries := req.GetMaxEntries()
+	snapshotEntries := []*csi.ListSnapshotsResponse_Entry{}
+	for i, s := range snapshots {
+		// skip all snapshots before startring token
+		if s.Path == startingToken {
+			startingToken = ""
+		}
+		if startingToken != "" {
+			continue
+		}
+		if snapshotPath == "" || s.Path == snapshotPath {
+			snapshotEntries = append(snapshotEntries, &csi.ListSnapshotsResponse_Entry{
+				Snapshot: &csi.Snapshot{
+					SnapshotId:     s.Path,
+					SourceVolumeId: s.Parent,
+					CreationTime: &timestamp.Timestamp{
+						Seconds: s.CreationTime.Unix(),
+					},
+					ReadyToUse: true, //TODO use actual state
+					//SizeByte: 0 //TODO size of zero means it is unspecified
+				},
+			})
+		}
+		// if the requested maximum is reached (and specified) than save next token
+		if maxEntries != 0 && int32(len(snapshotEntries)) == maxEntries {
+			if i+1 < len(snapshots) { // next snapshots index exists
+				nextToken = snapshots[i+1].Path
+			}
+			break
+		}
+	}
+
+	l.Infof("found %d snapshot(s) for %s volume", len(snapshotEntries), volumePath)
+
+	return &csi.ListSnapshotsResponse{
+		Entries:   snapshotEntries,
+		NextToken: nextToken,
+	}, nil
 }
 
-// ValidateVolumeCapabilities - validate volume capabilities, shall return confirmed only if all the volume
-// capabilities specified in the request are supported
+// ValidateVolumeCapabilities - validate volume capabilities
+// Shall return confirmed only if all the volume
+// capabilities specified in the request are supported.
 func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
 	*csi.ValidateVolumeCapabilitiesResponse,
 	error,
@@ -478,7 +567,7 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 
 	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "Cannot find volume '%s': %s", volumePath, err)
+		return nil, err
 	}
 
 	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)

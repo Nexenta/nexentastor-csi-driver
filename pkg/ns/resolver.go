@@ -14,7 +14,7 @@ type Resolver struct {
 }
 
 // Resolve - get one NS from the list of NSs by provided pool/dataset/fs path
-func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastError error) {
+func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, nefError error) {
 	l := nsr.Log.WithField("func", "Resolve()")
 
 	if path == "" {
@@ -25,7 +25,7 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 	for _, ns := range nsr.Nodes {
 		_, err := ns.GetFilesystem(path)
 		if err != nil {
-			lastError = err
+			nefError = err
 		} else {
 			resolvedNS = ns
 			break
@@ -37,11 +37,11 @@ func (nsr *Resolver) Resolve(path string) (resolvedNS ProviderInterface, lastErr
 		return resolvedNS, nil
 	}
 
-	message := fmt.Sprintf("No NexentaStor(s) found with pool/dataset: '%s'", path)
-	if lastError != nil {
-		return nil, fmt.Errorf("%s, last error: %s", message, lastError)
+	if nefError != nil {
+		return nil, nefError
 	}
-	return nil, fmt.Errorf(message)
+
+	return nil, fmt.Errorf("No NexentaStor(s) found with pool/dataset: '%s'", path)
 }
 
 // IsCluster - check if nodes is a NS cluster

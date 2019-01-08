@@ -169,7 +169,7 @@ spec:
     storage: 1Gi
   csi:
     driver: nexentastor-csi-driver.nexenta.com
-    volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+    volumeHandle: csiDriverPool/csiDriverDatasetPersistent/nginx-persistent
   mountOptions: # list of options for `mount -o ...` command
     - noatime   #
 ```
@@ -206,7 +206,7 @@ spec:
 Run nginx server using PersistentVolume.
 
 **Note:** Pre-configured filesystem should exist on the NexentaStor:
-`csiDriverPool/csiDriverDataset/nginx-persistent`.
+`csiDriverPool/csiDriverDatasetPersistent/nginx-persistent`.
 
 ```bash
 kubectl apply -f examples/kubernetes/nginx-persistent-volume.yaml

@@ -1,0 +1,23 @@
+# Nginx pod with dynamic storage creation using NexentaStor CSI driver
+#
+# $ kubectl apply -f deploy-stress-test-storage-class.yaml
+#
+
+
+# --------------------------------------
+# NexentaStor CSI Driver - Storage Class
+# --------------------------------------
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-driver-sc-nginx-stress-test
+provisioner: nexentastor-csi-driver.nexenta.com
+#mountOptions:                 # list of options for `mount` command
+#  - noatime                   #
+parameters:
+  #dataset: csiDriverPool/test # to overwrite "defaultDataset" in config secret
+  #dataIp: 10.3.199.252        # to overwrite "defaultDataIp" in config secret
+  #mountFsType: nfs            # to overwrite "defaultMountFsType" in config secret
+  #mountOptions: noatime       # to overwrite "defaultMountOptions" in config secret
+---

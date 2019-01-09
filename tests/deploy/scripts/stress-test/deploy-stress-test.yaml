@@ -14,7 +14,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: nexentastor-csi-driver-sc-nginx-manual
+  storageClassName: nexentastor-csi-driver-sc-nginx-stress-test
 ---
 
 # ---------
@@ -27,14 +27,13 @@ metadata:
   name: nginx-storage-class-auto
 spec:
   containers:
-    - image: nginx
+    - image: progrium/stress
       imagePullPolicy: IfNotPresent
-      name: nginx
-      ports:
-        - containerPort: 80
-          protocol: TCP
+      name: stress
+      command: ["bash"]
+      args: ["-c", "cd /data && /usr/bin/stress --verbose --hdd 1 --hdd-bytes 900M"] #--hdd-noclean
       volumeMounts:
-        - mountPath: /usr/share/nginx/html
+        - mountPath: /data
           name: nexentastor-csi-driver-data-auto
   volumes:
     - name: nexentastor-csi-driver-data-auto

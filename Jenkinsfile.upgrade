@@ -1,8 +1,5 @@
 node('solutions-126') {
     docker.withServer('unix:///var/run/docker.sock') {
-        agent {
-            docker { image 'solutions-team-jenkins-agent-ubuntu' }
-        }
         stage('Git clone') {
             git url: 'https://github.com/Nexenta/nexentastor-csi-driver.git', branch: 'master'
         }

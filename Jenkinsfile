@@ -18,10 +18,10 @@ node('solutions-126') {
         stage('Build') {
             sh "make container-build"
         }
-        stage('Push [local registry]') {
+        stage('Push [local-registry]') {
             sh "make container-push-local"
         }
-        stage('Tests [local registry]') {
+        stage('Tests [local-registry]') {
             sh '''
                 export NOCOLORS=true
                 make test-e2e-k8s-local-image-container

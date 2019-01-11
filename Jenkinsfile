@@ -1,10 +1,11 @@
 node('solutions-126') {
     docker.withServer('unix:///var/run/docker.sock') {
         stage('Git clone') {
-            git url: 'https://github.com/Nexenta/nexentastor-csi-driver.git', branch: 'master'
+            git url: 'https://github.com/Nexenta/nexentastor-csi-driver.git',
+                branch: 'master'
         }
         stage('Tests [unit]') {
-            sh "make test-unit-container"
+            sh 'make test-unit-container'
         }
         stage('Tests [e2e-ns]') {
             sh '''
@@ -13,13 +14,13 @@ node('solutions-126') {
             '''
         }
         stage('Tests [csi-sanity]') {
-            sh "make test-csi-sanity-container"
+            sh 'make test-csi-sanity-container'
         }
         stage('Build') {
-            sh "make container-build"
+            sh 'make container-build'
         }
         stage('Push [local-registry]') {
-            sh "make container-push-local"
+            sh 'make container-push-local'
         }
         stage('Tests [local-registry]') {
             sh '''
@@ -28,6 +29,8 @@ node('solutions-126') {
             '''
         }
         stage('Push [hub.docker.com]') {
+            //TODO skip no master?
+
             withCredentials([usernamePassword(
                 credentialsId: 'docker-hub-credentials',
                 passwordVariable: 'DOCKER_PASS',

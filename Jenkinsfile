@@ -19,11 +19,17 @@ pipeline {
             }
         }
         stage('Tests [e2e-ns]') {
+            when {
+                branch 'master'
+            }
             steps {
                 sh 'make test-e2e-ns-container'
             }
         }
         stage('Tests [csi-sanity]') {
+            when {
+                branch 'master'
+            }
             steps {
                 sh 'make test-csi-sanity-container'
             }

@@ -17,10 +17,7 @@ pipeline {
         }
         stage('Tests [e2e-ns]') {
             steps {
-                sh '''
-                    export NOCOLORS=true
-                    make test-e2e-ns-container
-                '''
+                sh 'make test-e2e-ns-container'
             }
         }
         stage('Tests [csi-sanity]') {
@@ -35,10 +32,7 @@ pipeline {
         }
         stage('Tests [local registry]') {
             steps {
-                sh '''
-                    export NOCOLORS=true
-                    make test-e2e-k8s-local-image-container
-                '''
+                sh 'make test-e2e-k8s-local-image-container'
             }
         }
         stage('Push [hub.docker.com]') {
@@ -63,10 +57,7 @@ pipeline {
                 branch 'master'
             }
             steps {
-                sh '''
-                    export NOCOLORS=true
-                    make test-e2e-k8s-remote-image-container
-                '''
+                sh 'make test-e2e-k8s-remote-image-container'
             }
         }
     }

@@ -1,52 +1,73 @@
-node('solutions-126') {
-    docker.withServer('unix:///var/run/docker.sock') {
-        stage('Git clone') {
-            git url: 'https://github.com/Nexenta/nexentastor-csi-driver.git',
-                branch: 'master'
+pipeline {
+    agent {
+        node {
+            label 'solutions-126'
+        }
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'make container-build'
+            }
         }
         stage('Tests [unit]') {
-            sh 'make test-unit-container'
+            steps {
+                sh 'make test-unit-container'
+            }
         }
         stage('Tests [e2e-ns]') {
-            sh '''
-                export NOCOLORS=true
-                make test-e2e-ns-container
-            '''
-        }
-        stage('Tests [csi-sanity]') {
-            sh 'make test-csi-sanity-container'
-        }
-        stage('Build') {
-            sh 'make container-build'
-        }
-        stage('Push [local-registry]') {
-            sh 'make container-push-local'
-        }
-        stage('Tests [local-registry]') {
-            sh '''
-                export NOCOLORS=true
-                make test-e2e-k8s-local-image-container
-            '''
-        }
-        stage('Push [hub.docker.com]') {
-            //TODO skip no master?
-
-            withCredentials([usernamePassword(
-                credentialsId: 'docker-hub-credentials',
-                passwordVariable: 'DOCKER_PASS',
-                usernameVariable: 'DOCKER_USER'
-            )]) {
+            steps {
                 sh '''
-                    docker login -u ${DOCKER_USER} -p ${DOCKER_PASS};
-                    make container-push-remote
+                    export NOCOLORS=true
+                    make test-e2e-ns-container
                 '''
             }
         }
+        stage('Tests [csi-sanity]') {
+            steps {
+                sh 'make test-csi-sanity-container'
+            }
+        }
+        stage('Push [local registry]') {
+            steps {
+                sh 'make container-push-local'
+            }
+        }
+        stage('Tests [local registry]') {
+            steps {
+                sh '''
+                    export NOCOLORS=true
+                    make test-e2e-k8s-local-image-container
+                '''
+            }
+        }
+        stage('Push [hub.docker.com]') {
+            when { // ignore build for PR
+                branch 'master'
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-credentials',
+                    passwordVariable: 'DOCKER_PASS',
+                    usernameVariable: 'DOCKER_USER'
+                )]) {
+                    sh '''
+                        docker login -u ${DOCKER_USER} -p ${DOCKER_PASS};
+                        make container-push-remote
+                    '''
+                }
+            }
+        }
         stage('Tests [k8s hub.docker.com]') {
-            sh '''
-                export NOCOLORS=true
-                make test-e2e-k8s-remote-image-container
-            '''
+            when { // ignore build for PR
+                branch 'master'
+            }
+            steps {
+                sh '''
+                    export NOCOLORS=true
+                    make test-e2e-k8s-remote-image-container
+                '''
+            }
         }
     }
 }

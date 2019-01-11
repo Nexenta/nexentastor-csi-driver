@@ -48,17 +48,14 @@ pipeline {
             when {
                 branch 'master'
             }
+            environment {
+                DOCKER = credentials('docker-hub-credentials')
+            }
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-credentials',
-                    passwordVariable: 'DOCKER_PASS',
-                    usernameVariable: 'DOCKER_USER'
-                )]) {
-                    sh '''
-                        docker login -u ${DOCKER_USER} -p ${DOCKER_PASS};
-                        make container-push-remote
-                    '''
-                }
+                sh '''
+                    docker login -u ${DOCKER_USR} -p ${DOCKER_PSW};
+                    make container-push-remote;
+                '''
             }
         }
         stage('Tests [k8s hub.docker.com]') {

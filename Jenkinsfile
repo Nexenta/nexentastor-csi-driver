@@ -1,4 +1,7 @@
 pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
     agent {
         node {
             label 'solutions-126'
@@ -26,17 +29,23 @@ pipeline {
             }
         }
         stage('Push [local registry]') {
+            when {
+                branch 'master'
+            }
             steps {
                 sh 'make container-push-local'
             }
         }
         stage('Tests [local registry]') {
+            when {
+                branch 'master'
+            }
             steps {
                 sh 'make test-e2e-k8s-local-image-container'
             }
         }
         stage('Push [hub.docker.com]') {
-            when { // ignore build for PR
+            when {
                 branch 'master'
             }
             steps {
@@ -53,7 +62,7 @@ pipeline {
             }
         }
         stage('Tests [k8s hub.docker.com]') {
-            when { // ignore build for PR
+            when {
                 branch 'master'
             }
             steps {

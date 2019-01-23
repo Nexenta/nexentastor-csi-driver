@@ -17,7 +17,9 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
 - `--allow-privileged=true` flag must be set for API server and kubelet
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enable-privileged-pods))
 - Required API server and kubelet feature gates:
-  `--feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true`
+  ```
+  --feature-gates=KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true
+  ```
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features))
 - Mount propagation must be enabled
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))

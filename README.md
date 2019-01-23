@@ -24,7 +24,7 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
   ```
   --feature-gates=KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true
   ```
-- Mount propagation must be enabled
+- Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
 - Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` resource types
   [to be defined on the cluster](https://github.com/kubernetes-csi/docs/blob/460a49286fe164a78fde3114e893c48b572a36c8/book/src/Setup.md#csidriver-custom-resource-alpha).

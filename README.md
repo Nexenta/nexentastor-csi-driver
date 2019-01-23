@@ -14,15 +14,13 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
 
 ## Requirements
 
-- [This page explains](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md)
-  how to configure Kubernetes for CSI drivers
-- Depends on preferred mount filesystem type, following utilities must be installed on each Kubernetes node:
-  ```bash
-  # for NFS
-  apt install -y nfs-common rpcbind
-  # for SMB
-  apt install -y cifs-utils rpcbind
-  ```
+- `--allow-privileged=true` flag must be set for API server and kubelet
+  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enable-privileged-pods))
+- Required API server and kubelet feature gates:
+  `--feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true`
+  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features))
+- Mount propagation must be enabled
+  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
 - Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` resource types
   [to be defined on the cluster](https://github.com/kubernetes-csi/docs/blob/460a49286fe164a78fde3114e893c48b572a36c8/book/src/Setup.md#csidriver-custom-resource-alpha).
   Check if they are already defined:
@@ -34,6 +32,13 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
   ```bash
   kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csidriver.yaml
   kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csinodeinfo.yaml
+  ```
+- Depends on preferred mount filesystem type, following utilities must be installed on each Kubernetes node:
+  ```bash
+  # for NFS
+  apt install -y nfs-common rpcbind
+  # for SMB
+  apt install -y cifs-utils rpcbind
   ```
 
 ## Installation

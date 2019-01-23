@@ -18,12 +18,17 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 ## Requirements
 
-- `--allow-privileged=true` flag must be set for API server and kubelet
-  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enable-privileged-pods))
-- Required API server and kubelet feature gates:
-  `--feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true`
-  ([documentation](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features))
-- Mount propagation must be enabled
+- Kubernetes cluster must allow privileged pods, this flag must be set for the API server and the kubelet
+  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enable-privileged-pods)):
+  ```
+  --allow-privileged=true
+  ```
+- Required the API server and the kubelet feature gates
+  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
+  ```
+  --feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true
+  ```
+- Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
 - Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` resource types
   [to be defined on the cluster](https://github.com/kubernetes-csi/docs/blob/460a49286fe164a78fde3114e893c48b572a36c8/book/src/Setup.md#csidriver-custom-resource-alpha).

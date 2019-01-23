@@ -14,13 +14,16 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
 
 ## Requirements
 
-- `--allow-privileged=true` flag must be set for API server and kubelet
-  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enable-privileged-pods))
-- Required API server and kubelet feature gates:
+- `allow-privileged` flag must be set for API server and kubelet
+  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enable-privileged-pods)):
+  ```
+  --allow-privileged=true
+  ```
+- Required API server and kubelet feature gates
+  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
   --feature-gates=KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true
   ```
-  ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features))
 - Mount propagation must be enabled
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
 - Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` resource types

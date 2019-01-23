@@ -14,12 +14,12 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
 
 ## Requirements
 
-- Kubernetes cluster must allow privileged pods, this flag must be set for API server and kubelet
+- Kubernetes cluster must allow privileged pods, this flag must be set for the API server and the kubelet
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enable-privileged-pods)):
   ```
   --allow-privileged=true
   ```
-- Required API server and kubelet feature gates
+- Required the API server and the kubelet feature gates
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
   --feature-gates=KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true

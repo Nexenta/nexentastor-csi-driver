@@ -22,6 +22,7 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 	csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
+	//csi.ControllerServiceCapability_RPC_CLONE_VOLUME, //TODO
 	//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
 }
 
@@ -130,8 +131,8 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 
 // CreateVolume - creates FS on NexentaStor
 func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (
-	*csi.CreateVolumeResponse,
-	error,
+	res *csi.CreateVolumeResponse,
+	err error,
 ) {
 	l := s.log.WithField("func", "CreateVolume()")
 	l.Infof("request: '%+v'", req)
@@ -155,7 +156,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		}
 	}
 
-	err := s.refreshConfig()
+	err = s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -186,14 +187,21 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	// get requested volume size from runtime params, set default if not specified
 	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
 
-	res := &csi.CreateVolumeResponse{
-		Volume: &csi.Volume{
-			VolumeId:      volumePath,
-			CapacityBytes: capacityBytes,
-			VolumeContext: map[string]string{
-				"dataIp":       reqParams["dataIp"],
-				"mountOptions": reqParams["mountOptions"],
-			},
+	//TODO add "sourceVolumeId"
+	// var sourceSnapshotId string
+	// if volumeContentSource := req.GetVolumeContentSource(); volumeContentSource != nil {
+	// 	if sourceSnapshot := volumeContentSource.GetSnapshot(); sourceSnapshot != nil {
+	// 		sourceSnapshotId := sourceSnapshot.GetSnapshotId()
+	// 	}
+	// }
+
+	res.Volume = &csi.Volume{
+		//ContentSource //TODO add id created from snapshot
+		VolumeId:      volumePath,
+		CapacityBytes: capacityBytes,
+		VolumeContext: map[string]string{
+			"dataIp":       reqParams["dataIp"],
+			"mountOptions": reqParams["mountOptions"],
 		},
 	}
 
@@ -282,7 +290,7 @@ func (s *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacity
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ControllerPublishVolume - not implemented
+// ControllerPublishVolume - not supported
 func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (
 	*csi.ControllerPublishVolumeResponse,
 	error,
@@ -290,7 +298,7 @@ func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ControllerUnpublishVolume - not implemented
+// ControllerUnpublishVolume - not supported
 func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (
 	*csi.ControllerUnpublishVolumeResponse,
 	error,
@@ -298,7 +306,7 @@ func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *c
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// CreateSnapshot - not implemented
+// CreateSnapshot creates a snapshot of given volume
 func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (
 	*csi.CreateSnapshotResponse,
 	error,
@@ -390,7 +398,7 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 	return res, nil
 }
 
-// DeleteSnapshot - not implemented
+// DeleteSnapshot deletes snapshots
 func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (
 	*csi.DeleteSnapshotResponse,
 	error,
@@ -537,7 +545,7 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	}, nil
 }
 
-// ValidateVolumeCapabilities - validate volume capabilities
+// ValidateVolumeCapabilities validates volume capabilities
 // Shall return confirmed only if all the volume
 // capabilities specified in the request are supported.
 func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (
@@ -620,6 +628,11 @@ func newControllerServiceCapability(cap csi.ControllerServiceCapability_RPC_Type
 }
 
 func validateVolumeCapability(requestedVolumeCapability *csi.VolumeCapability) bool {
+	// block is not supported
+	if requestedVolumeCapability.GetBlock() != nil {
+		return false
+	}
+
 	requestedMode := requestedVolumeCapability.GetAccessMode().GetMode()
 	for _, volumeCapability := range supportedVolumeCapabilities {
 		if volumeCapability.GetAccessMode().GetMode() == requestedMode {

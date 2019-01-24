@@ -169,6 +169,17 @@ func (nsp *Provider) DestroyFilesystem(path string) error {
 	return nsp.sendRequest(http.MethodDelete, uri, nil)
 }
 
+// PromoteFilesystem promotes a cloned filesystem to be no longer dependent on its original snapshot
+func (nsp *Provider) PromoteFilesystem(path string) error {
+	if path == "" {
+		return fmt.Errorf("Filesystem path is required")
+	}
+
+	uri := fmt.Sprintf("/storage/filesystems/%s/promote", url.PathEscape(path))
+
+	return nsp.sendRequest(http.MethodPost, uri, nil)
+}
+
 // CreateNfsShareParams - params to create NFS share
 type CreateNfsShareParams struct {
 	// filesystem path w/o leading slash
@@ -289,7 +300,7 @@ func (nsp *Provider) SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error 
 	return nsp.sendRequest(http.MethodPost, uri, data)
 }
 
-// CreateSnapshotParams - params to create filesystem
+// CreateSnapshotParams - params to create snapshot
 type CreateSnapshotParams struct {
 	// snapshot path w/o leading slash
 	Path string `json:"path"`
@@ -305,14 +316,15 @@ func (nsp *Provider) CreateSnapshot(params CreateSnapshotParams) error {
 }
 
 // GetSnapshot - get snapshot by its path
+// path - full path to snapshot w/o leading slash (e.g. "p/d/fs@s")
 func (nsp *Provider) GetSnapshot(path string) (snapshot Snapshot, err error) {
-	if len(path) == 0 {
+	if path == "" {
 		return snapshot, fmt.Errorf("Snapshot path is empty")
 	}
 
 	uri := nsp.RestClient.BuildURI("/storage/snapshots", map[string]string{
 		"path":   path,
-		"fields": "path,name,creationTime",
+		"fields": "path,name,parent,creationTime",
 	})
 
 	response := nefStorageSnapshotsResponse{}
@@ -370,6 +382,27 @@ func (nsp *Provider) DestroySnapshot(path string) error {
 	uri := fmt.Sprintf("/storage/snapshots/%s", url.PathEscape(path))
 
 	return nsp.sendRequest(http.MethodDelete, uri, nil)
+}
+
+// CloneSnapshotParams - params to clone snapshot to filesystem
+type CloneSnapshotParams struct {
+	// filesystem path w/o leading slash
+	TargetPath string `json:"targetPath"`
+}
+
+// CloneSnapshot clones snapshot to FS
+func (nsp *Provider) CloneSnapshot(path string, params CloneSnapshotParams) error {
+	if path == "" {
+		return fmt.Errorf("Snapshot path is required")
+	}
+
+	if params.TargetPath == "" {
+		return fmt.Errorf("Parameter 'CloneSnapshotParams.TargetPath' is required")
+	}
+
+	uri := fmt.Sprintf("/storage/snapshots/%s/clone", url.PathEscape(path))
+
+	return nsp.sendRequest(http.MethodPost, uri, params)
 }
 
 // GetRSFClusters - get RSF clusters from NS

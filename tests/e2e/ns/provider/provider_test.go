@@ -103,14 +103,14 @@ func TestProvider_NewProvider(t *testing.T) {
 		t.Error(err)
 	}
 
-	t.Run("GetLicense()", func(t *testing.T) {
+	t.Run("GetLicense()", func(tt *testing.T) {
 		license, err := nsp.GetLicense()
 		if err != nil {
-			t.Error(err)
+			tt.Error(err)
 		} else if !license.Valid {
 			t.Errorf("License %+v is not valid, on NS %s", license, c.address)
 		} else if license.Expires[0:2] != "20" {
-			t.Errorf("License expires date should starts with '20': %+v, on NS %s", license, c.address)
+			tt.Errorf("License expires date should starts with '20': %+v, on NS %s", license, c.address)
 		}
 	})
 
@@ -154,14 +154,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	})
 
 	t.Run("CreateFilesystem()", func(t *testing.T) {
-		filesystems, err := nsp.GetFilesystems(c.dataset)
-		if err != nil {
-			t.Error(err)
-			return
-		} else if filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %s already exists on NS %s", c.filesystem, c.address)
-			return
-		}
+		nsp.DestroyFilesystem(c.filesystem)
 
 		err = nsp.CreateFilesystem(ns.CreateFilesystemParams{
 			Path: c.filesystem,
@@ -170,7 +163,8 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		filesystems, err = nsp.GetFilesystems(c.dataset)
+
+		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 		} else if !filesystemArrayContains(filesystems, c.filesystem) {
@@ -190,14 +184,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	})
 
 	t.Run("CreateNfsShare()", func(t *testing.T) {
-		filesystems, err := nsp.GetFilesystems(c.dataset)
-		if err != nil {
-			t.Error(err)
-			return
-		} else if !filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
-			return
-		}
+		nsp.CreateFilesystem(ns.CreateFilesystemParams{Path: c.filesystem})
 
 		err = nsp.CreateNfsShare(ns.CreateNfsShareParams{
 			Filesystem: c.filesystem,
@@ -252,14 +239,7 @@ func TestProvider_NewProvider(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("CreateSmbShare() should create SMB share with '%s' share name", smbShareName),
 			func(t *testing.T) {
-				filesystems, err := nsp.GetFilesystems(c.dataset)
-				if err != nil {
-					t.Error(err)
-					return
-				} else if !filesystemArrayContains(filesystems, c.filesystem) {
-					t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
-					return
-				}
+				nsp.CreateFilesystem(ns.CreateFilesystemParams{Path: c.filesystem})
 
 				err = nsp.CreateSmbShare(ns.CreateSmbShareParams{
 					Filesystem: c.filesystem,
@@ -311,15 +291,6 @@ func TestProvider_NewProvider(t *testing.T) {
 		//TODO test SMB share, mount cifs?
 
 		t.Run("DeleteSmbShare()", func(t *testing.T) {
-			filesystems, err := nsp.GetFilesystems(c.dataset)
-			if err != nil {
-				t.Error(err)
-				return
-			} else if !filesystemArrayContains(filesystems, c.filesystem) {
-				t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
-				return
-			}
-
 			err = nsp.DeleteSmbShare(c.filesystem)
 			if err != nil {
 				t.Error(err)
@@ -328,21 +299,15 @@ func TestProvider_NewProvider(t *testing.T) {
 	}
 
 	t.Run("DestroyFilesystem()", func(t *testing.T) {
-		filesystems, err := nsp.GetFilesystems(c.dataset)
-		if err != nil {
-			t.Error(err)
-			return
-		} else if !filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %s doesn't exist on NS %s", c.filesystem, c.address)
-			return
-		}
+		nsp.CreateFilesystem(ns.CreateFilesystemParams{Path: c.filesystem})
 
 		err = nsp.DestroyFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
 			return
 		}
-		filesystems, err = nsp.GetFilesystems(c.dataset)
+
+		filesystems, err := nsp.GetFilesystems(c.dataset)
 		if err != nil {
 			t.Error(err)
 		} else if filesystemArrayContains(filesystems, c.filesystem) {
@@ -351,14 +316,7 @@ func TestProvider_NewProvider(t *testing.T) {
 	})
 
 	t.Run("CreateFilesystem() with referenced quota size", func(t *testing.T) {
-		filesystems, err := nsp.GetFilesystems(c.dataset)
-		if err != nil {
-			t.Error(err)
-			return
-		} else if filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %s already exists on NS %s", c.filesystem, c.address)
-			return
-		}
+		nsp.DestroyFilesystem(c.filesystem)
 
 		var referencedQuotaSize int64 = 2 * 1024 * 1024 * 1024
 
@@ -370,6 +328,7 @@ func TestProvider_NewProvider(t *testing.T) {
 			t.Error(err)
 			return
 		}
+
 		filesystem, err := nsp.GetFilesystem(c.filesystem)
 		if err != nil {
 			t.Error(err)
@@ -383,20 +342,97 @@ func TestProvider_NewProvider(t *testing.T) {
 				c.address,
 			)
 		}
-
-		// clean up
-		nsp.DestroyFilesystem(c.filesystem)
 	})
 
-	t.Run("GetFilesystemAvailableCapacity()", func(t *testing.T) {
-		filesystems, err := nsp.GetFilesystems(c.dataset)
+	testSnapshotName := "snap-test"
+	testSnapshotPath := fmt.Sprintf("%s@%s", c.filesystem, testSnapshotName)
+	t.Run("CreateSnapshot()", func(t *testing.T) {
+		nsp.CreateFilesystem(ns.CreateFilesystemParams{Path: c.filesystem})
+
+		err = nsp.CreateSnapshot(ns.CreateSnapshotParams{
+			Path: testSnapshotPath,
+		})
+		if err != nil {
+			t.Error(err)
+		}
+
+		snapshot, err := nsp.GetSnapshot(testSnapshotPath)
+		if err != nil {
+			t.Error(err)
+		} else if snapshot.Path != testSnapshotPath {
+			t.Errorf(
+				"New snapshot path expacted to be '%s', but got '%s' (Snapshot: %+v, NS %s)",
+				testSnapshotPath,
+				snapshot.Path,
+				snapshot,
+				c.address,
+			)
+		} else if snapshot.Name != testSnapshotName {
+			t.Errorf(
+				"New snapshot name expacted to be '%s', but got '%s' (Snapshot: %+v, NS %s)",
+				testSnapshotName,
+				snapshot.Name,
+				snapshot,
+				c.address,
+			)
+		} else if snapshot.Parent != c.filesystem {
+			t.Errorf(
+				"New snapshot parent expacted to be '%s', but got '%s' (Snapshot: %+v, NS %s)",
+				c.filesystem,
+				snapshot.Parent,
+				snapshot,
+				c.address,
+			)
+		}
+	})
+
+	testSnapshotCloneTargetPath := fmt.Sprintf("%s/clonedfs", c.dataset)
+	t.Run("CloneSnapshot()", func(t *testing.T) {
+		nsp.DestroySnapshot(testSnapshotPath)
+		nsp.DestroyFilesystem(c.filesystem)
+		nsp.DestroyFilesystem(testSnapshotCloneTargetPath)
+		nsp.CreateFilesystem(ns.CreateFilesystemParams{Path: c.filesystem})
+
+		err := nsp.CreateSnapshot(ns.CreateSnapshotParams{Path: testSnapshotPath})
 		if err != nil {
 			t.Error(err)
 			return
-		} else if filesystemArrayContains(filesystems, c.filesystem) {
-			t.Skipf("Filesystem %s already exists on NS %s", c.filesystem, c.address)
+		}
+
+		err = nsp.CloneSnapshot(testSnapshotPath, ns.CloneSnapshotParams{
+			TargetPath: testSnapshotCloneTargetPath,
+		})
+		if err != nil {
+			t.Error(err)
 			return
 		}
+
+		_, err = nsp.GetFilesystem(testSnapshotCloneTargetPath)
+		if err != nil {
+			t.Errorf("Cannot get created filesystem '%s': %v", testSnapshotCloneTargetPath, err)
+			return
+		}
+	})
+
+	t.Run("PromoteFilesystem()", func(t *testing.T) {
+		err := nsp.PromoteFilesystem(testSnapshotCloneTargetPath)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	t.Run("DestroySnapshot()", func(t *testing.T) {
+		nsp.CreateFilesystem(ns.CreateFilesystemParams{Path: c.filesystem})
+		nsp.CreateSnapshot(ns.CreateSnapshotParams{Path: testSnapshotPath})
+
+		err := nsp.DestroySnapshot(testSnapshotPath)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	t.Run("GetFilesystemAvailableCapacity()", func(t *testing.T) {
+		nsp.DestroyFilesystem(c.filesystem)
 
 		var referencedQuotaSize int64 = 3 * 1024 * 1024 * 1024
 
@@ -424,9 +460,6 @@ func TestProvider_NewProvider(t *testing.T) {
 				c.address,
 			)
 		}
-
-		// clean up
-		nsp.DestroyFilesystem(c.filesystem)
 	})
 
 	t.Run("GetRSFClusters()", func(t *testing.T) {
@@ -450,5 +483,11 @@ func TestProvider_NewProvider(t *testing.T) {
 				clusters,
 			)
 		}
+	})
+
+	t.Run("Clean up filesystems", func(t *testing.T) {
+		nsp.DestroySnapshot(testSnapshotPath)
+		nsp.DestroyFilesystem(testSnapshotCloneTargetPath)
+		nsp.DestroyFilesystem(c.filesystem)
 	})
 }

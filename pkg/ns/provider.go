@@ -50,6 +50,8 @@ type ProviderInterface interface {
 	DestroySnapshot(path string) error
 	GetSnapshot(path string) (Snapshot, error)
 	GetSnapshots(volumePath string, recursive bool) ([]Snapshot, error)
+	CloneSnapshot(path string, params CloneSnapshotParams) error
+	PromoteFilesystem(path string) error
 }
 
 // Provider - NexentaStor API provider

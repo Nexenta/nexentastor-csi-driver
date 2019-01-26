@@ -195,13 +195,15 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	// 	}
 	// }
 
-	res.Volume = &csi.Volume{
-		//ContentSource //TODO add id created from snapshot
-		VolumeId:      volumePath,
-		CapacityBytes: capacityBytes,
-		VolumeContext: map[string]string{
-			"dataIp":       reqParams["dataIp"],
-			"mountOptions": reqParams["mountOptions"],
+	res = &csi.CreateVolumeResponse{
+		Volume: &csi.Volume{
+			//ContentSource //TODO add id created from snapshot
+			VolumeId:      volumePath,
+			CapacityBytes: capacityBytes,
+			VolumeContext: map[string]string{
+				"dataIp":       reqParams["dataIp"],
+				"mountOptions": reqParams["mountOptions"],
+			},
 		},
 	}
 

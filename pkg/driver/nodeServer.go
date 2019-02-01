@@ -353,7 +353,7 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 
 	l.Infof(
 		"mount params: type: '%s', mountSource: '%s', targetPath: '%s', mountOptions(%v): %+v",
-		s.config.DefaultMountFsType,
+		fsType,
 		targetPath,
 		mountSource,
 		len(mountOptions),

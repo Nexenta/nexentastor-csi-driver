@@ -29,9 +29,6 @@ pipeline {
             }
         }
         stage('Push [local registry]') {
-            when {
-                branch 'master'
-            }
             steps {
                 sh 'make container-push-local'
             }
@@ -45,9 +42,6 @@ pipeline {
             }
         }
         stage('Push [hub.docker.com]') {
-            when {
-                branch 'master'
-            }
             environment {
                 DOCKER = credentials('docker-hub-credentials')
             }

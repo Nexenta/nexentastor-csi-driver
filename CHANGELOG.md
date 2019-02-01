@@ -1,3 +1,11 @@
+<a name="1.0.1"></a>
+## [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.0.0...1.0.1) (2019-02-01)
+
+### Fix
+
+* NEX-19118 - mountFsType parameter doesn't work in storage class config
+
+
 <a name="1.0.0"></a>
 ## [1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.2.0...v1.0.0) (2018-12-12)
 

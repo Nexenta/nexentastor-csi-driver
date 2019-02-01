@@ -27,17 +27,11 @@ pipeline {
             }
         }
         stage('Tests [csi-sanity]') {
-            when {
-                branch 'master'
-            }
             steps {
                 sh 'make test-csi-sanity-container'
             }
         }
         stage('Push [local registry]') {
-            when {
-                branch 'master'
-            }
             steps {
                 sh 'make container-push-local'
             }
@@ -51,9 +45,6 @@ pipeline {
             }
         }
         stage('Push [hub.docker.com]') {
-            when {
-                branch 'master'
-            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-hub-credentials',

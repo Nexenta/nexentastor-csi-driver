@@ -187,6 +187,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			VolumeContext: map[string]string{
 				"dataIp":       reqParams["dataIp"],
 				"mountOptions": reqParams["mountOptions"],
+				"mountFsType":  reqParams["mountFsType"],
 			},
 		},
 	}

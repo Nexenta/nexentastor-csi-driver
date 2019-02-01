@@ -9,7 +9,7 @@ defaultDataIp: 10.3.199.252                                 # default NexentaSto
 
 # NFS
 defaultMountFsType: nfs                                     # default mount fs type [nfs|cifs]
-defaultMountOptions: noatime                                # default mount options (mount -o ...)
+defaultMountOptions: noatime,vers=4                         # default mount options (mount -o ...)
 
 # CIFS
 #defaultMountFsType: cifs                                   # default mount fs type [nfs|cifs]

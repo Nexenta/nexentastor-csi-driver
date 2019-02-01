@@ -129,6 +129,7 @@ func (d *Driver) Validate() error {
 		if err != nil {
 			return fmt.Errorf("Cannot check cluster: %s", err)
 		} else if !isCluster {
+			//TODO should be warning?
 			return fmt.Errorf("Provided NexentaStor addresses don't belong to the same cluster")
 		}
 	}

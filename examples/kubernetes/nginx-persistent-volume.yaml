@@ -4,9 +4,9 @@
 #
 
 
-# -----------------------------------------
-# NexentaStor CSI Driver - Peristens Volume
-# -----------------------------------------
+# ------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume
+# ------------------------------------------
 
 apiVersion: v1
 kind: PersistentVolume
@@ -27,9 +27,9 @@ spec:
 ---
 
 
-# -----------------------------------------------
-# NexentaStor CSI Driver - Peristens Volume Claim
-# -----------------------------------------------
+# ------------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume Claim
+# ------------------------------------------------
 
 apiVersion: v1
 kind: PersistentVolumeClaim

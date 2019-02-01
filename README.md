@@ -26,7 +26,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 - Required the API server and the kubelet feature gates
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
-  --feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true
+  --feature-gates=VolumeSnapshotDataSource=true,CSINodeInfo=true,CSIDriverRegistry=true
   ```
 - Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
@@ -39,8 +39,8 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
   ```
   If the cluster doesn't have "csidrivers" and "csinodeinfos" resource types, create them:
   ```bash
-  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csidriver.yaml
-  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/ce972859c46136a1f4a9fe119d05482a739c6311/pkg/crd/manifests/csinodeinfo.yaml
+  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/release-1.13/pkg/crd/manifests/csidriver.yaml
+  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/release-1.13/pkg/crd/manifests/csinodeinfo.yaml
   ```
 - Depends on preferred mount filesystem type, following utilities must be installed on each Kubernetes node:
   ```bash
@@ -361,6 +361,18 @@ git push --tags
   ```
   Make sure _kubelet_ configured with `--root-dir=/var/lib/kubelet`, otherwise update paths in the driver yaml file
   ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features)).
+- "VolumeSnapshotDataSource" feature gate is disabled:
+  ```bash
+  vim /var/lib/kubelet/config.yaml
+  # ```
+  # featureGates:
+  #   VolumeSnapshotDataSource: true
+  # ```
+  vim /etc/kubernetes/manifests/kube-apiserver.yaml
+  # ```
+  #     - --feature-gates=VolumeSnapshotDataSource=true
+  # ```
+  ```
 - Driver logs
   ```bash
   kubectl logs -f nexentastor-csi-controller-0 driver

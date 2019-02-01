@@ -6,4 +6,5 @@ username: admin                                 # [required] NexentaStor REST AP
 password: Nexenta@1                             # [required] NexentaStor REST API password
 defaultDataset: csiDriverPool/csiDriverDataset  # default dataset for driver's fs/volume [pool/dataset]
 defaultDataIp: 10.3.199.254                     # default NexentaStor data IP or HA VIP
+defaultMountOptions: vers=4                     # TODO remove after fix env with vers=3
 debug: true                                     # more logs

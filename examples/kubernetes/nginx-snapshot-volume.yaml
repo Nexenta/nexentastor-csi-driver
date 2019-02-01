@@ -1,0 +1,71 @@
+# Nginx pod with a new volume pre-populated with data from a snapshot object using NexentaStor CSI driver
+#
+# $ kubectl apply -f examples/kubernetes/nginx-snapshot-volume.yaml
+#
+
+
+# --------------------------------------
+# NexentaStor CSI Driver - Storage Class
+# --------------------------------------
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-driver-cs-nginx-dynamic
+provisioner: nexentastor-csi-driver.nexenta.com
+#mountOptions:                 # list of options for `mount` command
+#  - noatime                   #
+parameters:
+  #dataset: csiDriverPool/test # to overwrite "defaultDataset" in config secret
+  #dataIp: 10.3.199.252        # to overwrite "defaultDataIp" in config secret
+  #mountFsType: nfs            # to overwrite "defaultMountFsType" in config secret
+  #mountOptions: noatime       # to overwrite "defaultMountOptions" in config secret
+---
+
+
+# ------------------------------------------------------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume Claim - pre-populated with data from a snapshot
+# ------------------------------------------------------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-pvc-nginx-snapshot-restore
+spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
+  dataSource:
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+    name: snapshot-test # snapshots created by ./take-snapshot.yaml
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+
+
+# ---------
+# Nginx pod
+# ---------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-persistent-volume-snapshot-restore
+spec:
+  containers:
+    - image: nginx
+      imagePullPolicy: IfNotPresent
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nexentastor-csi-driver-data
+  volumes:
+    - name: nexentastor-csi-driver-data
+      persistentVolumeClaim:
+        claimName: nexentastor-csi-driver-pvc-nginx-snapshot-restore
+        readOnly: false

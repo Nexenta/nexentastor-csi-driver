@@ -30,7 +30,8 @@ type ProviderInterface interface {
 
 	// filesystems
 	CreateFilesystem(params CreateFilesystemParams) error
-	DestroyFilesystem(path string) error
+	DestroyFilesystem(path string, destroySnapshots bool) error
+	DestroyFilesystemWithClones(path string, destroySnapshots bool) error
 	SetFilesystemACL(path string, aclRuleSet ACLRuleSet) error
 	GetFilesystem(path string) (Filesystem, error)
 	GetFilesystems(parent string) ([]Filesystem, error)

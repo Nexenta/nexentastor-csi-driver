@@ -52,6 +52,8 @@ type Snapshot struct {
 	Path         string    `json:"path"`
 	Name         string    `json:"name"`
 	Parent       string    `json:"parent"`
+	Clones       []string  `json:"clones"`
+	CreationTxg  string    `json:"creationTxg"`
 	CreationTime time.Time `json:"creationTime"`
 }
 

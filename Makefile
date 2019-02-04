@@ -18,7 +18,7 @@ LDFLAGS ?= \
 
 # test options
 TEST_K8S_IP=10.3.199.250
-TEST_NS_SINGLE=https://10.3.199.254:8443
+#TEST_NS_SINGLE=https://10.3.199.254:8443 #disabled
 TEST_NS_HA_1=https://10.3.199.252:8443
 TEST_NS_HA_2=https://10.3.199.253:8443
 
@@ -60,14 +60,15 @@ test-unit-container:
 .PHONY: test-e2e-ns
 test-e2e-ns:
 	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
-		--address="${TEST_NS_SINGLE}" &&\
-	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
 		--address="${TEST_NS_HA_1}" \
 		--cluster=true &&\
 	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \
-		--address="${TEST_NS_SINGLE}" &&\
-	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \
 		--address="${TEST_NS_HA_1},${TEST_NS_HA_2}"
+	# go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
+	# 	--address="${TEST_NS_SINGLE}" &&\
+	# go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \
+	# 	--address="${TEST_NS_SINGLE}" &&\
+
 .PHONY: test-e2e-ns-container
 test-e2e-ns-container:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .

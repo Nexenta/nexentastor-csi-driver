@@ -111,26 +111,31 @@ func (d *Driver) Validate() error {
 		return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %s", err)
 	}
 
+	// check license for each NS node
+	//TODO check the license only in case some driver operations are failed
 	for _, nsProvider := range nsResolver.Nodes {
 		license, err := nsProvider.GetLicense()
 		if err != nil {
-			return fmt.Errorf("Driver validation failed: %s", err)
+			d.log.Warnf("Driver license validation failed: %s", err)
 		} else if !license.Valid {
-			return fmt.Errorf(
-				"Driver validation failed, NexentaStor %s has invalid license (expired: %s)",
+			d.log.Warnf(
+				"Driver license validation failed, NexentaStor %s has invalid license (expired: %s)",
 				nsProvider,
 				license.Expires,
 			)
 		}
 	}
 
+	// check if NS nodes belong to one cluster
 	if len(nsResolver.Nodes) > 1 {
 		isCluster, err := nsResolver.IsCluster()
 		if err != nil {
-			return fmt.Errorf("Cannot check cluster: %s", err)
+			d.log.Warnf(
+				"Provided NexentaStor addresses may not belong to the same cluster, cannot check the cluster: %s",
+				err,
+			)
 		} else if !isCluster {
-			//TODO should be warning?
-			return fmt.Errorf("Provided NexentaStor addresses don't belong to the same cluster")
+			d.log.Warn("Provided NexentaStor addresses may not belong to the same cluster")
 		}
 	}
 

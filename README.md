@@ -26,7 +26,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 - Required the API server and the kubelet feature gates
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
-  --feature-gates=VolumeSnapshotDataSource=true,CSINodeInfo=true,CSIDriverRegistry=true
+  --feature-gates=VolumeSnapshotDataSource=true,CSIDriverRegistry=true
   ```
 - Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))

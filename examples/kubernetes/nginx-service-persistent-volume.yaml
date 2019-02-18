@@ -1,0 +1,104 @@
+# Service for nginx pod with pre provisioned storage using NexentaStor CSI driver
+#
+# $ kubectl apply -f examples/kubernetes/nginx-service-persistent-volume.yaml
+#
+
+
+# ------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume
+# ------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nexentastor-csi-driver-pv-nginx
+  labels:
+    name: nexentastor-csi-driver-pv-nginx
+spec:
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  csi:
+    driver: nexentastor-csi-driver.nexenta.com
+    volumeHandle: csiDriverPool/csiDriverDatasetPersistent/nginx-persistent
+  #mountOptions:  # list of options for `mount` command
+  #  - noatime    #
+---
+
+
+# ------------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume Claim
+# ------------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-pvc-nginx
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchExpressions:
+      - key: name
+        operator: In
+        values: ['nexentastor-csi-driver-pv-nginx']
+---
+
+
+# ---------
+# Nginx pod
+# ---------
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-persistent-volume
+  labels:
+    app: nginx-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-service
+  template:
+    metadata:
+      labels:
+        app: nginx-service
+    spec:
+      containers:
+        - image: nginx
+          imagePullPolicy: IfNotPresent
+          name: nginx
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: nexentastor-csi-driver-data
+      volumes:
+        - name: nexentastor-csi-driver-data
+          persistentVolumeClaim:
+            claimName: nexentastor-csi-driver-pvc-nginx
+            readOnly: false
+---
+
+
+# -----------------
+# Service for nginx
+# -----------------
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-service-persistent-volume
+spec:
+  selector:
+    app: nginx-service
+  ports:
+  - protocol: TCP
+    port: 8888
+    targetPort: 80    

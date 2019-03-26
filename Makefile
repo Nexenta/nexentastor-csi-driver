@@ -22,6 +22,11 @@ TEST_K8S_IP=10.3.199.250
 TEST_NS_HA_1=https://10.3.199.252:8443
 TEST_NS_HA_2=https://10.3.199.253:8443
 
+# ci options
+ifneq ("$(wildcard TEST_NS_OVA_SINGLE)","")
+    TEST_NS_OVA_SINGLE=$(shell cat TEST_NS_OVA_SINGLE)
+endif
+
 .PHONY: all
 all: test build
 
@@ -73,6 +78,16 @@ test-e2e-ns:
 test-e2e-ns-container:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-ns
+
+.PHONY: test-e2e-ns-ova
+test-e2e-ns-ova:
+	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
+		--address="${TEST_NS_OVA_SINGLE}"
+
+.PHONY: test-e2e-ns-ova-container
+test-e2e-ns-ova-container:
+	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-ns-ova
 
 # run e2e k8s tests using image from local docker registry
 .PHONY: test-e2e-k8s-local-image

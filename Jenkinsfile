@@ -1,4 +1,9 @@
 pipeline {
+    environment {
+        TEST_K8S_IP = '10.3.199.250'
+        TEST_NS_HA_1 = 'https://10.3.199.252:8443'
+        TEST_NS_HA_2 = 'https://10.3.199.253:8443'
+    }
     options {
         disableConcurrentBuilds()
     }
@@ -20,7 +25,11 @@ pipeline {
         }
         stage('Tests [e2e-ns]') {
             steps {
-                sh 'make test-e2e-ns-container'
+                sh '''
+                    TEST_NS_HA_1=${TEST_NS_HA_1} \
+                    TEST_NS_HA_2=${TEST_NS_HA_2} \
+                    make test-e2e-ns-cluster-container
+                '''
             }
         }
         stage('Tests [csi-sanity]') {
@@ -38,7 +47,10 @@ pipeline {
                 branch 'master'
             }
             steps {
-                sh 'make test-e2e-k8s-local-image-container'
+                sh '''
+                    TEST_K8S_IP=${TEST_K8S_IP} \
+                    make test-e2e-k8s-local-image-container
+                '''
             }
         }
         stage('Push [hub.docker.com]') {
@@ -57,7 +69,10 @@ pipeline {
                 branch 'master'
             }
             steps {
-                sh 'make test-e2e-k8s-remote-image-container'
+                sh '''
+                    TEST_K8S_IP=${TEST_K8S_IP} \
+                    make test-e2e-k8s-remote-image-container
+                '''
             }
         }
     }

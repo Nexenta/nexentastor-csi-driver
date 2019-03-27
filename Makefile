@@ -1,6 +1,7 @@
 # NexentaStor CSI Driver makefile
 #
 # Test options to be set before run tests:
+# - NOCOLOR=1                                # disable colors
 # - TEST_K8S_IP=10.3.199.250                 # e2e k8s tests
 # - TEST_NS_SINGLE=https://10.3.199.254:8443 # single NS provider/resolver tests
 # - TEST_NS_HA_1=https://10.3.199.252:8443   # HA cluster NS provider/resolver tests
@@ -25,10 +26,6 @@ LDFLAGS ?= \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Commit=${COMMIT} \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.DateTime=${DATETIME}
 
-ENV_TEST_K8S_IP=$(TEST_K8S_IP)
-ENV_TEST_NS_HA_1=$(TEST_NS_HA_1)
-ENV_TEST_NS_HA_2=$(TEST_NS_HA_2)
-ENV_TEST_NS_SINGLE=$(TEST_NS_SINGLE)
 
 .PHONY: all
 all: test build
@@ -68,41 +65,45 @@ test-unit-container:
 .PHONY: test-e2e-ns-single
 test-e2e-ns-single:
 	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
-		--address="${ENV_TEST_NS_SINGLE}" &&\
+		--address="${TEST_NS_SINGLE}" &&\
 	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \
-		--address="${ENV_TEST_NS_SINGLE}"
+		--address="${TEST_NS_SINGLE}"
 .PHONY: test-e2e-ns-single-container
 test-e2e-ns-single-container:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-ns-single
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
+		-e NOCOLORS=${NOCOLORS} -e TEST_NS_SINGLE=${TEST_NS_SINGLE} \
+		$(IMAGE_NAME)-test test-e2e-ns-single
 
 .PHONY: test-e2e-ns-cluster
 test-e2e-ns-cluster:
 	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 \
-		--address="${ENV_TEST_NS_HA_1}" \
+		--address="${TEST_NS_HA_1}" \
 		--cluster=true &&\
 	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 \
-		--address="${ENV_TEST_NS_HA_1},${ENV_TEST_NS_HA_2}"
+		--address="${TEST_NS_HA_1},${TEST_NS_HA_2}"
 .PHONY: test-e2e-ns-cluster-container
 test-e2e-ns-cluster-container:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-ns-cluster
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
+		-e NOCOLORS=${NOCOLORS} -e TEST_NS_HA_1=${TEST_NS_HA_1} -e TEST_NS_HA_2=${TEST_NS_HA_2} \
+		$(IMAGE_NAME)-test test-e2e-ns-cluster
 
 # run e2e k8s tests using image from local docker registry
 .PHONY: test-e2e-k8s-local-image
 test-e2e-k8s-local-image:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@${ENV_TEST_K8S_IP}" \
+		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@${ENV_TEST_K8S_IP}" \
+		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests"
 	# go test tests/e2e/driver/driver_test.go -v -count 1 \
-	# 	--k8sConnectionString="root@${ENV_TEST_K8S_IP}" \
+	# 	--k8sConnectionString="root@${TEST_K8S_IP}" \
 	# 	--k8sDeploymentFile="./_configs/driver-local.yaml" \
 	# 	--k8sSecretFile="./_configs/driver-config-single.yaml" \
 	# 	--k8sSecretName="nexentastor-csi-driver-config-tests" &&\
@@ -110,23 +111,25 @@ test-e2e-k8s-local-image:
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-local-image-container:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-k8s-local-image
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
+		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
+		$(IMAGE_NAME)-test test-e2e-k8s-local-image
 
 # run e2e k8s tests using image from hub.docker.com
 .PHONY: test-e2e-k8s-remote-image
 test-e2e-k8s-remote-image:
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@${ENV_TEST_K8S_IP}" \
+		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config" &&\
 	go test tests/e2e/driver/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@${ENV_TEST_K8S_IP}" \
+		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"
 	# go test tests/e2e/driver/driver_test.go -v -count 1 \
-	# 	--k8sConnectionString="root@${ENV_TEST_K8S_IP}" \
+	# 	--k8sConnectionString="root@${TEST_K8S_IP}" \
 	# 	--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 	# 	--k8sSecretFile="./_configs/driver-config-single.yaml" \
 	# 	--k8sSecretName="nexentastor-csi-driver-config" &&\
@@ -134,7 +137,9 @@ test-e2e-k8s-remote-image:
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-remote-image-container:
 	docker build -f $(DOCKER_FILE_TESTS) -t $(IMAGE_NAME)-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro -e NOCOLORS=${NOCOLORS} $(IMAGE_NAME)-test test-e2e-k8s-remote-image
+	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
+		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
+		$(IMAGE_NAME)-test test-e2e-k8s-remote-image
 
 # csi-sanity tests:
 # - tests make requests to actual NS, config file: ./tests/csi-sanity/*.yaml

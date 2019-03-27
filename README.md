@@ -290,6 +290,12 @@ make container-push-remote
 See [Makefile](Makefile) for more examples.
 
 ```bash
+# Test options to be set before run tests:
+# - TEST_K8S_IP=10.3.199.250                 # e2e k8s tests
+# - TEST_NS_SINGLE=https://10.3.199.254:8443 # single NS provider/resolver tests
+# - TEST_NS_HA_1=https://10.3.199.252:8443   # HA cluster NS provider/resolver tests
+# - TEST_NS_HA_2=https://10.3.199.253:8443
+
 # run all tests using local registry (`REGISTRY_LOCAL` in `Makefile`)
 make test-all-local-image
 # run all tests using hub.docker.com registry (`REGISTRY` in `Makefile`)

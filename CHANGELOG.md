@@ -1,7 +1,7 @@
 <a name="1.0.1"></a>
 ## [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.0.0...1.0.1) (2019-02-01)
 
-### Fix
+### Bug Fixes
 
 * NEX-19118 - mountFsType parameter doesn't work in storage class config
 
@@ -28,7 +28,7 @@
 * NEX-18885 - change driver volumes prefix to pvc-ns-*
 * NEX-18885 - log GRPC errors before return
 
-### Fixes
+### Bug Fixes
 
 * NEX-19119 - add 'vers=3' to default NFS options
 * NEX-19100 - include csi-sanity tests to build pipeline
@@ -48,7 +48,7 @@
 * NEX-19000 - check NS license on driver start
 * NEX-18959 - nfs options for mount command
 
-### Fixes
+### Bug Fixes
 
 * NEX-19102 - switch versioning to 0.X.0
 * NEX-18885 - change driver name to reverse domain name notation

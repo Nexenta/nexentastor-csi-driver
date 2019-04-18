@@ -45,6 +45,9 @@ pipeline {
             }
         }
         stage('Push [hub.docker.com]') {
+            when {
+                branch 'master'
+            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-hub-credentials',

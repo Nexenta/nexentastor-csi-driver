@@ -54,6 +54,9 @@ pipeline {
             }
         }
         stage('Push [hub.docker.com]') {
+            when {
+                branch 'master'
+            }
             environment {
                 DOCKER = credentials('docker-hub-credentials')
             }

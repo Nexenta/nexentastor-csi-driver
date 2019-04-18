@@ -23,15 +23,6 @@ pipeline {
                 sh 'make test-unit-container'
             }
         }
-        stage('Tests [e2e-ns]') {
-            steps {
-                sh '''
-                    TEST_NS_HA_1=${TEST_NS_HA_1} \
-                    TEST_NS_HA_2=${TEST_NS_HA_2} \
-                    make test-e2e-ns-cluster-container
-                '''
-            }
-        }
         stage('Tests [csi-sanity]') {
             steps {
                 sh 'make test-csi-sanity-container'

@@ -1,11 +1,8 @@
 # NexentaStor CSI Driver makefile
 #
 # Test options to be set before run tests:
-# - NOCOLOR=1                                # disable colors
-# - TEST_K8S_IP=10.3.199.250                 # e2e k8s tests
-# - TEST_NS_SINGLE=https://10.3.199.254:8443 # single NS provider/resolver tests
-# - TEST_NS_HA_1=https://10.3.199.252:8443   # HA cluster NS provider/resolver tests
-# - TEST_NS_HA_2=https://10.3.199.253:8443
+# - NOCOLOR=1                # disable colors
+# - TEST_K8S_IP=10.3.199.250 # e2e k8s tests
 #
 
 DRIVER_NAME = nexentastor-csi-driver
@@ -55,54 +52,29 @@ test: test-unit
 test-unit:
 	go test ./tests/unit/arrays -v -count 1
 	go test ./tests/unit/config -v -count 1
-	go test ./tests/unit/rest -v -count 1
-	go test ./tests/unit/ns -v -count 1
 .PHONY: test-unit-container
 test-unit-container:
 	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
 	docker run -i --rm -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test test-unit
 
-.PHONY: test-e2e-ns-single
-test-e2e-ns-single: check-env-TEST_NS_SINGLE
-	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 --address="${TEST_NS_SINGLE}"
-	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 --address="${TEST_NS_SINGLE}"
-.PHONY: test-e2e-ns-single-container
-test-e2e-ns-single-container: check-env-TEST_NS_SINGLE
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
-		-e NOCOLORS=${NOCOLORS} -e TEST_NS_SINGLE=${TEST_NS_SINGLE} \
-		${IMAGE_NAME}-test test-e2e-ns-single
-
-.PHONY: test-e2e-ns-cluster
-test-e2e-ns-cluster: check-env-TEST_NS_HA_1 check-env-TEST_NS_HA_2
-	go test ./tests/e2e/ns/provider/provider_test.go -v -count 1 --address="${TEST_NS_HA_1}" --cluster=true
-	go test ./tests/e2e/ns/resolver/resolver_test.go -v -count 1 --address="${TEST_NS_HA_1},${TEST_NS_HA_2}"
-.PHONY: test-e2e-ns-cluster-container
-test-e2e-ns-cluster-container: check-env-TEST_NS_HA_1 check-env-TEST_NS_HA_2
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
-	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
-		-e NOCOLORS=${NOCOLORS} -e TEST_NS_HA_1=${TEST_NS_HA_1} -e TEST_NS_HA_2=${TEST_NS_HA_2} \
-		${IMAGE_NAME}-test test-e2e-ns-cluster
-
 # run e2e k8s tests using image from local docker registry
 .PHONY: test-e2e-k8s-local-image
 test-e2e-k8s-local-image: check-env-TEST_K8S_IP
-	go test tests/e2e/driver/driver_test.go -v -count 1 \
+	go test tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests"
-	go test tests/e2e/driver/driver_test.go -v -count 1 \
+	go test tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="./_configs/driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config-tests"
-	# go test tests/e2e/driver/driver_test.go -v -count 1 \
+	# go test tests/e2e/driver_test.go -v -count 1 \
 	# 	--k8sConnectionString="root@${TEST_K8S_IP}" \
 	# 	--k8sDeploymentFile="./_configs/driver-local.yaml" \
 	# 	--k8sSecretFile="./_configs/driver-config-single.yaml" \
-	# 	--k8sSecretName="nexentastor-csi-driver-config-tests" &&\
-
+	# 	--k8sSecretName="nexentastor-csi-driver-config-tests"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
 	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
@@ -113,22 +85,21 @@ test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
 # run e2e k8s tests using image from hub.docker.com
 .PHONY: test-e2e-k8s-remote-image
 test-e2e-k8s-remote-image: check-env-TEST_K8S_IP
-	go test tests/e2e/driver/driver_test.go -v -count 1 \
+	go test tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-default.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"
-	go test tests/e2e/driver/driver_test.go -v -count 1 \
+	go test tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-cluster-cifs.yaml" \
 		--k8sSecretName="nexentastor-csi-driver-config"
-	# go test tests/e2e/driver/driver_test.go -v -count 1 \
+	# go test tests/e2e/driver_test.go -v -count 1 \
 	# 	--k8sConnectionString="root@${TEST_K8S_IP}" \
 	# 	--k8sDeploymentFile="../../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 	# 	--k8sSecretFile="./_configs/driver-config-single.yaml" \
-	# 	--k8sSecretName="nexentastor-csi-driver-config" &&\
-
+	# 	--k8sSecretName="nexentastor-csi-driver-config"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-remote-image-container: check-env-TEST_K8S_IP
 	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
@@ -150,12 +121,10 @@ test-csi-sanity-container:
 .PHONY: test-all-local-image
 test-all-local-image: \
 	test-unit \
-	test-e2e-ns-cluster \
 	test-e2e-k8s-local-image
 .PHONY: test-all-local-image-container
 test-all-local-image-container: \
 	test-unit-container \
-	test-e2e-ns-cluster-container \
 	test-csi-sanity-container \
 	test-e2e-k8s-local-image-container
 
@@ -163,12 +132,10 @@ test-all-local-image-container: \
 .PHONY: test-all-remote-image
 test-all-remote-image: \
 	test-unit \
-	test-e2e-ns-cluster \
 	test-e2e-k8s-remote-image
 .PHONY: test-all-remote-image-container
 test-all-remote-image-container: \
 	test-unit-container \
-	test-e2e-ns-cluster-container \
 	test-csi-sanity-container \
 	test-e2e-k8s-remote-image-container
 
@@ -178,25 +145,7 @@ ifeq ($(strip ${TEST_K8S_IP}),)
 	$(error "Error: environment variable TEST_K8S_IP is not set (e.i. 10.3.199.250)")
 endif
 
-.PHONY: check-env-TEST_NS_SINGLE
-check-env-TEST_NS_SINGLE:
-ifeq ($(strip ${TEST_NS_SINGLE}),)
-	$(error "Error: environment variable TEST_NS_SINGLE is not set (e.i. https://10.3.199.254:8443)")
-endif
-
-.PHONY: check-env-TEST_NS_HA_1
-check-env-TEST_NS_HA_1:
-ifeq ($(strip ${TEST_NS_HA_1}),)
-	$(error "Error: environment variable TEST_NS_HA_1 is not set (e.i. https://10.3.199.254:8443)")
-endif
-
-.PHONY: check-env-TEST_NS_HA_2
-check-env-TEST_NS_HA_2:
-ifeq ($(strip ${TEST_NS_HA_2}),)
-	$(error "Error: environment variable TEST_NS_HA_2 is not set (e.i. https://10.3.199.254:8443)")
-endif
-
 .PHONY: clean
 clean:
-	go clean -r -x
+	-go clean -r -x
 	-rm -rf bin

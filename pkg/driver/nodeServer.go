@@ -19,9 +19,9 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 
+	"github.com/Nexenta/go-nexentastor/pkg/ns"
 	"github.com/Nexenta/nexentastor-csi-driver/pkg/arrays"
 	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
-	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 // NodeServer - k8s csi driver node server
@@ -40,10 +40,11 @@ func (s *NodeServer) refreshConfig() error {
 
 	if changed {
 		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
-			Address:  s.config.Address,
-			Username: s.config.Username,
-			Password: s.config.Password,
-			Log:      s.log,
+			Address:            s.config.Address,
+			Username:           s.config.Username,
+			Password:           s.config.Password,
+			Log:                s.log,
+			InsecureSkipVerify: true, //TODO move to config
 		})
 		if err != nil {
 			return fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
@@ -509,10 +510,11 @@ func NewNodeServer(driver *Driver) (*NodeServer, error) {
 	l.Info("create new NodeServer...")
 
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  driver.config.Address,
-		Username: driver.config.Username,
-		Password: driver.config.Password,
-		Log:      l,
+		Address:            driver.config.Address,
+		Username:           driver.config.Username,
+		Password:           driver.config.Password,
+		Log:                l,
+		InsecureSkipVerify: true, //TODO move to config
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)

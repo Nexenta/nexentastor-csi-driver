@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/Nexenta/go-nexentastor/pkg/ns"
 	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
-	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 // supportedControllerCapabilities - driver controller capabilities
@@ -60,10 +60,11 @@ func (s *ControllerServer) refreshConfig() error {
 
 	if changed {
 		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
-			Address:  s.config.Address,
-			Username: s.config.Username,
-			Password: s.config.Password,
-			Log:      s.log,
+			Address:            s.config.Address,
+			Username:           s.config.Username,
+			Password:           s.config.Password,
+			Log:                s.log,
+			InsecureSkipVerify: true, //TODO move to config
 		})
 		if err != nil {
 			return fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
@@ -799,10 +800,11 @@ func NewControllerServer(driver *Driver) (*ControllerServer, error) {
 	l.Info("create new ControllerServer...")
 
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  driver.config.Address,
-		Username: driver.config.Username,
-		Password: driver.config.Password,
-		Log:      l,
+		Address:            driver.config.Address,
+		Username:           driver.config.Username,
+		Password:           driver.config.Password,
+		Log:                l,
+		InsecureSkipVerify: true, //TODO move to config
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)

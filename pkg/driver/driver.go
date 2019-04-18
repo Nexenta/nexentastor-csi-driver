@@ -13,8 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
+	"github.com/Nexenta/go-nexentastor/pkg/ns"
 	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
-	"github.com/Nexenta/nexentastor-csi-driver/pkg/ns"
 )
 
 // Name - driver name
@@ -102,10 +102,11 @@ func (d *Driver) Run() error {
 // - in case of cluster, check if provided addresses belong to the same cluster
 func (d *Driver) Validate() error {
 	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:  d.config.Address,
-		Username: d.config.Username,
-		Password: d.config.Password,
-		Log:      d.log,
+		Address:            d.config.Address,
+		Username:           d.config.Username,
+		Password:           d.config.Password,
+		Log:                d.log,
+		InsecureSkipVerify: true, //TODO move to config
 	})
 	if err != nil {
 		return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %s", err)

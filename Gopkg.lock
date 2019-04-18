@@ -2,6 +2,17 @@
 
 
 [[projects]]
+  digest = "1:3aa8014e11b7f35b4b23cedfd7ed70d25099aed34e58bbdadc21ab9d3466b628"
+  name = "github.com/Nexenta/go-nexentastor"
+  packages = [
+    "pkg/ns",
+    "pkg/rest",
+  ]
+  pruneopts = "UT"
+  revision = "087b560efc84e9f30df1942a3d1bca6dd41ee11f"
+  version = "1.0.0"
+
+[[projects]]
   digest = "1:f7f03a73e01ef664e9d0c49b76cb1a7eba0083cf9c67ac672b146a9601c01d2c"
   name = "github.com/antonfisher/nested-logrus-formatter"
   packages = ["."]
@@ -199,6 +210,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Nexenta/go-nexentastor/pkg/ns",
     "github.com/antonfisher/nested-logrus-formatter",
     "github.com/container-storage-interface/spec/lib/go/csi",
     "github.com/golang/protobuf/ptypes/timestamp",

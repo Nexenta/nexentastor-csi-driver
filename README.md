@@ -253,6 +253,7 @@ kubectl delete secret nexentastor-csi-driver-config
 ## Development
 
 Commits should follow [Conventional Commits Spec](https://conventionalcommits.org).
+Commit messages which include `feat:` and `fix:` prefixes will be included in CHANGELOG automatically.
 
 ### Build
 
@@ -329,19 +330,20 @@ go test tests/e2e/driver_test.go -v -count 1 \
 ### Release
 
 ```bash
-# go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
-git-chglog --next-tag X.X.X -o CHANGELOG.md
-git add CHANGELOG.md
-git commit -m "release X.X.X"
-git push
-git co -b X.X.X
 make container-build && make container-push-local && make test-all-local-image-container && make container-push-remote
-vim README.md
-vim Jenkinsfile # update branch to X.X.X
-git add README.md Jenkinsfile
-git ci -m "release X.X.X"
+
+export NEXT_TAG=X.X.X
+make pre-release-container
+git diff
+git add CHANGELOG.md
+git commit -m "release ${NEXT_TAG}"
 git push
-git tag vX.X.X
+git co -b "${NEXT_TAG}"
+vim README.md
+git add README.md
+git ci -m "release ${NEXT_TAG}"
+git push
+git tag "${NEXT_TAG}"
 git push --tags
 ```
 

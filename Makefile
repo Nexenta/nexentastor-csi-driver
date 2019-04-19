@@ -11,6 +11,9 @@ IMAGE_NAME ?= ${DRIVER_NAME}
 DOCKER_FILE = Dockerfile
 DOCKER_FILE_TESTS = Dockerfile.tests
 DOCKER_FILE_TEST_CSI_SANITY = Dockerfile.csi-sanity
+DOCKER_FILE_PRE_RELEASE = Dockerfile.pre-release
+DOCKER_IMAGE_PRE_RELEASE = nexentastor-csi-driver-pre-release
+DOCKER_CONTAINER_PRE_RELEASE = ${DOCKER_IMAGE_PRE_RELEASE}-container
 
 REGISTRY ?= nexenta
 REGISTRY_LOCAL ?= 10.3.199.92:5000
@@ -143,6 +146,23 @@ test-all-remote-image-container: \
 check-env-TEST_K8S_IP:
 ifeq ($(strip ${TEST_K8S_IP}),)
 	$(error "Error: environment variable TEST_K8S_IP is not set (e.i. 10.3.199.250)")
+endif
+
+.PHONY: pre-release-container
+pre-release-container: check-env-NEXT_TAG
+	@echo "Next release tag: ${NEXT_TAG}\n"
+	docker build -f ${DOCKER_FILE_PRE_RELEASE} -t ${DOCKER_IMAGE_PRE_RELEASE} --build-arg NEXT_TAG=${NEXT_TAG} .
+	-docker rm -f ${DOCKER_CONTAINER_PRE_RELEASE}
+	docker create --name ${DOCKER_CONTAINER_PRE_RELEASE} ${DOCKER_IMAGE_PRE_RELEASE}
+	docker cp \
+		${DOCKER_CONTAINER_PRE_RELEASE}:/go/src/github.com/Nexenta/nexentastor-csi-driver/CHANGELOG.md \
+		./CHANGELOG.md
+	docker rm ${DOCKER_CONTAINER_PRE_RELEASE}
+
+.PHONY: check-env-NEXT_TAG
+check-env-NEXT_TAG:
+ifeq ($(strip ${NEXT_TAG}),)
+	$(error "Error: environment variable NEXT_TAG is not set (e.i. '1.2.3')")
 endif
 
 .PHONY: clean

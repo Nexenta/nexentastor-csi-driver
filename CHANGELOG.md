@@ -1,54 +1,87 @@
-<a name="1.0.1"></a>
-## [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.0.0...1.0.1) (2019-02-01)
+<a name="v1.0.1"></a>
+## [v1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.0.0...v1.0.1) (2019-02-01)
 
 ### Bug Fixes
 
 * NEX-19118 - mountFsType parameter doesn't work in storage class config
 
 
-<a name="1.0.0"></a>
-## [1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.2.0...v1.0.0) (2018-12-12)
+<a name="v1.0.0"></a>
+## [v1.0.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.2.0...v1.0.0) (2018-12-12)
 
 ### Features
 
-* NEX-19172 - support Kubernetes 1.13, migrate to CSI v1.0.0
+* NEX-19172 - support k8s 1.13, migrate to CSI v1.0.0
+* NEX-19172 - CSI spec v1.0.0 support
 
 
-<a name="0.2.0"></a>
-## [0.2.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.1.0...v0.2.0) (2018-12-04)
-
-### Features
-
-* NEX-19013 - support kubernetes >=1.12
-* NEX-19118 - add SMB share support
-* NEX-18885 - validate restIp config value
-* NEX-19034 - check if configured NSs is an actual cluster
-* NEX-19100 - add --config-dir cli option
-* NEX-19100 - csi-sanity tests container and configuration
-* NEX-18885 - change driver volumes prefix to pvc-ns-*
-* NEX-18885 - log GRPC errors before return
+<a name="v0.2.0"></a>
+## [v0.2.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v0.1.0...v0.2.0) (2018-12-04)
 
 ### Bug Fixes
 
-* NEX-19119 - add 'vers=3' to default NFS options
+* NEX-18885 - troubleshooting docs, format yaml files, microk8s config
 * NEX-19100 - include csi-sanity tests to build pipeline
 * NEX-19100 - list all supported volume capabilities
+* NEX-18885 - s/src/pkg/
+* NEX-18885 - don't generate volume name if not presented
+* NEX-19172 - remove csi-common dependency
+* NEX-18885 - use Pool struct instead of strings
+* NEX-18885 - use response struct instead of interface for rest calls
 * NEX-19148 - use 'referencedQuotaSize' instead of 'quotaSize'
+* NEX-19148 - use typed params instead of interface - create smb/nfs share
+* NEX-19148 - use typed params instead of interface - create filesystem
+* NEX-19118 - add SMB share support - README
 * NEX-18885 - do not recreate nsResolver/nsProvider/client on each request, watch config for changes instead
 * NEX-19103 - apply ACL rules only when auto provisioning a volume
+* NEX-18885 - lock/unlock reqiestID while changing
+* NEX-19102 - swich versioning to 0.X.0
 * NEX-18885 - detect is it controller or node pod and don't start unnecessary servers
 * NEX-18885 - show less logs for attacher and provisioner, they can log secure data
+* NEX-18883 - add secretName to tests configuration
+* NEX-19013 - jenkins tests config
+
+### Features
+
+* NEX-19100 - csi-sanity tests container and configuration
+* NEX-19100 - add --config-dir cli option
+* NEX-18885 - validate restIp config value
+* NEX-19034 - check if configured NSs is an actual cluster
+* NEX-19118 - add SMB share support
+* NEX-19143 - replace system:csi-* roles for k8s v1.13
+* NEX-19119 - add 'vers=3' to default NFS options
+* NEX-19119 - add FindRegexpIndexesString and AppendIfRegexpNotExistString array methods
+* NEX-18959 - support mountOptions k8s configuration
+* NEX-18885 - change driver volumes prefix to pvc-ns-*
+* NEX-18885 - log GRPC errors before return
+* NEX-18987 - add GetFilesystemAvailableCapacity() method
+* NEX-19013 - support kubernetes >=1.12
 
 
-<a name="0.1.0"></a>
-## 0.1.0 (2018-11-09)
+<a name="v0.1.0"></a>
+## v0.1.0 (2018-11-09)
+
+### Bug Fixes
+
+* NEX-19102 - swich versioning to 0.X.0
+* NEX-18885 - use actual branch configs for e2e tests, separeate configs by version
+* NEX-18885 - clean up after fs creation test
+* NEX-18885 - change driver name to reverse domain name notation
+* NEX-18885 - change driver name to reverse domain name notation
+* NEX-18883 - remove goroutine, spelling, http codes
+* NEX-18883 - don't log to much
+* ns provider interval messages doesn't show up
+* comment out inhereted methods
+* comment out inhereted methods, add todos for future
 
 ### Features
 
 * NEX-19000 - check NS license on driver start
 * NEX-18959 - nfs options for mount command
-
-### Bug Fixes
-
-* NEX-19102 - switch versioning to 0.X.0
-* NEX-18885 - change driver name to reverse domain name notation
+* NEX-18885 - add identity server fror probe request
+* NEX-18883 - add NOCOLOR option to tests
+* NEX-18883 - configure jenkins
+* NEX-18883 - configure jenkins
+* NEX-18883 - configure jenkins
+* NEX-18883 - build in container, run tests in container, jenkins build preparation
+* nexentastor provider, logLn and getPools methods, auth

@@ -12,5 +12,8 @@ RUN apt-get -q update &&\
 WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 COPY . ./
 
+ARG VERSION
+ENV VERSION=$VERSION
+
 ENTRYPOINT ["make"]
 CMD ["test"]

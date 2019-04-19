@@ -18,14 +18,15 @@ DOCKER_CONTAINER_PRE_RELEASE = ${DOCKER_IMAGE_PRE_RELEASE}-container
 REGISTRY ?= nexenta
 REGISTRY_LOCAL ?= 10.3.199.92:5000
 
-VERSION ?= $(shell git rev-parse --abbrev-ref HEAD | sed -e "s/.*\\///")
+# use git branch as default version if not set by env variable
+GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD | sed -e "s/.*\\///")
+VERSION ?= ${GIT_BRANCH}
 COMMIT ?= $(shell git rev-parse HEAD | cut -c 1-7)
 DATETIME ?= $(shell date +'%F_%T')
 LDFLAGS ?= \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Version=${VERSION} \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Commit=${COMMIT} \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.DateTime=${DATETIME}
-
 
 .PHONY: all
 all: test build
@@ -36,7 +37,7 @@ build:
 
 .PHONY: container-build
 container-build:
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME} --build-arg VERSION=${VERSION} .
 
 .PHONY: container-push-local
 container-push-local:
@@ -57,7 +58,7 @@ test-unit:
 	go test ./tests/unit/config -v -count 1
 .PHONY: test-unit-container
 test-unit-container:
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
+	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} .
 	docker run -i --rm -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test test-unit
 
 # run e2e k8s tests using image from local docker registry
@@ -80,7 +81,7 @@ test-e2e-k8s-local-image: check-env-TEST_K8S_IP
 	# 	--k8sSecretName="nexentastor-csi-driver-config-tests"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
+	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
 		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
 		${IMAGE_NAME}-test test-e2e-k8s-local-image
@@ -105,7 +106,7 @@ test-e2e-k8s-remote-image: check-env-TEST_K8S_IP
 	# 	--k8sSecretName="nexentastor-csi-driver-config"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-remote-image-container: check-env-TEST_K8S_IP
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test .
+	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
 		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
 		${IMAGE_NAME}-test test-e2e-k8s-remote-image
@@ -148,22 +149,38 @@ ifeq ($(strip ${TEST_K8S_IP}),)
 	$(error "Error: environment variable TEST_K8S_IP is not set (e.i. 10.3.199.250)")
 endif
 
-.PHONY: pre-release-container
-pre-release-container: check-env-NEXT_TAG
-	@echo "Next release tag: ${NEXT_TAG}\n"
-	docker build -f ${DOCKER_FILE_PRE_RELEASE} -t ${DOCKER_IMAGE_PRE_RELEASE} --build-arg NEXT_TAG=${NEXT_TAG} .
+.PHONY: release
+release:
+	@echo "New tag: '${VERSION}'\n\n \
+		To change version set enviroment variable 'VERSION=X.X.X make release'.\n\n \
+		Confirm that:\n \
+		1. New version will be based on current '${GIT_BRANCH}' git branch\n \
+		2. Driver container '${IMAGE_NAME}' will be built\n \
+		3. Login to hub.docker.com will be requested\n \
+		4. Driver version '${REGISTRY}/${IMAGE_NAME}:${VERSION}' will be pushed to hub.docker.com\n \
+		5. Git tag '${VERSION}' will be created and pushed to the repository.\n\n \
+		Are you sure? [y/N]: "
+	@(read ANSWER && case "$$ANSWER" in [yY]) true;; *) false;; esac)
+	make generate-changelog
+	make container-build
+	docker login
+	make container-push-remote
+	git add CHANGELOG.md
+	git commit -m "release ${VERSION}"
+	git push
+	git tag ${VERSION}
+	git push --tags
+
+.PHONY: generate-changelog
+generate-changelog:
+	@echo "Release tag: ${VERSION}\n"
+	docker build -f ${DOCKER_FILE_PRE_RELEASE} -t ${DOCKER_IMAGE_PRE_RELEASE} --build-arg VERSION=${VERSION} .
 	-docker rm -f ${DOCKER_CONTAINER_PRE_RELEASE}
 	docker create --name ${DOCKER_CONTAINER_PRE_RELEASE} ${DOCKER_IMAGE_PRE_RELEASE}
 	docker cp \
 		${DOCKER_CONTAINER_PRE_RELEASE}:/go/src/github.com/Nexenta/nexentastor-csi-driver/CHANGELOG.md \
 		./CHANGELOG.md
 	docker rm ${DOCKER_CONTAINER_PRE_RELEASE}
-
-.PHONY: check-env-NEXT_TAG
-check-env-NEXT_TAG:
-ifeq ($(strip ${NEXT_TAG}),)
-	$(error "Error: environment variable NEXT_TAG is not set (e.i. '1.2.3')")
-endif
 
 .PHONY: clean
 clean:

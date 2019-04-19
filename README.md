@@ -327,25 +327,31 @@ go test tests/e2e/driver_test.go -v -count 1 \
     --k8sSecretFile="./_configs/driver-config-single.yaml"
 ```
 
-### Release
+All development happens in `master` branch,
+when it's time to publish a new version,
+new git tag should be created.
 
+1. Build and test the new version using local registry:
+   ```bash
+   # build development version:
+   make container-build
+   # publish to local registry
+   make container-push-local
+   # test plugin using local registry
+   TEST_K8S_IP=10.3.199.250 make test-all-local-image-container
+   ```
+
+2. Release a new version. This script does following:
+   - generates new `CHANGELOG.md`
+   - builds driver container 'nexentastor-csi-driver'
+   - Login to hub.docker.com will be requested
+   - publishes driver version 'nexenta/nexentastor-csi-driver:X.X.X' to hub.docker.com
+   - creates new Git tag 'X.X.X' and pushes to the repository.
 ```bash
-make container-build && make container-push-local && make test-all-local-image-container && make container-push-remote
-
-export NEXT_TAG=X.X.X
-make pre-release-container
-git diff
-git add CHANGELOG.md
-git commit -m "release ${NEXT_TAG}"
-git push
-git co -b "${NEXT_TAG}"
-vim README.md
-git add README.md
-git ci -m "release ${NEXT_TAG}"
-git push
-git tag "${NEXT_TAG}"
-git push --tags
+VERSION=X.X.X make release
 ```
+
+3. Update Github [releases](https://github.com/Nexenta/nexentastor-csi-driver/releases).
 
 ## Troubleshooting
 

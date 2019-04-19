@@ -158,7 +158,8 @@ release:
 		2. Driver container '${IMAGE_NAME}' will be built\n \
 		3. Login to hub.docker.com will be requested\n \
 		4. Driver version '${REGISTRY}/${IMAGE_NAME}:${VERSION}' will be pushed to hub.docker.com\n \
-		5. Git tag '${VERSION}' will be created and pushed to the repository.\n\n \
+		5. CHANGELOG.md file will be updated\n \
+		6. Git tag '${VERSION}' will be created and pushed to the repository.\n\n \
 		Are you sure? [y/N]: "
 	@(read ANSWER && case "$$ANSWER" in [yY]) true;; *) false;; esac)
 	make generate-changelog

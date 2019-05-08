@@ -250,6 +250,50 @@ kubectl delete -f deploy/kubernetes/nexentastor-csi-driver.yaml
 kubectl delete secret nexentastor-csi-driver-config
 ```
 
+## Troubleshooting
+
+- Show installed drivers:
+  ```bash
+  kubectl get csidrivers.csi.storage.k8s.io
+  kubectl describe csidrivers.csi.storage.k8s.io
+  ```
+- Error:
+  ```
+  MountVolume.MountDevice failed for volume "pvc-ns-<...>" :
+  driver name nexentastor-csi-driver.nexenta.com not found in the list of registered CSI drivers
+  ```
+  Make sure _kubelet_ configured with `--root-dir=/var/lib/kubelet`, otherwise update paths in the driver yaml file
+  ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features)).
+- "VolumeSnapshotDataSource" feature gate is disabled:
+  ```bash
+  vim /var/lib/kubelet/config.yaml
+  # ```
+  # featureGates:
+  #   VolumeSnapshotDataSource: true
+  # ```
+  vim /etc/kubernetes/manifests/kube-apiserver.yaml
+  # ```
+  #     - --feature-gates=VolumeSnapshotDataSource=true
+  # ```
+  ```
+- Driver logs
+  ```bash
+  kubectl logs -f nexentastor-csi-controller-0 driver
+  kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-node/ {print $1;exit}') driver
+  # combine all pods:
+  kubectl get pods | awk '/nexentastor-csi-/ {system("kubectl logs " $1 " driver &")}'
+  ```
+- Show termination message in case driver failed to run:
+  ```bash
+  kubectl get pod nexentastor-csi-controller-0 -o go-template="{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}"
+  ```
+- Configure Docker to trust insecure registries:
+  ```bash
+  # add `{"insecure-registries":["10.3.199.92:5000"]}` to:
+  vim /etc/docker/daemon.json
+  service docker restart
+  ```
+
 ## Development
 
 Commits should follow [Conventional Commits Spec](https://conventionalcommits.org).
@@ -258,8 +302,11 @@ Commit messages which include `feat:` and `fix:` prefixes will be included in CH
 ### Build
 
 ```bash
-# build locally
+# print variables and help
 make
+
+# build go app on local machine
+make build
 
 # build container (+ using build container)
 make container-build
@@ -347,52 +394,8 @@ new git tag should be created.
    - Login to hub.docker.com will be requested
    - publishes driver version 'nexenta/nexentastor-csi-driver:X.X.X' to hub.docker.com
    - creates new Git tag 'X.X.X' and pushes to the repository.
-```bash
-VERSION=X.X.X make release
-```
+  ```bash
+  VERSION=X.X.X make release
+  ```
 
 3. Update Github [releases](https://github.com/Nexenta/nexentastor-csi-driver/releases).
-
-## Troubleshooting
-
-- Show installed drivers:
-  ```bash
-  kubectl get csidrivers.csi.storage.k8s.io
-  kubectl describe csidrivers.csi.storage.k8s.io
-  ```
-- Error:
-  ```
-  MountVolume.MountDevice failed for volume "pvc-ns-<...>" :
-  driver name nexentastor-csi-driver.nexenta.com not found in the list of registered CSI drivers
-  ```
-  Make sure _kubelet_ configured with `--root-dir=/var/lib/kubelet`, otherwise update paths in the driver yaml file
-  ([all requirements](https://github.com/kubernetes-csi/docs/blob/387dce893e59c1fcf3f4192cbea254440b6f0f07/book/src/Setup.md#enabling-features)).
-- "VolumeSnapshotDataSource" feature gate is disabled:
-  ```bash
-  vim /var/lib/kubelet/config.yaml
-  # ```
-  # featureGates:
-  #   VolumeSnapshotDataSource: true
-  # ```
-  vim /etc/kubernetes/manifests/kube-apiserver.yaml
-  # ```
-  #     - --feature-gates=VolumeSnapshotDataSource=true
-  # ```
-  ```
-- Driver logs
-  ```bash
-  kubectl logs -f nexentastor-csi-controller-0 driver
-  kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-node/ {print $1;exit}') driver
-  # combine all pods:
-  kubectl get pods | awk '/nexentastor-csi-/ {system("kubectl logs " $1 " driver &")}'
-  ```
-- Show termination message in case driver failed to run:
-  ```bash
-  kubectl get pod nexentastor-csi-controller-0 -o go-template="{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}"
-  ```
-- Configure Docker to trust insecure registries:
-  ```bash
-  # add `{"insecure-registries":["10.3.199.92:5000"]}` to:
-  vim /etc/docker/daemon.json
-  service docker restart
-  ```

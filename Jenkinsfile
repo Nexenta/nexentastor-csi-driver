@@ -1,8 +1,7 @@
 pipeline {
-    environment {
-        TEST_K8S_IP = '10.3.199.250'
-        TEST_NS_HA_1 = 'https://10.3.199.252:8443'
-        TEST_NS_HA_2 = 'https://10.3.199.253:8443'
+    parameters {
+        string(name: 'TEST_K8S_IP', defaultValue: '10.3.199.250', description: 'K8s setup IP address to test on', trim: true)
+        //TODO add NS parameters and generate configs for e2e tests
     }
     options {
         disableConcurrentBuilds()
@@ -15,6 +14,7 @@ pipeline {
     stages {
         stage('Build') {
             steps {
+                sh 'make print-variables'
                 sh 'make container-build'
             }
         }

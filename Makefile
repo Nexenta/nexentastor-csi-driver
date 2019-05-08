@@ -18,9 +18,10 @@ DOCKER_CONTAINER_PRE_RELEASE = ${DOCKER_IMAGE_PRE_RELEASE}-container
 REGISTRY ?= nexenta
 REGISTRY_LOCAL ?= 10.3.199.92:5000
 
-# use git branch as default version if not set by env variable
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD | sed -e "s/.*\\///")
-VERSION ?= ${GIT_BRANCH}
+GIT_TAG = $(shell git describe --tags)
+# use git branch as default version if not set by env variable, if HEAD is detached that use the most recent tag
+VERSION ?= $(if $(subst HEAD,,${GIT_BRANCH}),$(GIT_BRANCH),$(GIT_TAG))
 COMMIT ?= $(shell git rev-parse HEAD | cut -c 1-7)
 DATETIME ?= $(shell date +'%F_%T')
 LDFLAGS ?= \
@@ -29,7 +30,26 @@ LDFLAGS ?= \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.DateTime=${DATETIME}
 
 .PHONY: all
-all: test build
+all:
+	@echo "Some of commands:"
+	@echo "  container-build                 - build driver container"
+	@echo "  container-push-local            - push driver to local registry (${REGISTRY_DEVELOPMENT})"
+	@echo "  container-push-remote           - push driver to hub.docker.com registry (${REGISTRY_PRODUCTION})"
+	@echo "  test-all-local-image-container  - run all test using driver from local registry"
+	@echo "  test-all-remote-image-container - run all test using driver from hub.docker.com"
+	@echo "  release                         - create and publish a new release"
+	@echo ""
+	@make print-variables
+
+.PHONY: print-variables
+print-variables:
+	@echo "Variables:"
+	@echo "  VERSION:    ${VERSION}"
+	@echo "  GIT_BRANCH: ${GIT_BRANCH}"
+	@echo "  GIT_TAG:    ${GIT_TAG}"
+	@echo "  COMMIT:     ${COMMIT}"
+	@echo "Testing variables:"
+	@echo "  TEST_K8S_IP: ${TEST_K8S_IP}"
 
 .PHONY: build
 build:

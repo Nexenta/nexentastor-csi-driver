@@ -167,7 +167,7 @@ func TestDriver_deploy(t *testing.T) {
 		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err == nil {
 			t.Fatal("Writing data to read-only volume on nginx container should failed, but it's not")
 		} else if !strings.Contains(fmt.Sprint(err), "Read-only file system") {
-			t.Fatalf("Error doesn't contain 'Read-only file system' message")
+			t.Fatalf("Error doesn't contain 'Read-only file system' message: %s", err)
 		}
 
 		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-ro"}); err != nil {

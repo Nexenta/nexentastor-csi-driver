@@ -1,4 +1,7 @@
 pipeline {
+    environment {
+        TEST_K8S_IP = '10.3.199.250' // as default when build is triggered by commit
+    }
     parameters {
         string(name: 'TEST_K8S_IP', defaultValue: '10.3.199.250', description: 'K8s setup IP address to test on', trim: true)
         //TODO add NS parameters and generate configs for e2e tests

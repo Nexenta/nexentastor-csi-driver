@@ -475,7 +475,7 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
-			&csi.VolumeUsage{
+			{
 				Unit:      csi.VolumeUsage_BYTES,
 				Available: available,
 				//TODO add used, total

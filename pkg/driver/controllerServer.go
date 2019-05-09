@@ -28,19 +28,19 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 
 // supportedVolumeCapabilities - driver volume capabilities
 var supportedVolumeCapabilities = []*csi.VolumeCapability{
-	&csi.VolumeCapability{
+	{
 		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY},
 	},
-	&csi.VolumeCapability{
+	{
 		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER},
 	},
-	&csi.VolumeCapability{
+	{
 		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY},
 	},
-	&csi.VolumeCapability{
+	{
 		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER},
 	},
-	&csi.VolumeCapability{
+	{
 		AccessMode: &csi.VolumeCapability_AccessMode{Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER},
 	},
 }

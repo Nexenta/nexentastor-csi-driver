@@ -1,7 +1,4 @@
 pipeline {
-    environment {
-        TEST_K8S_IP = '10.3.199.250' // as default when build is triggered by commit
-    }
     parameters {
         string(name: 'TEST_K8S_IP', defaultValue: '10.3.199.250', description: 'K8s setup IP address to test on', trim: true)
         //TODO add NS parameters and generate configs for e2e tests
@@ -17,7 +14,7 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                sh 'make print-variables'
+                sh "TEST_K8S_IP=${params.TEST_K8S_IP} make print-variables"
                 sh 'make container-build'
             }
         }
@@ -41,10 +38,7 @@ pipeline {
                 branch 'master'
             }
             steps {
-                sh '''
-                    TEST_K8S_IP=${TEST_K8S_IP} \
-                    make test-e2e-k8s-local-image-container
-                '''
+                sh "TEST_K8S_IP=${params.TEST_K8S_IP} make test-e2e-k8s-local-image-container"
             }
         }
         stage('Push [hub.docker.com]') {
@@ -66,10 +60,7 @@ pipeline {
                 branch 'master'
             }
             steps {
-                sh '''
-                    TEST_K8S_IP=${TEST_K8S_IP} \
-                    make test-e2e-k8s-remote-image-container
-                '''
+                sh "TEST_K8S_IP=${params.TEST_K8S_IP} make test-e2e-k8s-remote-image-container"
             }
         }
     }

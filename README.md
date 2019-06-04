@@ -16,6 +16,14 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 | Kubernetes >=1.13           | [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.1) | [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.1) |
 | Kubernetes >=1.13           | master                                                                | master                                                                |
 
+## Features
+
+- Persistence (beyond pod lifetime)
+- Dynamic provisioning
+- Supported access mode: read/write multiple pods
+- Volume snapshot support
+- NFS/SMB mount protocols.
+
 ## Requirements
 
 - Kubernetes cluster must allow privileged pods, this flag must be set for the API server and the kubelet

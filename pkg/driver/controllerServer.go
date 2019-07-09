@@ -21,7 +21,7 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
-	csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
+	//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
 	//csi.ControllerServiceCapability_RPC_CLONE_VOLUME, //TODO
 	//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
 }
@@ -561,26 +561,30 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	l := s.log.WithField("func", "ListSnapshots()")
 	l.Infof("request: '%+v'", req)
 
-	err := s.refreshConfig()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	}
+	// only snapshot create/delete are implemented now
+	return nil, status.Errorf(codes.Unimplemented, "")
 
-	if req.GetSnapshotId() != "" {
-		// identity information for a specific snapshot, can be used to list only a specific snapshot
-		return s.getSnapshotListWithSingleSnapshot(req.GetSnapshotId(), req)
-	} else if req.GetSourceVolumeId() != "" {
-		// identity information for the source volume, can be used to list snapshots by volume
-		return s.getFilesystemSnapshotList(req.GetSourceVolumeId(), req)
-	} else if s.config.DefaultDataset != "" {
-		// return list of all snapshots from default dataset
-		return s.getFilesystemSnapshotList(s.config.DefaultDataset, req)
-	}
-
-	// no volume id provided, return empty list
-	return &csi.ListSnapshotsResponse{
-		Entries: []*csi.ListSnapshotsResponse_Entry{},
-	}, nil
+	//TODO try this when list issue is solved
+	// err := s.refreshConfig()
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	// }
+	//
+	// if req.GetSnapshotId() != "" {
+	// 	// identity information for a specific snapshot, can be used to list only a specific snapshot
+	// 	return s.getSnapshotListWithSingleSnapshot(req.GetSnapshotId(), req)
+	// } else if req.GetSourceVolumeId() != "" {
+	// 	// identity information for the source volume, can be used to list snapshots by volume
+	// 	return s.getFilesystemSnapshotList(req.GetSourceVolumeId(), req)
+	// } else if s.config.DefaultDataset != "" {
+	// 	// return list of all snapshots from default dataset
+	// 	return s.getFilesystemSnapshotList(s.config.DefaultDataset, req)
+	// }
+	//
+	// // no volume id provided, return empty list
+	// return &csi.ListSnapshotsResponse{
+	// 	Entries: []*csi.ListSnapshotsResponse_Entry{},
+	// }, nil
 }
 
 func (s *ControllerServer) getSnapshotListWithSingleSnapshot(snapshotPath string, req *csi.ListSnapshotsRequest) (

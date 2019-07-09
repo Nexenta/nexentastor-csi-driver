@@ -89,13 +89,14 @@ func (s *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCa
 
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
-			{
-				Type: &csi.NodeServiceCapability_Rpc{
-					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
-					},
-				},
-			},
+			//TODO re-enable the capability when NodeGetVolumeStats() validates volume path.
+			// {
+			// 	Type: &csi.NodeServiceCapability_Rpc{
+			// 		Rpc: &csi.NodeServiceCapability_RPC{
+			// 			Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+			// 		},
+			// 	},
+			// },
 		},
 	}, nil
 }
@@ -358,8 +359,8 @@ func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOption
 	l.Infof(
 		"mount params: type: '%s', mountSource: '%s', targetPath: '%s', mountOptions(%v): %+v",
 		fsType,
-		targetPath,
 		mountSource,
+		targetPath,
 		len(mountOptions),
 		mountOptions,
 	)
@@ -451,6 +452,14 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 ) {
 	l := s.log.WithField("func", "NodeGetVolumeStats()")
 	l.Infof("request: '%+v'", req)
+
+	// volumePath can be any valid path where volume was previously staged or published.
+	// It MUST be an absolute path in the root filesystem of the process serving this request.
+	//TODO validate volumePath then re-enable GET_VOLUME_STATS node capability.
+	volumePath := req.GetVolumePath()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "req.VolumePath must be provided")
+	}
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {

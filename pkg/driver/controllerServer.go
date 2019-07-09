@@ -59,6 +59,7 @@ func (s *ControllerServer) refreshConfig() error {
 	}
 
 	if changed {
+		s.log.Info("config has been changed, updating...")
 		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
 			Address:            s.config.Address,
 			Username:           s.config.Username,

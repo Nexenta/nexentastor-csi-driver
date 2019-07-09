@@ -37,8 +37,8 @@ func (s *NodeServer) refreshConfig() error {
 	if err != nil {
 		return err
 	}
-
 	if changed {
+		s.log.Info("config has been changed, updating...")
 		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
 			Address:            s.config.Address,
 			Username:           s.config.Username,
@@ -256,6 +256,9 @@ func (s *NodeServer) mountNFS(
 
 	// NFS v3 is used by default if no version specified by user
 	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^vers=.*$"), "vers=3")
+
+	// NFS option `timeo=100` is used by default if not specified by user
+	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^timeo=.*$"), "timeo=100")
 
 	return s.doMount(mountSource, req.GetTargetPath(), config.FsTypeNFS, mountOptions)
 }

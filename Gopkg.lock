@@ -2,15 +2,15 @@
 
 
 [[projects]]
-  digest = "1:5e6c01cf80cbac9ee9b9cb46768172da43b4ca264170b6703b04063717941c25"
+  digest = "1:174b8b1d47b78ec8066583614ceb243269126a10e4a4d9bb90ff480397b8e3e6"
   name = "github.com/Nexenta/go-nexentastor"
   packages = [
     "pkg/ns",
     "pkg/rest",
   ]
   pruneopts = "UT"
-  revision = "f5e7506c83da3acc064f615f0f96f9e7b46ea8a7"
-  version = "1.0.1"
+  revision = "8d89e060f82449bd4b3d54ddb3dbece7684d3929"
+  version = "1.1.0"
 
 [[projects]]
   digest = "1:f7f03a73e01ef664e9d0c49b76cb1a7eba0083cf9c67ac672b146a9601c01d2c"

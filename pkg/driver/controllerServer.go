@@ -290,8 +290,8 @@ func (s *ControllerServer) createNewVolumeFromSnapshot(
 	snapshot, err := nsProvider.GetSnapshot(sourceSnapshotID)
 	if err != nil {
 		message := fmt.Sprintf("Failed to find snapshot '%s': %s", sourceSnapshotID, err)
-		if ns.IsNotExistNefError(err) {
-			return nil, status.Error(codes.FailedPrecondition, message)
+		if ns.IsNotExistNefError(err) || ns.IsBadArgNefError(err) {
+			return nil, status.Error(codes.NotFound, message)
 		}
 		return nil, status.Error(codes.Internal, message)
 	}

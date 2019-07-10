@@ -502,7 +502,7 @@ func (s *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 	*csi.NodeStageVolumeResponse,
 	error,
 ) {
-	s.log.WithField("func", "NodeStageVolume()").Infof("request: '%+v'", req)
+	s.log.WithField("func", "NodeStageVolume()").Warnf("request: '%+v' - not implemented", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
@@ -512,7 +512,16 @@ func (s *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 	*csi.NodeUnstageVolumeResponse,
 	error,
 ) {
-	s.log.WithField("func", "NodeUnstageVolume()").Infof("request: '%+v'", req)
+	s.log.WithField("func", "NodeUnstageVolume()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+// NodeExpandVolume - not supported
+func (s *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (
+	*csi.NodeExpandVolumeResponse,
+	error,
+) {
+	s.log.WithField("func", "NodeExpandVolume()").Warnf("request: '%+v' - not implemented", req)
 	return nil, status.Error(codes.Unimplemented, "")
 }
 

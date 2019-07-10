@@ -384,30 +384,6 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-// GetCapacity - not implemented
-func (s *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
-	*csi.GetCapacityResponse,
-	error,
-) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// ControllerPublishVolume - not supported
-func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (
-	*csi.ControllerPublishVolumeResponse,
-	error,
-) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// ControllerUnpublishVolume - not supported
-func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (
-	*csi.ControllerUnpublishVolumeResponse,
-	error,
-) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
 // CreateSnapshot creates a snapshot of given volume
 func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (
 	*csi.CreateSnapshotResponse,
@@ -559,7 +535,7 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	error,
 ) {
 	l := s.log.WithField("func", "ListSnapshots()")
-	l.Infof("request: '%+v'", req)
+	l.Warnf("request: '%+v' - not implemented", req)
 
 	// only snapshot create/delete are implemented now
 	return nil, status.Errorf(codes.Unimplemented, "")
@@ -797,6 +773,42 @@ func validateVolumeCapability(requestedVolumeCapability *csi.VolumeCapability) b
 		}
 	}
 	return false
+}
+
+// GetCapacity - not implemented
+func (s *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
+	*csi.GetCapacityResponse,
+	error,
+) {
+	s.log.WithField("func", "GetCapacity()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+// ControllerPublishVolume - not supported
+func (s *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (
+	*csi.ControllerPublishVolumeResponse,
+	error,
+) {
+	s.log.WithField("func", "ControllerPublishVolume()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+// ControllerUnpublishVolume - not supported
+func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (
+	*csi.ControllerUnpublishVolumeResponse,
+	error,
+) {
+	s.log.WithField("func", "ControllerUnpublishVolume()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+// ControllerExpandVolume - not supported
+func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (
+	*csi.ControllerExpandVolumeResponse,
+	error,
+) {
+	s.log.WithField("func", "ControllerExpandVolume()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // NewControllerServer - create an instance of controller service

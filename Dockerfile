@@ -4,7 +4,9 @@ WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 COPY . ./
 ARG VERSION
 ENV VERSION=$VERSION
-RUN make build
+RUN make build &&\
+    cp ./bin/nexentastor-csi-driver /
+
 
 # driver container
 FROM alpine:3.10
@@ -16,7 +18,7 @@ LABEL io.k8s.description="NexentaStor CSI Driver"
 RUN apk add --no-cache rpcbind nfs-utils cifs-utils
 # create driver config folder and print version
 RUN mkdir -p /config/
-COPY --from=builder /go/src/github.com/Nexenta/nexentastor-csi-driver/bin/nexentastor-csi-driver /nexentastor-csi-driver
+COPY --from=builder /nexentastor-csi-driver /
 RUN /nexentastor-csi-driver --version
 # init script: runs rpcbind before starting the plugin
 RUN echo $'#!/usr/bin/env sh\nrpcbind;\n/nexentastor-csi-driver "$@";\n' > /init.sh

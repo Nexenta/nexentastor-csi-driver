@@ -24,7 +24,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-storage-class-auto
+  name: nginx-dynamic-volume-auto
 spec:
   containers:
     - image: progrium/stress

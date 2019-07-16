@@ -13,5 +13,5 @@ metadata:
 spec:
   snapshotClassName: nexentastor-csi-snapshot-class
   source:
-    name: nexentastor-csi-driver-pvc-nginx
+    name: nexentastor-csi-driver-pvc-nginx-persistent
     kind: PersistentVolumeClaim

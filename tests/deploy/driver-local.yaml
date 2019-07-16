@@ -1,7 +1,7 @@
 # NexentaStor CSI Driver
 #
 # Install to Kubernetes:
-# $ kubectl apply -f tests/e2e/_configs/driver-local.yaml
+# $ kubectl apply -f tests/deploy/driver-local-manual.yaml
 #
 
 
@@ -32,6 +32,11 @@ metadata:
   name: nexentastor-csi-controller-service-account
   namespace: default # replace with non-default namespace name if needed
 ---
+
+# if consider to use cluster-driver-registrar, then add this rule:
+# - apiGroups: ["csi.storage.k8s.io"]
+#   resources: ["csidrivers"]
+#   verbs: ["create", "delete"]
 
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -112,6 +117,17 @@ spec:
       port: 12345
 ---
 
+# if consider to use cluster-driver-register, then add this container:
+# - name: cluster-driver-registrar
+#   image: quay.io/k8scsi/csi-cluster-driver-registrar:v1.0.1
+#   args:
+#     - --v=3
+#     - --pod-info-mount-version="v1"
+#     - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
+#   volumeMounts:
+#     - name: socket-dir
+#       mountPath: /var/lib/csi/sockets/pluginproxy
+
 kind: StatefulSet
 apiVersion: apps/v1beta1
 metadata:
@@ -132,7 +148,7 @@ spec:
           image: quay.io/k8scsi/csi-provisioner:v1.0.1
           imagePullPolicy: IfNotPresent
           args:
-            - --connection-timeout=25s
+            - --connection-timeout=25s #TODO check defaults
             - --provisioner=nexentastor-csi-driver.nexenta.com
             - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
             - --volume-name-prefix=pvc-ns
@@ -182,7 +198,7 @@ spec:
           emptyDir:
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config-tests
+            secretName: nexentastor-csi-driver-config
 ---
 
 
@@ -302,5 +318,5 @@ spec:
             type: Directory
         - name: secret
           secret:
-            secretName: nexentastor-csi-driver-config-tests
+            secretName: nexentastor-csi-driver-config
 ---

@@ -1,6 +1,6 @@
 # Service for nginx pods with dynamically storage creation using NexentaStor CSI driver
 #
-# $ kubectl apply -f ./examples/nginx-service-storage-class.yaml
+# $ kubectl apply -f ./examples/nginx-service-dynamic-volume.yaml
 #
 
 
@@ -32,12 +32,12 @@ kind: PersistentVolumeClaim
 metadata:
   name: nexentastor-csi-driver-pvc-nginx-dynamic
 spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
-  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
 ---
 
 
@@ -48,7 +48,7 @@ spec:
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
-  name: nginx-storage-class
+  name: nginx-dynamic-volume
   labels:
     app: nginx-service
 spec:
@@ -86,11 +86,11 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: nginx-service-storage-class
+  name: nginx-service-dynamic-volume
 spec:
   selector:
     app: nginx-service
   ports:
   - protocol: TCP
     port: 8888
-    targetPort: 80        
+    targetPort: 80

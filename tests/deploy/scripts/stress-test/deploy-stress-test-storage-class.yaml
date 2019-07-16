@@ -1,6 +1,6 @@
 # Nginx pod with dynamic storage creation using NexentaStor CSI driver
 #
-# $ kubectl apply -f deploy-stress-test-storage-class.yaml
+# $ kubectl apply -f deploy-stress-test-dynamic-volume.yaml
 #
 
 

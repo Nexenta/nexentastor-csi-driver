@@ -1,4 +1,7 @@
-# Nginx pod with dynamically storage creation using NexentaStor CSI driver
+# Nginx pod with dynamic storage creation using NexentaStor CSI driver
+#
+# $ kubectl apply -f examples/kubernetes/nginx-dynamic-volume.yaml
+#
 
 
 # --------------------------------------
@@ -8,14 +11,15 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: nexentastor-csi-driver-sc-nginx-manual
+  name: nexentastor-csi-driver-cs-nginx-dynamic
 provisioner: nexentastor-csi-driver.nexenta.com
-mountOptions:
-  - noatime
+mountOptions:                        # list of options for `mount -o ...` command
+#  - noatime                         #
 parameters:
-  #dataset: csiDriverPool/test # to overwrite "defaultDataset" in config secret
-  #dataIp: 10.3.199.252        # to overwrite "defaultDataIp" in config secret
-  #mountOptions: noatime       # to overwrite "defaultMountOptions" in config secret
+  #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
+  #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
+  #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
+  #mountOptions: noatime             # to overwrite "defaultMountOptions" config property
 ---
 
 
@@ -26,14 +30,14 @@ parameters:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: nexentastor-csi-driver-pvc-nginx-manual
+  name: nexentastor-csi-driver-pvc-nginx-dynamic
 spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
-  storageClassName: nexentastor-csi-driver-sc-nginx-manual
 ---
 
 
@@ -44,7 +48,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-storage-class-manual
+  name: nginx-dynamic-volume
 spec:
   containers:
     - image: nginx
@@ -59,5 +63,5 @@ spec:
   volumes:
     - name: nexentastor-csi-driver-data
       persistentVolumeClaim:
-        claimName: nexentastor-csi-driver-pvc-nginx-manual
+        claimName: nexentastor-csi-driver-pvc-nginx-dynamic
         readOnly: false

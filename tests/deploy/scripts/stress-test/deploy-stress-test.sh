@@ -4,7 +4,7 @@ USAGE=$(cat <<EOF
 Deploy/delete configured count of nginx containers.
 
 !!!Note!!!: Kubernetes StorageClass should be created before run:
-    kubectl apply -f deploy-stress-test-storage-class.yaml
+    kubectl apply -f deploy-stress-test-dynamic-volume.yaml
 
 Usage:
     deploy-stress-test.sh <apply|delete> <COUNTAINER_COUNT>

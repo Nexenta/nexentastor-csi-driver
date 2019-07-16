@@ -64,12 +64,23 @@ func (d *Deployment) getSecretFileName() string {
 // WaitForPodsMode - mode for WaitForPods() function (wait all pods or when none is presented)
 type WaitForPodsMode int64
 
-const (
-	// WaitForPodsModeAll - all pods should be presented
-	WaitForPodsModeAll WaitForPodsMode = iota
+func (mode WaitForPodsMode) String() string {
+	switch mode {
+	case WaitForPodsModeAllToMatch:
+		return "waiting until all pods are presented"
+	case WaitForPodsModeNoneToMatch:
+		return "waiting until no pods are presented"
+	default:
+		return "BAD_VALUE"
+	}
+}
 
-	// WaitForPodsModeNone - none of pods should be presented
-	WaitForPodsModeNone WaitForPodsMode = iota
+const (
+	// WaitForPodsModeAllToMatch - all pods should be presented
+	WaitForPodsModeAllToMatch WaitForPodsMode = iota
+
+	// WaitForPodsModeNoneToMatch - none of pods should be presented
+	WaitForPodsModeNoneToMatch WaitForPodsMode = iota
 )
 
 // WaitForPods - wait for pods to be presented
@@ -99,14 +110,14 @@ func (d *Deployment) WaitForPods(pods []string, mode WaitForPodsMode) (string, e
 					return
 				}
 
-				failedPodsList := []string{}
+				failedPodsList = []string{}
 				for _, re := range podREs {
 					switch mode {
-					case WaitForPodsModeAll:
+					case WaitForPodsModeAllToMatch:
 						if !re.MatchString(out) {
 							failedPodsList = append(failedPodsList, re.String())
 						}
-					case WaitForPodsModeNone:
+					case WaitForPodsModeNoneToMatch:
 						if re.MatchString(out) {
 							failedPodsList = append(failedPodsList, re.String())
 						}
@@ -136,7 +147,7 @@ func (d *Deployment) WaitForPods(pods []string, mode WaitForPodsMode) (string, e
 				timer.Stop()
 				done <- fmt.Errorf(
 					"Checking cmd output timeout exceeded (%v), "+
-						"pods: '%v', mode: %v, last output:\n"+
+						"failed pods: '%v', mode: %v, last output:\n"+
 						"---\n%s---\n",
 					d.WaitTimeout,
 					failedPodsList,
@@ -169,22 +180,22 @@ func (d *Deployment) Apply(pods []string) error {
 	}
 
 	if pods != nil {
-		out, err := d.WaitForPods(pods, WaitForPodsModeAll)
+		out, err := d.WaitForPods(pods, WaitForPodsModeAllToMatch)
 		if err != nil {
 			return fail(err)
 		}
 		l.Infof("pods are running:\n---\n%s---", out)
+
+		grepCommand := fmt.Sprintf("cd %s; grep \"image:\" %s", d.deploymentTmpDir, d.getConfigFileName())
+		out, err = d.RemoteClient.Exec(grepCommand)
+		if err != nil {
+			l.Warnf("cannot get list of used images: %s; out: %s", err, out)
+		} else {
+			l.Infof("used images:\n---\n%s---", out)
+		}
 	}
 
 	l.Info("deployment file has been successfully deployed")
-
-	grepCommand := fmt.Sprintf("cd %s; grep \"image:\" %s", d.deploymentTmpDir, d.getConfigFileName())
-	out, err := d.RemoteClient.Exec(grepCommand)
-	if err != nil {
-		l.Warnf("cannot get list of used images: %s; out: %s", err, out)
-	} else {
-		l.Infof("used images:\n---\n%s---", out)
-	}
 
 	return nil
 }
@@ -203,7 +214,7 @@ func (d *Deployment) Delete(pods []string) error {
 	}
 
 	if pods != nil {
-		out, err := d.WaitForPods(pods, WaitForPodsModeNone)
+		out, err := d.WaitForPods(pods, WaitForPodsModeNoneToMatch)
 		if err != nil {
 			return fail(fmt.Errorf("Failed to wait for pods to be shutted down: %s", err))
 		}
@@ -272,9 +283,13 @@ func (d *Deployment) CleanUp() {
 	l := d.log.WithField("func", "CleanUp()")
 	l.Info("run...")
 
-	deleteCommand := fmt.Sprintf("cd %s; kubectl delete -f %s | true", d.deploymentTmpDir, d.getConfigFileName())
+	deleteCommand := fmt.Sprintf(
+		"cd %s; kubectl delete --force --grace-period=0 -f %s | true",
+		d.deploymentTmpDir,
+		d.getConfigFileName(),
+	)
 	if _, err := d.RemoteClient.Exec(deleteCommand); err != nil {
-		l.Errorf("failed to delete pods: %s\n", err)
+		l.Errorf("failed run command on remote client: %s\n", err)
 	}
 
 	// wait all pods to be terminated
@@ -332,6 +347,7 @@ func NewDeployment(args DeploymentArgs) (*Deployment, error) {
 	l := args.Log.WithFields(logrus.Fields{
 		"address": args.RemoteClient.ConnectionString,
 		"cmp":     "k8s",
+		"name":    filepath.Base(args.ConfigFile),
 	})
 
 	deploymentTmpDir := filepath.Join("/tmp", defaultDeploymentTmpDirName)

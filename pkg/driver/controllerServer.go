@@ -517,12 +517,11 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 	// if here, than volumePath exists on some NS
 	err = nsProvider.DestroySnapshot(snapshotPath)
 	if err != nil && !ns.IsNotExistNefError(err) {
-		return nil, status.Errorf(
-			codes.Internal,
-			"Cannot delete '%s' snapshot: %s",
-			snapshotPath,
-			err,
-		)
+		message := fmt.Sprintf("Failed to delete snapshot '%s'", snapshotPath)
+		if ns.IsBusyNefError(err) {
+			message += ", it has dependent filesystem"
+		}
+		return nil, status.Errorf(codes.Internal, "%s: %s", message, err)
 	}
 
 	l.Infof("snapshot '%s' has been deleted", snapshotPath)
@@ -535,32 +534,29 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	error,
 ) {
 	l := s.log.WithField("func", "ListSnapshots()")
-	l.Warnf("request: '%+v' - not implemented", req)
-
-	// only snapshot create/delete are implemented now
-	return nil, status.Errorf(codes.Unimplemented, "")
+	l.Infof("request: '%+v'", req)
 
 	//TODO try this when list issue is solved
-	// err := s.refreshConfig()
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	// }
-	//
-	// if req.GetSnapshotId() != "" {
-	// 	// identity information for a specific snapshot, can be used to list only a specific snapshot
-	// 	return s.getSnapshotListWithSingleSnapshot(req.GetSnapshotId(), req)
-	// } else if req.GetSourceVolumeId() != "" {
-	// 	// identity information for the source volume, can be used to list snapshots by volume
-	// 	return s.getFilesystemSnapshotList(req.GetSourceVolumeId(), req)
-	// } else if s.config.DefaultDataset != "" {
-	// 	// return list of all snapshots from default dataset
-	// 	return s.getFilesystemSnapshotList(s.config.DefaultDataset, req)
-	// }
-	//
-	// // no volume id provided, return empty list
-	// return &csi.ListSnapshotsResponse{
-	// 	Entries: []*csi.ListSnapshotsResponse_Entry{},
-	// }, nil
+	err := s.refreshConfig()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
+
+	if req.GetSnapshotId() != "" {
+		// identity information for a specific snapshot, can be used to list only a specific snapshot
+		return s.getSnapshotListWithSingleSnapshot(req.GetSnapshotId(), req)
+	} else if req.GetSourceVolumeId() != "" {
+		// identity information for the source volume, can be used to list snapshots by volume
+		return s.getFilesystemSnapshotList(req.GetSourceVolumeId(), req)
+	} else if s.config.DefaultDataset != "" {
+		// return list of all snapshots from default dataset
+		return s.getFilesystemSnapshotList(s.config.DefaultDataset, req)
+	}
+
+	// no volume id provided, return empty list
+	return &csi.ListSnapshotsResponse{
+		Entries: []*csi.ListSnapshotsResponse_Entry{},
+	}, nil
 }
 
 func (s *ControllerServer) getSnapshotListWithSingleSnapshot(snapshotPath string, req *csi.ListSnapshotsRequest) (
@@ -645,11 +641,12 @@ func (s *ControllerServer) getFilesystemSnapshotList(filesystemPath string, req 
 
 		response.Entries = append(response.Entries, convertNSSnapshotToCSISnapshot(snapshot))
 
-		// if the requested maximum is reached (and specified) than save next token
+		// if the requested maximum is reached (and specified) than set next token
 		if maxEntries != 0 && int32(len(response.Entries)) == maxEntries {
 			if i+1 < len(snapshots) { // next snapshots index exists
 				l.Infof(
-					"max entries count has reached (%d) getting snapshots for '%s' filesystem, send response",
+					"max entries count (%d) has been reached while getting snapshots for '%s' filesystem, "+
+						"send response with next_token for pagination",
 					maxEntries,
 					filesystemPath,
 				)

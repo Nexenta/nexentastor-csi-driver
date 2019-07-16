@@ -6,12 +6,17 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Nexenta/nexentastor-csi-driver/tests/utils/k8s"
 	"github.com/Nexenta/nexentastor-csi-driver/tests/utils/remote"
+)
+
+const (
+	defaultSecretName = "nexentastor-csi-driver-config"
 )
 
 type config struct {
@@ -29,7 +34,7 @@ func TestMain(m *testing.M) {
 		k8sConnectionString = flag.String("k8sConnectionString", "", "K8s connection string [user@host]")
 		k8sDeploymentFile   = flag.String("k8sDeploymentFile", "", "path to driver deployment yaml file")
 		k8sSecretFile       = flag.String("k8sSecretFile", "", "path to yaml driver config file (for k8s secret)")
-		k8sSecretName       = flag.String("k8sSecretName", "", "k8s secret name")
+		k8sSecretName       = flag.String("k8sSecretName", defaultSecretName, "k8s secret name")
 	)
 
 	flag.Parse()
@@ -63,11 +68,16 @@ func TestMain(m *testing.M) {
 	// logger formatter
 	l.Logger.SetFormatter(&nested.Formatter{
 		HideKeys:    true,
-		FieldsOrder: []string{"title", "address", "cmp", "func"},
+		FieldsOrder: []string{"title", "address", "cmp", "name", "func"},
 		NoColors:    noColors,
 	})
 
 	l.Info("run...")
+	l.Info("Config:")
+	l.Infof(" - k8s server:    %s", c.k8sConnectionString)
+	l.Infof(" - driver yaml:   %s", c.k8sDeploymentFile)
+	l.Infof(" - driver config: %s", c.k8sSecretFile)
+	l.Infof(" - secret name:   %s", c.k8sSecretName)
 
 	os.Exit(m.Run())
 }
@@ -79,6 +89,14 @@ func TestDriver_deploy(t *testing.T) {
 		return
 	}
 
+	out, err := rc.Exec("kubectl version")
+	if err != nil {
+		t.Errorf("cannot get kubectl version: %s; out: %s", err, out)
+		return
+	}
+	t.Logf("kubectl version:\n%s", out)
+	l.Infof("kubectl version:\n%s", out)
+
 	k8sDriver, err := k8s.NewDeployment(k8s.DeploymentArgs{
 		RemoteClient: rc,
 		ConfigFile:   c.k8sDeploymentFile,
@@ -87,12 +105,15 @@ func TestDriver_deploy(t *testing.T) {
 		Log:          l,
 	})
 	defer k8sDriver.CleanUp()
+	defer k8sDriver.Delete(nil)
 	if err != nil {
 		t.Errorf("Cannot create K8s deployment: %s", err)
 		return
 	}
 
 	installed := t.Run("install driver", func(t *testing.T) {
+		t.Log("create k8s secret for driver")
+		k8sDriver.DeleteSecret()
 		if err := k8sDriver.CreateSecret(); err != nil {
 			t.Fatal(err)
 		}
@@ -102,86 +123,331 @@ func TestDriver_deploy(t *testing.T) {
 			"nexentastor-csi-node-.*Running",
 		}
 
+		t.Log("instal the driver")
 		if err := k8sDriver.Apply(waitPods); err != nil {
 			t.Fatal(err)
 		}
+
+		t.Log("done.")
 	})
 	if !installed {
 		t.Fatal()
 	}
 
-	t.Run("install nginx with dynamic volume provisioning", func(t *testing.T) {
+	t.Run("deploy nginx pod with dynamic volume provisioning [read-write]", func(t *testing.T) {
+		nginxPodName := "nginx-dynamic-volume"
+
 		getNginxRunCommand := func(cmd string) string {
-			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-rw -- /bin/bash -c \"%s\"", cmd)
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
 		}
 
 		k8sNginx, err := k8s.NewDeployment(k8s.DeploymentArgs{
 			RemoteClient: rc,
-			ConfigFile:   "./_configs/pods/nginx-storage-class-test-rw.yaml",
+			ConfigFile:   "../../examples/kubernetes/nginx-dynamic-volume.yaml",
 			Log:          l,
 		})
 		defer k8sNginx.CleanUp()
+		defer k8sNginx.Delete(nil)
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
 		}
 
-		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-rw.*Running"}); err != nil {
+		t.Log("deploy nginx container with read-write volume")
+		if err := k8sNginx.Apply([]string{nginxPodName + ".*Running"}); err != nil {
 			t.Fatal(err)
 		}
 
-		// write data to nginx container
+		t.Log("write data to the volume")
 		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
-			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %s", err))
+			t.Fatal(fmt.Errorf("Cannot write data to nginx volume: %s", err))
 		}
 
-		// check if data has been written
+		t.Log("check if the data has been written to the volume")
 		if _, err := rc.Exec(getNginxRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
 			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
 		}
 
-		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-rw"}); err != nil {
+		t.Log("delete the nginx container with read-write volume")
+		if err := k8sNginx.Delete([]string{nginxPodName}); err != nil {
 			t.Fatal(err)
 		}
+
+		t.Log("done.")
 	})
 
-	t.Run("install nginx with dynamic volume provisioning [read only]", func(t *testing.T) {
+	t.Run("create nginx pod with dynamic volume provisioning [read-only]", func(t *testing.T) {
+		nginxPodName := "nginx-dynamic-volume-ro"
+
 		getNginxRunCommand := func(cmd string) string {
-			return fmt.Sprintf("kubectl exec -c nginx nginx-storage-class-test-ro -- /bin/bash -c \"%s\"", cmd)
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
 		}
 
 		k8sNginx, err := k8s.NewDeployment(k8s.DeploymentArgs{
 			RemoteClient: rc,
-			ConfigFile:   "./_configs/pods/nginx-storage-class-test-ro.yaml",
+			ConfigFile:   "../../examples/kubernetes/nginx-dynamic-volume-ro.yaml",
 			Log:          l,
 		})
 		defer k8sNginx.CleanUp()
+		defer k8sNginx.Delete(nil)
 		if err != nil {
 			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
 		}
 
-		if err := k8sNginx.Apply([]string{"nginx-storage-class-test-ro.*Running"}); err != nil {
+		t.Log("deploy nginx container with read-only volume")
+		if err := k8sNginx.Apply([]string{nginxPodName + ".*Running"}); err != nil {
 			t.Fatal(err)
 		}
 
-		// writing data to read-only nginx container should failed
+		t.Log("write data to a read-only volume should failed")
 		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err == nil {
 			t.Fatal("Writing data to read-only volume on nginx container should failed, but it's not")
 		} else if !strings.Contains(fmt.Sprint(err), "Read-only file system") {
 			t.Fatalf("Error doesn't contain 'Read-only file system' message: %s", err)
 		}
 
-		if err := k8sNginx.Delete([]string{"nginx-storage-class-test-ro"}); err != nil {
+		t.Log("delete the nginx container with read-only volume")
+		if err := k8sNginx.Delete([]string{nginxPodName}); err != nil {
 			t.Fatal(err)
 		}
+
+		t.Log("done.")
+	})
+
+	t.Run("deploy nginx pod with persistent volume", func(t *testing.T) {
+		command := ""
+		data := time.Now().Format(time.RFC3339)
+		nginxPodName := "nginx-persistent-volume"
+
+		getNginxRunCommand := func(cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
+		}
+
+		t.Log("deploy first nginx container with persistent volume")
+		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-persistent-volume.yaml",
+			Log:          l,
+		})
+		defer k8sNginx1.CleanUp()
+		defer k8sNginx1.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx1.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("write data to the first nginx container persistent volume")
+		command = fmt.Sprintf("echo '%s' > /usr/share/nginx/html/data.txt", data)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %s", err))
+		}
+
+		t.Log("check if data has been written")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("delete the first nginx container")
+		if err := k8sNginx1.Delete([]string{nginxPodName}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("deploy second container with the same persistent volume")
+		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-persistent-volume.yaml",
+			Log:          l,
+		})
+		defer k8sNginx2.CleanUp()
+		defer k8sNginx2.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx2.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			t.Fatal(err)
+		}
+
+		// check if data is still there
+		t.Log("check if data in the persistent volume is the same as it was before")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("delete the second nginx container")
+		if err := k8sNginx2.Delete([]string{nginxPodName}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("done.")
+	})
+
+	t.Run("restore snapshot as dynamically provisioned volume", func(t *testing.T) {
+		command := ""
+		data1 := "DATA1: " + time.Now().Format(time.RFC3339)
+		data2 := "DATA2: " + time.Now().Format(time.RFC1123)
+		nginxPodName := "nginx-persistent-volume"
+		nginxSnapshotPodName := "nginx-persistent-volume-snapshot-restore"
+
+		getNginxRunCommand := func(podName, cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", podName, cmd)
+		}
+
+		t.Log("deploy first nginx container with persistent volume")
+		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-persistent-volume.yaml",
+			Log:          l,
+		})
+		defer k8sNginx1.CleanUp()
+		defer k8sNginx1.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx1.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("write data to the first nginx container")
+		command = fmt.Sprintf("echo '%s' > /usr/share/nginx/html/data.txt", data1)
+		if _, err := rc.Exec(getNginxRunCommand(nginxPodName, command)); err != nil {
+			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %s", err))
+		}
+
+		t.Log("validate data in the first nginx container")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data1)
+		if _, err := rc.Exec(getNginxRunCommand(nginxPodName, command)); err != nil {
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("create snapshot class")
+		k8sSnapshotClass, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/snapshot-class.yaml",
+			Log:          l,
+		})
+		defer k8sSnapshotClass.CleanUp()
+		defer k8sSnapshotClass.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s snapshots class deployment: %s", err)
+		}
+		if err := k8sSnapshotClass.Apply(nil); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("take a snapshot from existing persistent volume")
+		k8sSnapshot, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/take-snapshot.yaml",
+			Log:          l,
+		})
+		defer k8sSnapshot.CleanUp()
+		defer k8sSnapshot.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s snapshot deployment: %s", err)
+		}
+		if err := k8sSnapshot.Apply(nil); err != nil {
+			t.Fatal(err)
+		}
+
+		// Some time, snapshot need extra time to be created (?).
+		// Some time data gets overwritten before snapshot is taken,
+		// so there is a delay before the overwrite.
+		// More easily reproducible on SMB share test runs.
+		time.Sleep(10 * time.Second)
+
+		t.Log("overwrite the data in the first nginx container")
+		command = fmt.Sprintf("echo '%s' > /usr/share/nginx/html/data.txt", data2)
+		if _, err := rc.Exec(getNginxRunCommand(nginxPodName, command)); err != nil {
+			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %s", err))
+		}
+
+		t.Log("validate overwritten data in the first nginx container")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data2)
+		if _, err := rc.Exec(getNginxRunCommand(nginxPodName, command)); err != nil {
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("delete the first nginx container")
+		if err := k8sNginx1.Delete([]string{nginxPodName}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("deploy second container using the snapshot")
+		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-snapshot-volume.yaml",
+			Log:          l,
+		})
+		defer k8sNginx2.CleanUp()
+		defer k8sNginx2.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s nginx from snapshot deployment: %s", err)
+		}
+		if err := k8sNginx2.Apply([]string{nginxSnapshotPodName + ".*Running"}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("validate that the second nginx container has data from the snapshot")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data1)
+		if _, err := rc.Exec(getNginxRunCommand(nginxSnapshotPodName, command)); err != nil {
+			command = fmt.Sprintf("cat /usr/share/nginx/html/data.txt")
+			out, readErr := rc.Exec(getNginxRunCommand(nginxSnapshotPodName, command))
+			if readErr != nil {
+				out = readErr.Error()
+			}
+			t.Fatal(fmt.Errorf(
+				"Data hasn't been found in the container with volume restored from snapshot, "+
+					"expected: '%s', got: '%s', error: %s",
+				data1,
+				out,
+				err,
+			))
+		}
+		if err := k8sNginx2.Delete([]string{nginxSnapshotPodName}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("deploy third container with the same persistent volume")
+		k8sNginx3, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-persistent-volume.yaml",
+			Log:          l,
+		})
+		defer k8sNginx3.CleanUp()
+		defer k8sNginx3.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx3.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("validate the third nginx container has data from persistent volume")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data2)
+		if _, err := rc.Exec(getNginxRunCommand(nginxPodName, command)); err != nil {
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+		if err := k8sNginx3.Delete([]string{nginxPodName}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("done.")
 	})
 
 	t.Run("uninstall driver", func(t *testing.T) {
+		t.Log("deleting the driver")
 		if err := k8sDriver.Delete([]string{"nexentastor-csi-.*"}); err != nil {
 			t.Fatal(err)
 		}
 
+		t.Log("deleting the secret")
 		if err := k8sDriver.DeleteSecret(); err != nil {
 			t.Fatal(err)
 		}
+
+		t.Log("done.")
 	})
 }

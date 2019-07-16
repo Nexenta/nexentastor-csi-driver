@@ -53,9 +53,9 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 - Depends on preferred mount filesystem type, following utilities must be installed on each Kubernetes node:
   ```bash
   # for NFS
-  apt install -y nfs-common rpcbind
+  apt install -y rpcbind nfs-common
   # for SMB
-  apt install -y cifs-utils rpcbind
+  apt install -y rpcbind cifs-utils
   ```
 
 ## Installation
@@ -135,10 +135,10 @@ Default driver configuration may be overwritten in `parameters` section:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: nexentastor-csi-driver-dynamic-provisioning
+  name: nexentastor-csi-driver-cs-nginx-dynamic
 provisioner: nexentastor-csi-driver.nexenta.com
 mountOptions:                        # list of options for `mount -o ...` command
-  - noatime                          #
+#  - noatime                         #
 parameters:
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
@@ -157,19 +157,36 @@ parameters:
 
 #### Example
 
-Run Nginx server using _StorageClass_:
+Run Nginx pod with dynamically provisioned volume:
 
 ```bash
-kubectl apply -f examples/kubernetes/nginx-storage-class.yaml
+kubectl apply -f examples/kubernetes/nginx-dynamic-volume.yaml
 
 # to delete this pod:
-kubectl delete -f examples/kubernetes/nginx-storage-class.yaml
+kubectl delete -f examples/kubernetes/nginx-dynamic-volume.yaml
 ```
 
 ### Pre-provisioned volumes
 
 The driver can use already existing NexentaStor filesystem,
-in this case, _PersistentVolume_ and _PersistentVolumeClaim_ should be configured.
+in this case, _StorageClass_, _PersistentVolume_ and _PersistentVolumeClaim_ should be configured.
+
+#### _StorageClass_ configuration
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-driver-cs-nginx-persistent
+provisioner: nexentastor-csi-driver.nexenta.com
+mountOptions:                        # list of options for `mount -o ...` command
+#  - noatime                         #
+parameters:
+  #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
+  #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
+  #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
+  #mountOptions: noatime             # to overwrite "defaultMountOptions" config property
+```
 
 #### _PersistentVolume_ configuration
 
@@ -177,19 +194,20 @@ in this case, _PersistentVolume_ and _PersistentVolumeClaim_ should be configure
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: nexentastor-csi-driver-nginx-pv
+  name: nexentastor-csi-driver-pv-nginx-persistent
   labels:
-    name: nexentastor-csi-driver-nginx-pv
+    name: nexentastor-csi-driver-pv-nginx-persistent
 spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-persistent
   accessModes:
     - ReadWriteMany
   capacity:
     storage: 1Gi
   csi:
     driver: nexentastor-csi-driver.nexenta.com
-    volumeHandle: csiDriverPool/csiDriverDatasetPersistent/nginx-persistent
-  mountOptions: # list of options for `mount -o ...` command
-    - noatime   #
+    volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+  #mountOptions:  # list of options for `mount` command
+  #  - noatime    #
 ```
 
 CSI Parameters:
@@ -205,18 +223,18 @@ CSI Parameters:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: nexentastor-csi-driver-nginx-pvc
+  name: nexentastor-csi-driver-pvc-nginx-persistent
 spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-persistent
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
   selector:
-    matchExpressions:
-      - key: name
-        operator: In
-        values: ['nexentastor-csi-driver-nginx-pv']
+    matchLabels:
+      # to create 1-1 relationship for pod - persistent volume use unique labels
+      name: nexentastor-csi-driver-pv-nginx-persistent
 ```
 
 #### Example
@@ -224,7 +242,7 @@ spec:
 Run nginx server using PersistentVolume.
 
 **Note:** Pre-configured filesystem should exist on the NexentaStor:
-`csiDriverPool/csiDriverDatasetPersistent/nginx-persistent`.
+`csiDriverPool/csiDriverDataset/nginx-persistent`.
 
 ```bash
 kubectl apply -f examples/kubernetes/nginx-persistent-volume.yaml
@@ -235,14 +253,26 @@ kubectl delete -f examples/kubernetes/nginx-persistent-volume.yaml
 
 ## Snapshots
 
+**Note**: this feature is an
+[alpha feature](https://kubernetes-csi.github.io/docs/snapshot-restore-feature.html#status).
+
 ```bash
+# create snapshot class
+kubectl apply -f examples/kubernetes/snapshot-class.yaml
+
+# take a snapshot
+kubectl apply -f examples/kubernetes/take-snapshot.yaml
+
+# deploy nginx pod with volume restored from a snapshot
+kubectl apply -f examples/kubernetes/nginx-snapshot-volume.yaml
+
 # snapshot classes
 kubectl get volumesnapshotclasses.snapshot.storage.k8s.io
 
 # snapshot list
 kubectl get volumesnapshots.snapshot.storage.k8s.io
 
-#
+# snapshot content list
 kubectl get volumesnapshotcontents.snapshot.storage.k8s.io
 ```
 
@@ -288,8 +318,6 @@ kubectl delete secret nexentastor-csi-driver-config
   ```bash
   kubectl logs -f nexentastor-csi-controller-0 driver
   kubectl logs -f $(kubectl get pods | awk '/nexentastor-csi-node/ {print $1;exit}') driver
-  # combine all pods:
-  kubectl get pods | awk '/nexentastor-csi-/ {system("kubectl logs " $1 " driver &")}'
   ```
 - Show termination message in case driver failed to run:
   ```bash
@@ -378,8 +406,8 @@ End-to-end K8s test parameters:
 # "export NOCOLORS=true" to run w/o colors
 go test tests/e2e/driver_test.go -v -count 1 \
     --k8sConnectionString="root@10.3.199.250" \
-    --k8sDeploymentFile="./_configs/driver-local.yaml" \
-    --k8sSecretFile="./_configs/driver-config-single.yaml"
+    --k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
+    --k8sSecretFile="./_configs/driver-config-single-default.yaml"
 ```
 
 All development happens in `master` branch,
@@ -396,14 +424,15 @@ new git tag should be created.
    TEST_K8S_IP=10.3.199.250 make test-all-local-image-container
    ```
 
-2. Release a new version. This script does following:
+2. To release a new version run command:
+   ```bash
+   VERSION=X.X.X make release
+   ```
+   This script does following:
    - generates new `CHANGELOG.md`
    - builds driver container 'nexentastor-csi-driver'
    - Login to hub.docker.com will be requested
    - publishes driver version 'nexenta/nexentastor-csi-driver:X.X.X' to hub.docker.com
    - creates new Git tag 'X.X.X' and pushes to the repository.
-    ```bash
-    VERSION=X.X.X make release
-    ```
 
 3. Update Github [releases](https://github.com/Nexenta/nexentastor-csi-driver/releases).

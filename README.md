@@ -1,27 +1,22 @@
-# nexentastor-csi-driver
+# nexentastor-csi-driver (v1.1.0)
 
 [![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 
-This is a **development branch**, for the most recent stable version see
-[documentation](https://nexenta.github.io/nexentastor-csi-driver/).
-
 NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nexenta.com/products/nexentastor).
 
 ## Supported versions
 
-|                             | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
-|-----------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Kubernetes >=1.13           | [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.1) | [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.1) |
-| Kubernetes >=1.13           | master                                                                | master                                                                |
+- Kubernetes 1.13
+
+For other supported versions see [this page](https://github.com/Nexenta/nexentastor-csi-driver#supported-versions).
 
 ## Features
 
 - Persistence (beyond pod lifetime)
 - Dynamic provisioning
 - Supported access mode: read/write multiple pods
-- Volume snapshot support
 - NFS/SMB mount protocols.
 
 ## Requirements
@@ -249,31 +244,6 @@ kubectl apply -f examples/kubernetes/nginx-persistent-volume.yaml
 
 # to delete this pod:
 kubectl delete -f examples/kubernetes/nginx-persistent-volume.yaml
-```
-
-## Snapshots
-
-**Note**: this feature is an
-[alpha feature](https://kubernetes-csi.github.io/docs/snapshot-restore-feature.html#status).
-
-```bash
-# create snapshot class
-kubectl apply -f examples/kubernetes/snapshot-class.yaml
-
-# take a snapshot
-kubectl apply -f examples/kubernetes/take-snapshot.yaml
-
-# deploy nginx pod with volume restored from a snapshot
-kubectl apply -f examples/kubernetes/nginx-snapshot-volume.yaml
-
-# snapshot classes
-kubectl get volumesnapshotclasses.snapshot.storage.k8s.io
-
-# snapshot list
-kubectl get volumesnapshots.snapshot.storage.k8s.io
-
-# snapshot content list
-kubectl get volumesnapshotcontents.snapshot.storage.k8s.io
 ```
 
 ## Uninstall

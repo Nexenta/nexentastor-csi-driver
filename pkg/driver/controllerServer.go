@@ -3,10 +3,8 @@ package driver
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -20,7 +18,7 @@ import (
 var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type{
 	csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+	//csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT, //TODO
 	//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
 	//csi.ControllerServiceCapability_RPC_CLONE_VOLUME, //TODO
 	//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
@@ -203,25 +201,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		},
 	}
 
-	var sourceSnapshotID string
-	if volumeContentSource := req.GetVolumeContentSource(); volumeContentSource != nil {
-		if sourceSnapshot := volumeContentSource.GetSnapshot(); sourceSnapshot != nil {
-			sourceSnapshotID = sourceSnapshot.GetSnapshotId()
-			res.Volume.ContentSource = req.GetVolumeContentSource()
-		} else {
-			return nil, status.Errorf(
-				codes.InvalidArgument,
-				"Only snapshots are supported as volume content source, but got type: %s",
-				volumeContentSource.GetType(),
-			)
-		}
-	}
-
-	if sourceSnapshotID != "" {
-		// create new volume using existing snapshot
-		return s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshotID, volumePath, capacityBytes, res)
-	}
-
 	return s.createNewVolume(nsProvider, volumePath, capacityBytes, res)
 }
 
@@ -276,70 +255,6 @@ func (s *ControllerServer) createNewVolume(
 	return res, nil
 }
 
-// create new volume using existing snapshot
-func (s *ControllerServer) createNewVolumeFromSnapshot(
-	nsProvider ns.ProviderInterface,
-	sourceSnapshotID string,
-	volumePath string,
-	capacityBytes int64,
-	res *csi.CreateVolumeResponse,
-) (*csi.CreateVolumeResponse, error) {
-	l := s.log.WithField("func", "createNewVolumeFromSnapshot()")
-	l.Infof("snapshot: %s", sourceSnapshotID)
-
-	snapshot, err := nsProvider.GetSnapshot(sourceSnapshotID)
-	if err != nil {
-		message := fmt.Sprintf("Failed to find snapshot '%s': %s", sourceSnapshotID, err)
-		if ns.IsNotExistNefError(err) || ns.IsBadArgNefError(err) {
-			return nil, status.Error(codes.NotFound, message)
-		}
-		return nil, status.Error(codes.Internal, message)
-	}
-
-	err = nsProvider.CloneSnapshot(snapshot.Path, ns.CloneSnapshotParams{
-		TargetPath: volumePath,
-	})
-	if err != nil {
-		if ns.IsAlreadyExistNefError(err) {
-			//TODO validate snapshot's "bytesReferenced" is less than required volume size
-
-			// existingFilesystem, err := nsProvider.GetFilesystem(volumePath)
-			// if err != nil {
-			// 	return nil, status.Errorf(
-			// 		codes.Internal,
-			// 		"Volume '%s' already exists, but volume properties request failed: %s",
-			// 		volumePath,
-			// 		err,
-			// 	)
-			// } else if existingFilesystem.GetReferencedQuotaSize() != capacityBytes {
-			// 	return nil, status.Errorf(
-			// 		codes.AlreadyExists,
-			// 		"Volume '%s' already exists, but with a different size: requested=%d, existing=%d",
-			// 		volumePath,
-			// 		capacityBytes,
-			// 		existingFilesystem.GetReferencedQuotaSize(),
-			// 	)
-			// }
-
-			l.Infof("volume '%s' already exists and can be used", volumePath)
-			return res, nil
-		}
-
-		return nil, status.Errorf(
-			codes.Internal,
-			"Cannot create volume '%s' using snapshot '%s': %s",
-			volumePath,
-			snapshot.Path,
-			err,
-		)
-	}
-
-	//TODO resize volume after cloning from snapshot if needed
-
-	l.Infof("volume '%s' has been created using snapshots '%s'", volumePath, snapshot.Path)
-	return res, nil
-}
-
 // DeleteVolume - destroys FS on NexentaStor
 func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (
 	*csi.DeleteVolumeResponse,
@@ -389,91 +304,8 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 	*csi.CreateSnapshotResponse,
 	error,
 ) {
-	l := s.log.WithField("func", "CreateSnapshot()")
-	l.Infof("request: '%+v'", req)
-
-	err := s.refreshConfig()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	}
-
-	volumePath := req.GetSourceVolumeId()
-	if len(volumePath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Snapshot source volume ID must be provided")
-	}
-
-	name := req.GetName()
-	if len(name) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Snapshot name must be provided")
-	}
-
-	//TODO req.GetParameters() - read recursive param?
-
-	nsProvider, err := s.resolveNS(volumePath)
-	if err != nil {
-		return nil, err
-	}
-
-	l.Infof("resolved NS: %s, path: %s", nsProvider, volumePath)
-
-	//K8s doesn't allow to have same named snapshots for different volumes
-	parentVolumePath := filepath.Dir(volumePath)
-	existingSnapshots, err := nsProvider.GetSnapshots(parentVolumePath, true)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot get snapshots list: %s", err)
-	}
-	for _, s := range existingSnapshots {
-		if s.Name == name && s.Parent != volumePath {
-			return nil, status.Errorf(
-				codes.AlreadyExists,
-				"Snapshot '%s' already exists for filesystem: %s",
-				name,
-				s.Path,
-			)
-		}
-	}
-
-	snapshotPath := fmt.Sprintf("%s@%s", volumePath, name)
-
-	// if here, than volumePath exists on some NS
-	err = nsProvider.CreateSnapshot(ns.CreateSnapshotParams{
-		Path: snapshotPath,
-	})
-	if err != nil && !ns.IsAlreadyExistNefError(err) {
-		return nil, status.Errorf(codes.Internal, "Cannot create snapshot '%s': %s", snapshotPath, err)
-	}
-
-	createdSnapshot, err := nsProvider.GetSnapshot(snapshotPath)
-	if err != nil {
-		return nil, status.Errorf(
-			codes.Internal,
-			"Snapshot '%s' has been created, but snapshot properties request failed: %s",
-			snapshotPath,
-			err,
-		)
-	}
-
-	creationTime := &timestamp.Timestamp{
-		Seconds: createdSnapshot.CreationTime.Unix(),
-	}
-
-	res := &csi.CreateSnapshotResponse{
-		Snapshot: &csi.Snapshot{
-			SnapshotId:     snapshotPath,
-			SourceVolumeId: volumePath,
-			CreationTime:   creationTime,
-			ReadyToUse:     true, //TODO use actual state
-			//SizeByte: 0 //TODO size of zero means it is unspecified
-		},
-	}
-
-	if ns.IsAlreadyExistNefError(err) {
-		l.Infof("snapshot '%s' already exists and can be used", snapshotPath)
-		return res, nil
-	}
-
-	l.Infof("snapshot '%s' has been created", snapshotPath)
-	return res, nil
+	s.log.WithField("func", "CreateSnapshot()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // DeleteSnapshot deletes snapshots
@@ -481,51 +313,8 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 	*csi.DeleteSnapshotResponse,
 	error,
 ) {
-	l := s.log.WithField("func", "DeleteSnapshot()")
-	l.Infof("request: '%+v'", req)
-
-	err := s.refreshConfig()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	}
-
-	snapshotPath := req.GetSnapshotId()
-	if len(snapshotPath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Snapshot ID must be provided")
-	}
-
-	volumePath := ""
-	splittedString := strings.Split(snapshotPath, "@")
-	if len(splittedString) == 2 {
-		volumePath = splittedString[0]
-	} else {
-		l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
-		return &csi.DeleteSnapshotResponse{}, nil
-	}
-
-	nsProvider, err := s.resolveNS(volumePath)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
-			return &csi.DeleteSnapshotResponse{}, nil
-		}
-		return nil, err
-	}
-
-	l.Infof("resolved NS: %s, %s", nsProvider, snapshotPath)
-
-	// if here, than volumePath exists on some NS
-	err = nsProvider.DestroySnapshot(snapshotPath)
-	if err != nil && !ns.IsNotExistNefError(err) {
-		message := fmt.Sprintf("Failed to delete snapshot '%s'", snapshotPath)
-		if ns.IsBusyNefError(err) {
-			message += ", it has dependent filesystem"
-		}
-		return nil, status.Errorf(codes.Internal, "%s: %s", message, err)
-	}
-
-	l.Infof("snapshot '%s' has been deleted", snapshotPath)
-	return &csi.DeleteSnapshotResponse{}, nil
+	s.log.WithField("func", "DeleteSnapshot()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ListSnapshots returns the list of snapshots
@@ -533,146 +322,8 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	*csi.ListSnapshotsResponse,
 	error,
 ) {
-	l := s.log.WithField("func", "ListSnapshots()")
-	l.Infof("request: '%+v'", req)
-
-	//TODO try this when list issue is solved
-	err := s.refreshConfig()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	}
-
-	if req.GetSnapshotId() != "" {
-		// identity information for a specific snapshot, can be used to list only a specific snapshot
-		return s.getSnapshotListWithSingleSnapshot(req.GetSnapshotId(), req)
-	} else if req.GetSourceVolumeId() != "" {
-		// identity information for the source volume, can be used to list snapshots by volume
-		return s.getFilesystemSnapshotList(req.GetSourceVolumeId(), req)
-	} else if s.config.DefaultDataset != "" {
-		// return list of all snapshots from default dataset
-		return s.getFilesystemSnapshotList(s.config.DefaultDataset, req)
-	}
-
-	// no volume id provided, return empty list
-	return &csi.ListSnapshotsResponse{
-		Entries: []*csi.ListSnapshotsResponse_Entry{},
-	}, nil
-}
-
-func (s *ControllerServer) getSnapshotListWithSingleSnapshot(snapshotPath string, req *csi.ListSnapshotsRequest) (
-	*csi.ListSnapshotsResponse,
-	error,
-) {
-	l := s.log.WithField("func", "getSnapshotListWithSingleSnapshot()")
-	l.Infof("snapshots path: %s", snapshotPath)
-
-	response := csi.ListSnapshotsResponse{
-		Entries: []*csi.ListSnapshotsResponse_Entry{},
-	}
-
-	splittedSnapshotPath := strings.Split(snapshotPath, "@")
-	if len(splittedSnapshotPath) != 2 {
-		// bad snapshotID format, but it's ok, driver should return empty response
-		return &response, nil
-	}
-
-	filesystemPath := splittedSnapshotPath[0]
-
-	nsProvider, err := s.resolveNS(filesystemPath)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			l.Infof("filesystem '%s' not found, that's OK for list request", filesystemPath)
-			return &response, nil
-		}
-		return nil, err
-	}
-
-	snapshot, err := nsProvider.GetSnapshot(snapshotPath)
-	if err != nil {
-		if ns.IsNotExistNefError(err) {
-			return &response, nil
-		}
-		return nil, status.Errorf(codes.Internal, "Cannot get snapshot '%s' for snapshot list: %s", snapshotPath, err)
-	}
-
-	response.Entries = append(response.Entries, convertNSSnapshotToCSISnapshot(snapshot))
-
-	l.Infof("snapshot '%s' found for '%s' filesystem", snapshot.Path, filesystemPath)
-
-	return &response, nil
-}
-
-func (s *ControllerServer) getFilesystemSnapshotList(filesystemPath string, req *csi.ListSnapshotsRequest) (
-	*csi.ListSnapshotsResponse,
-	error,
-) {
-	l := s.log.WithField("func", "getFilesystemSnapshotList()")
-	l.Infof("filesystem path: %s", filesystemPath)
-
-	startingToken := req.GetStartingToken()
-	maxEntries := req.GetMaxEntries()
-
-	response := csi.ListSnapshotsResponse{
-		Entries: []*csi.ListSnapshotsResponse_Entry{},
-	}
-
-	nsProvider, err := s.resolveNS(filesystemPath)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			l.Infof("volume '%s' not found, that's OK for list request", filesystemPath)
-			return &response, nil
-		}
-		return nil, err
-	}
-
-	snapshots, err := nsProvider.GetSnapshots(filesystemPath, true)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot get snapshot list for '%s': %s", filesystemPath, err)
-	}
-
-	for i, snapshot := range snapshots {
-		// skip all snapshots before startring token
-		if snapshot.Path == startingToken {
-			startingToken = ""
-		}
-		if startingToken != "" {
-			continue
-		}
-
-		response.Entries = append(response.Entries, convertNSSnapshotToCSISnapshot(snapshot))
-
-		// if the requested maximum is reached (and specified) than set next token
-		if maxEntries != 0 && int32(len(response.Entries)) == maxEntries {
-			if i+1 < len(snapshots) { // next snapshots index exists
-				l.Infof(
-					"max entries count (%d) has been reached while getting snapshots for '%s' filesystem, "+
-						"send response with next_token for pagination",
-					maxEntries,
-					filesystemPath,
-				)
-				response.NextToken = snapshots[i+1].Path
-				return &response, nil
-			}
-		}
-	}
-
-	l.Infof("found %d snapshot(s) for %s filesystem", len(response.Entries), filesystemPath)
-
-	return &response, nil
-}
-
-func convertNSSnapshotToCSISnapshot(snapshot ns.Snapshot) *csi.ListSnapshotsResponse_Entry {
-	return &csi.ListSnapshotsResponse_Entry{
-		Snapshot: &csi.Snapshot{
-			SnapshotId:     snapshot.Path,
-			SourceVolumeId: snapshot.Parent,
-			CreationTime: &timestamp.Timestamp{
-				Seconds: snapshot.CreationTime.Unix(),
-			},
-			ReadyToUse: true, //TODO use actual state
-			//SizeByte: 0 //TODO size of zero means it is unspecified
-		},
-	}
+	s.log.WithField("func", "ListSnapshots()").Warnf("request: '%+v' - not implemented", req)
+	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ValidateVolumeCapabilities validates volume capabilities

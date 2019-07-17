@@ -11,10 +11,10 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 
 ## Supported versions
 
-|                             | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
-|-----------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Kubernetes >=1.13           | [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.1) | [1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.0.1) |
-| Kubernetes >=1.13           | master                                                                | master                                                                |
+|                   | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
+|-------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
+| Kubernetes 1.13   | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |
+| Kubernetes >=1.14 | master                                                                | master                                                                |
 
 ## Features
 
@@ -34,22 +34,10 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
 - Required the API server and the kubelet feature gates
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
-  --feature-gates=VolumeSnapshotDataSource=true,CSIDriverRegistry=true
+  --feature-gates=VolumeSnapshotDataSource=true
   ```
 - Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
-- Kubernetes CSI drivers require `CSIDriver` and `CSINodeInfo` resource types
-  [to be defined on the cluster](https://github.com/kubernetes-csi/docs/blob/460a49286fe164a78fde3114e893c48b572a36c8/book/src/Setup.md#csidriver-custom-resource-alpha).
-  Check if they are already defined:
-  ```bash
-  kubectl get customresourcedefinition.apiextensions.k8s.io/csidrivers.csi.storage.k8s.io
-  kubectl get customresourcedefinition.apiextensions.k8s.io/csinodeinfos.csi.storage.k8s.io
-  ```
-  If the cluster doesn't have "csidrivers" and "csinodeinfos" resource types, create them:
-  ```bash
-  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/release-1.13/pkg/crd/manifests/csidriver.yaml
-  kubectl create -f https://raw.githubusercontent.com/kubernetes/csi-api/release-1.13/pkg/crd/manifests/csinodeinfo.yaml
-  ```
 - Depends on preferred mount filesystem type, following utilities must be installed on each Kubernetes node:
   ```bash
   # for NFS
@@ -292,8 +280,8 @@ kubectl delete secret nexentastor-csi-driver-config
 
 - Show installed drivers:
   ```bash
-  kubectl get csidrivers.csi.storage.k8s.io
-  kubectl describe csidrivers.csi.storage.k8s.io
+  kubectl get csidrivers
+  kubectl describe csidrivers
   ```
 - Error:
   ```

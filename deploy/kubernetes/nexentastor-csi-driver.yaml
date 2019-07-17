@@ -32,7 +32,7 @@ spec:
 # NexentaStor CSI Controller Server
 # ---------------------------------
 #
-# Runs single driver controller server (driver + provisioner + attacher + snapshotter) on one of the nodes
+# Runs single driver controller server (driver + provisioner + attacher) on one of the nodes
 #
 
 apiVersion: v1
@@ -62,12 +62,6 @@ rules:
   - apiGroups: ['']
     resources: ['events']
     verbs: ['list', 'watch', 'create', 'update', 'patch']
-  - apiGroups: ['snapshot.storage.k8s.io']
-    resources: ['volumesnapshots']
-    verbs: ['get', 'list']
-  - apiGroups: ['snapshot.storage.k8s.io']
-    resources: ['volumesnapshotcontents']
-    verbs: ['get', 'list']
   # attacher specific
   - apiGroups: ['']
     resources: ['nodes']
@@ -78,19 +72,6 @@ rules:
   - apiGroups: ['storage.k8s.io']
     resources: ['volumeattachments']
     verbs: ['get', 'list', 'watch', 'update']
-  # snapshotter specific
-  - apiGroups: ['snapshot.storage.k8s.io']
-    resources: ['volumesnapshotclasses']
-    verbs: ['get', 'list', 'watch']
-  - apiGroups: ['snapshot.storage.k8s.io']
-    resources: ['volumesnapshotcontents']
-    verbs: ['create', 'get', 'list', 'watch', 'update', 'delete']
-  - apiGroups: ['snapshot.storage.k8s.io']
-    resources: ['volumesnapshots']
-    verbs: ['get', 'list', 'watch', 'update']
-  - apiGroups: ['apiextensions.k8s.io']
-    resources: ['customresourcedefinitions']
-    verbs: ['create', 'list', 'watch', 'delete']
 ---
 
 kind: ClusterRoleBinding
@@ -155,15 +136,6 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --v=3
-            - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /var/lib/csi/sockets/pluginproxy
-        - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v1.0.1
-          imagePullPolicy: IfNotPresent
-          args:
-            - --connection-timeout=25s
             - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
           volumeMounts:
             - name: socket-dir

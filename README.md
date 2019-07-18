@@ -54,8 +54,7 @@ NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nex
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
-   #git branch       # to use other than master branch
-   #git checkout ...
+   git checkout master
    ```
 3. Edit `deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml

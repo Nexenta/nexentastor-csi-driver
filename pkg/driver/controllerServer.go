@@ -101,6 +101,13 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	l := s.log.WithField("func", "ListVolumes()")
 	l.Infof("request: '%+v'", req)
 
+	startingToken := req.GetStartingToken()
+
+	maxEntries := int(req.GetMaxEntries())
+	if maxEntries < 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "req.MaxEntries must be 0 or greater, got: %d", maxEntries)
+	}
+
 	err := s.refreshConfig()
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
@@ -113,9 +120,20 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 
 	l.Infof("resolved NS: %s, %s", nsProvider, s.config.DefaultDataset)
 
-	filesystems, err := nsProvider.GetFilesystems(s.config.DefaultDataset)
+	filesystems, nextToken, err := nsProvider.GetFilesystemsWithStartingToken(
+		s.config.DefaultDataset,
+		startingToken,
+		maxEntries,
+	)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot get filesystems: %s", err)
+	} else if startingToken != "" && len(filesystems) == 0 {
+		return nil, status.Errorf(
+			codes.Aborted,
+			"Failed to find filesystem started from tocken '%s': %s",
+			startingToken,
+			err,
+		)
 	}
 
 	entries := make([]*csi.ListVolumesResponse_Entry, len(filesystems))
@@ -128,7 +146,8 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	l.Infof("found %d entries(s)", len(entries))
 
 	return &csi.ListVolumesResponse{
-		Entries: entries,
+		Entries:   entries,
+		NextToken: nextToken,
 	}, nil
 }
 
@@ -250,7 +269,7 @@ func (s *ControllerServer) createNewVolume(
 					volumePath,
 					err,
 				)
-			} else if existingFilesystem.GetReferencedQuotaSize() != capacityBytes {
+			} else if capacityBytes != 0 && existingFilesystem.GetReferencedQuotaSize() != capacityBytes {
 				return nil, status.Errorf(
 					codes.AlreadyExists,
 					"Volume '%s' already exists, but with a different size: requested=%d, existing=%d",

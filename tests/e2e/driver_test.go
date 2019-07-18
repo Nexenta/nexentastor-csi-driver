@@ -175,7 +175,7 @@ func TestDriver_deploy(t *testing.T) {
 		t.Log("done.")
 	})
 
-	t.Run("create nginx pod with dynamic volume provisioning [read-only]", func(t *testing.T) {
+	t.Run("deploy nginx pod with dynamic volume provisioning [read-only]", func(t *testing.T) {
 		nginxPodName := "nginx-dynamic-volume-ro"
 
 		getNginxRunCommand := func(cmd string) string {

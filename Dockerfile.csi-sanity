@@ -1,7 +1,8 @@
 # csi-sanity build container
 FROM golang:1.12 as builder-csi-sanity
 WORKDIR /go/src/github.com/kubernetes-csi/
-ENV CSI_SANITY_VERSION_TAG="v1.1.1"
+# csi-sanity versions: https://github.com/kubernetes-csi/csi-test/releases
+ENV CSI_SANITY_VERSION_TAG="v2.0.1"
 RUN git clone https://github.com/kubernetes-csi/csi-test.git &&\
     cd csi-test &&\
     git checkout -b ${CSI_SANITY_VERSION_TAG} ${CSI_SANITY_VERSION_TAG} &&\
@@ -33,7 +34,6 @@ COPY --from=builder-driver /nexentastor-csi-driver /
 # copy driver config file
 COPY ./tests/csi-sanity/driver-config-csi-sanity.yaml /config/driver-config-csi-sanity.yaml
 # create mount direactory for tests
-RUN mkdir -p /tmp/mnt
 # driver run script
 RUN echo '/nexentastor-csi-driver --config-dir=/config --endpoint=${SOCK} --nodeid=local &' > /run-driver &&\
     chmod +x /run-driver
@@ -44,4 +44,6 @@ RUN mkdir /lib64 &&\
 RUN /csi-sanity -csi.version &&\
     /nexentastor-csi-driver --version
 # other csi-sanity options: --ginkgo.v -ginkgo.noColor
-ENTRYPOINT ["/bin/sh", "-c", "/run-driver && /csi-sanity --csi.endpoint=${SOCK} --csi.mountdir=/tmp/mnt"]
+#TODO remove "--ginkgo.skip" option after switching from v2.0.1 to the next release,
+# after releasing this https://github.com/kubernetes-csi/csi-test/pull/205/files
+ENTRYPOINT ["/bin/sh", "-c", "/run-driver && /csi-sanity --csi.endpoint=${SOCK} --csi.mountdir=/tmp/mnt --ginkgo.skip 'should return next token when a limited number of entries are requested'"]

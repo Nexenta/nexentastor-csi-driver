@@ -167,14 +167,13 @@ type Args struct {
 
 // NewDriver - new driver instance
 func NewDriver(args Args) (*Driver, error) {
-	l := args.Log.WithField("cmp", "Driver")
-
 	if args.Config == nil {
 		return nil, fmt.Errorf("args.Config is required")
 	} else if args.Log == nil {
 		return nil, fmt.Errorf("args.Log is required")
 	}
 
+	l := args.Log.WithField("cmp", "Driver")
 	l.Infof("create new driver: %s@%s-%s (%s)", Name, Version, Commit, DateTime)
 
 	d := &Driver{

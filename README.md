@@ -56,8 +56,7 @@ For other supported versions see [this page](https://github.com/Nexenta/nexentas
    ```bash
    git clone https://github.com/Nexenta/nexentastor-csi-driver.git
    cd nexentastor-csi-driver
-   #git branch       # to use other than master branch
-   #git checkout ...
+   git checkout 1.1.0
    ```
 3. Edit `deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml

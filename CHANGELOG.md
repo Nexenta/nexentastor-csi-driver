@@ -4,7 +4,6 @@
 
 ### Bug Fixes
 
-* return NotFound error code if source snapshot for a new volume is not found
 * NEX-20939 - disable snapshot list capability for current version
 * NEX-20161 - rpcbind is not running in container, suse doesn't mount vers=3
 * Makefile to check env variables existence
@@ -13,7 +12,6 @@
 * NEX-18844 - node server - return right error code
 * NEX-18885 - update tests/production driver configs
 * use http.Method* instead of strings
-* NEX-18885 - use actual snapshot creation time
 * NEX-19172 - combine provisioner and attacher containers together
 * NEX-19172 - use quay.io/k8scsi/csi-attacher:v1.0.1 instead of quay.io/k8scsi/csi-attacher:v0.4.1
 * NEX-19172 - use csi-node-driver-registrar:v1.0.1 instead of driver-registrar:v1.0-canary
@@ -22,10 +20,6 @@
 
 * update CSI spec to v1.1.0
 * NEX-20837 - add timeo=100 as default options for NFS mounts
-* NEX-18844 - create new volume from snapshot
-* NEX-18844 - add clone snapshot, promote filesystem api; snapshot tests
-* NEX-18844 - snapshots list method
-* NEX-18885 - create/delete volume snapshots
 
 
 <a name="v1.0.1"></a>
@@ -115,4 +109,3 @@
 * NEX-18883 - configure jenkins
 * NEX-18883 - build in container, run tests in container, jenkins build preparation
 * nexentastor provider, logLn and getPools methods, auth
-

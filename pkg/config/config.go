@@ -14,8 +14,6 @@ import (
 	"github.com/Nexenta/nexentastor-csi-driver/pkg/arrays"
 )
 
-const addressRegExp = "^https?://[^:]+:[0-9]{1,5}$"
-
 // supported mount filesystem types
 const (
 	// FsTypeNFS - to mount NS filesystem over NFS
@@ -27,6 +25,9 @@ const (
 
 // SuppertedFsTypeList - list of supported filesystem types to mount
 var SuppertedFsTypeList = []string{FsTypeNFS, FsTypeCIFS}
+
+// NexentaStor address format
+var regexpAddress = regexp.MustCompile("^https?://[^:]+:[0-9]{1,5}$")
 
 // Config - driver config from file
 type Config struct {
@@ -90,7 +91,7 @@ func (c *Config) Validate() error {
 	} else {
 		addresses := strings.Split(c.Address, ",")
 		for _, address := range addresses {
-			if !regexp.MustCompile(addressRegExp).MatchString(address) {
+			if !regexpAddress.MatchString(address) {
 				errors = append(
 					errors,
 					fmt.Sprintf(

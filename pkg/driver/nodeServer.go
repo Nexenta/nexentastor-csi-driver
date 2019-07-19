@@ -24,6 +24,13 @@ import (
 	"github.com/Nexenta/nexentastor-csi-driver/pkg/config"
 )
 
+// mount options regexps
+var regexpMountOptionRo = regexp.MustCompile("^ro$")
+var regexpMountOptionVers = regexp.MustCompile("^vers=.*$")
+var regexpMountOptionTimeo = regexp.MustCompile("^timeo=.*$")
+var regexpMountOptionUsername = regexp.MustCompile("^username=.+$")
+var regexpMountOptionPassword = regexp.MustCompile("^password=.+$")
+
 // NodeServer - k8s csi driver node server
 type NodeServer struct {
 	nodeID     string
@@ -179,7 +186,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	// add "ro" mount option if k8s requests it
 	if req.GetReadonly() {
 		//TODO use https://github.com/kubernetes/kubernetes/blob/master/pkg/volume/util/util.go#L759 ?
-		mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^ro$"), "ro")
+		mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexpMountOptionRo, "ro")
 	}
 
 	// get dataIP checking by priority:
@@ -256,10 +263,10 @@ func (s *NodeServer) mountNFS(
 	mountSource := fmt.Sprintf("%s:%s", dataIP, filesystem.MountPoint)
 
 	// NFS v3 is used by default if no version specified by user
-	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^vers=.*$"), "vers=3")
+	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexpMountOptionVers, "vers=3")
 
 	// NFS option `timeo=100` is used by default if not specified by user
-	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexp.MustCompile("^timeo=.*$"), "timeo=100")
+	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexpMountOptionTimeo, "timeo=100")
 
 	return s.doMount(mountSource, req.GetTargetPath(), config.FsTypeNFS, mountOptions)
 }
@@ -272,8 +279,8 @@ func (s *NodeServer) mountCIFS(
 	mountOptions []string,
 ) error {
 	// validate CIFS mount options
-	for _, optionRE := range []string{"^username=.+$", "^password=.+$"} {
-		if len(arrays.FindRegexpIndexesString(mountOptions, regexp.MustCompile(optionRE))) == 0 {
+	for _, optionRE := range []*regexp.Regexp{regexpMountOptionUsername, regexpMountOptionPassword} {
+		if len(arrays.FindRegexpIndexesString(mountOptions, optionRE)) == 0 {
 			return status.Errorf(
 				codes.FailedPrecondition,
 				"Options '%s' must be specified for CIFS mount (got options: %v)",

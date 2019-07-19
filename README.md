@@ -420,6 +420,6 @@ new git tag should be created.
    - builds driver container 'nexentastor-csi-driver'
    - Login to hub.docker.com will be requested
    - publishes driver version 'nexenta/nexentastor-csi-driver:X.X.X' to hub.docker.com
-   - creates new Git tag 'X.X.X' and pushes to the repository.
+   - creates new Git tag 'vX.X.X' and pushes to the repository.
 
 3. Update Github [releases](https://github.com/Nexenta/nexentastor-csi-driver/releases).

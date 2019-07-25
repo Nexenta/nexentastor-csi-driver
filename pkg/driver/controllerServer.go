@@ -130,7 +130,7 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	} else if startingToken != "" && len(filesystems) == 0 {
 		return nil, status.Errorf(
 			codes.Aborted,
-			"Failed to find filesystem started from tocken '%s': %s",
+			"Failed to find filesystem started from token '%s': %s",
 			startingToken,
 			err,
 		)
@@ -389,7 +389,10 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)
 
 	// if here, than volumePath exists on some NS
-	err = nsProvider.DestroyFilesystemWithClones(volumePath, false)
+	err = nsProvider.DestroyFilesystem(volumePath, ns.DestroyFilesystemParams{
+		DestroySnapshots:               false,
+		PromoteMostRecentCloneIfExists: true,
+	})
 	if err != nil && !ns.IsNotExistNefError(err) {
 		return nil, status.Errorf(
 			codes.Internal,

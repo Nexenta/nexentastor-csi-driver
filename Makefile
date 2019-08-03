@@ -126,7 +126,10 @@ test-e2e-k8s-remote-image-container: check-env-TEST_K8S_IP
 # - nfs client requires running container as privileged one
 .PHONY: test-csi-sanity-container
 test-csi-sanity-container:
-	docker build -f ${DOCKER_FILE_TEST_CSI_SANITY} -t ${IMAGE_NAME}-test-csi-sanity .
+	docker build \
+		--build-arg CSI_SANITY_VERSION_TAG=v2.1.0 \
+		-f ${DOCKER_FILE_TEST_CSI_SANITY} \
+		-t ${IMAGE_NAME}-test-csi-sanity .
 	docker run --privileged=true -i --rm -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test-csi-sanity
 
 # run all tests (local registry image)

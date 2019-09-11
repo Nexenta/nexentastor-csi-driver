@@ -6,4 +6,5 @@ go:
   - master
 
 script:
-  - make
+  - make build
+  - make test

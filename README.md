@@ -4,16 +4,16 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 
-This is a **development branch**, for the most recent stable version see
-[documentation](https://nexenta.github.io/nexentastor-csi-driver/).
-
 NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nexenta.com/products/nexentastor).
+
+This is a **development branch**, for the most recent stable version see "Supported versions":
 
 ## Supported versions
 
 |                   | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
 |-------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Kubernetes 1.13   | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |
+| Kubernetes >=1.14 | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |
 | Kubernetes >=1.14 | master                                                                | master                                                                |
 
 ## Features

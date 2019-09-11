@@ -1,3 +1,48 @@
+<a name="v1.2.0"></a>
+## [v1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.1.0...v1.2.0) (2019-09-11)
+
+### Bug Fixes
+
+* do not compile regexp's on each request
+* driver could fail if no log object provided
+
+### Features
+
+* update csi-sanity tests to v2.1.0
+* NEX-21217 - add volume pagination support
+* NEX-21231 - volume snapshot feature
+* driver configuration for k8s >=1.14
+
+
+<a name="v1.1.0"></a>
+## [v1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.0.1...v1.1.0) (2019-07-18)
+
+### Bug Fixes
+
+* return NotFound error code if source snapshot for a new volume is not found
+* NEX-20939 - disable snapshot list capability for current version
+* NEX-20161 - rpcbind is not running in container, suse doesn't mount vers=3
+* Makefile to check env variables existence
+* license and rsf cluster checks log only a warning for now
+* NEX-19118 - mountFsType parameter doesn't work in storage class config
+* NEX-18844 - node server - return right error code
+* NEX-18885 - update tests/production driver configs
+* use http.Method* instead of strings
+* NEX-18885 - use actual snapshot creation time
+* NEX-19172 - combine provisioner and attacher containers together
+* NEX-19172 - use quay.io/k8scsi/csi-attacher:v1.0.1 instead of quay.io/k8scsi/csi-attacher:v0.4.1
+* NEX-19172 - use csi-node-driver-registrar:v1.0.1 instead of driver-registrar:v1.0-canary
+
+### Features
+
+* update CSI spec to v1.1.0
+* NEX-20837 - add timeo=100 as default options for NFS mounts
+* NEX-18844 - create new volume from snapshot
+* NEX-18844 - add clone snapshot, promote filesystem api; snapshot tests
+* NEX-18844 - snapshots list method
+* NEX-18885 - create/delete volume snapshots
+
+
 <a name="v1.0.1"></a>
 ## [v1.0.1](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.0.0...v1.0.1) (2019-02-01)
 

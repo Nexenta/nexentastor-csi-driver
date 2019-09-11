@@ -173,9 +173,9 @@ release:
 		6. Git tag 'v${VERSION}' will be created and pushed to the repository.\n\n \
 		Are you sure? [y/N]: "
 	@(read ANSWER && case "$$ANSWER" in [yY]) true;; *) false;; esac)
+	docker login
 	make generate-changelog
 	make container-build
-	docker login
 	make container-push-remote
 	git add CHANGELOG.md
 	git commit -m "release v${VERSION}"

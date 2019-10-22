@@ -22,7 +22,7 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 	//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
-	//csi.ControllerServiceCapability_RPC_CLONE_VOLUME, //TODO
+	csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
 }
 
@@ -222,15 +222,23 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		},
 	}
 
+	// To implement volume cloning the CSI driver MUST:
+	// Implement checks for csi.CreateVolumeRequest.VolumeContentSource in the plugin's CreateVolume function implementation.
+	// Implement CLONE_VOLUME controller capability.
+
 	var sourceSnapshotID string
+	var sourceVolumeID string
 	if volumeContentSource := req.GetVolumeContentSource(); volumeContentSource != nil {
 		if sourceSnapshot := volumeContentSource.GetSnapshot(); sourceSnapshot != nil {
 			sourceSnapshotID = sourceSnapshot.GetSnapshotId()
 			res.Volume.ContentSource = req.GetVolumeContentSource()
+		} else if sourceVolume := volumeContentSource.GetVolume(); sourceVolume != nil {
+			sourceVolumeID = sourceVolume.GetVolumeId()
+			res.Volume.ContentSource = req.GetVolumeContentSource()
 		} else {
 			return nil, status.Errorf(
 				codes.InvalidArgument,
-				"Only snapshots are supported as volume content source, but got type: %s",
+				"Only snapshots and volumes are supported as volume content source, but got type: %s",
 				volumeContentSource.GetType(),
 			)
 		}
@@ -239,6 +247,10 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if sourceSnapshotID != "" {
 		// create new volume using existing snapshot
 		return s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshotID, volumePath, capacityBytes, res)
+	}
+	if sourceVolumeID != "" {
+		// clone existing volume
+		return s.createClonedVolume(nsProvider, sourceVolumeID, volumePath, volumeName, capacityBytes, res)
 	}
 
 	return s.createNewVolume(nsProvider, volumePath, capacityBytes, res)
@@ -355,8 +367,76 @@ func (s *ControllerServer) createNewVolumeFromSnapshot(
 
 	//TODO resize volume after cloning from snapshot if needed
 
-	l.Infof("volume '%s' has been created using snapshots '%s'", volumePath, snapshot.Path)
+	l.Infof("volume '%s' has been created using snapshot '%s'", volumePath, snapshot.Path)
 	return res, nil
+}
+
+func (s *ControllerServer) createClonedVolume(
+	nsProvider ns.ProviderInterface,
+	sourceVolumeID string,
+	volumePath string,
+	volumeName string,
+	capacityBytes int64,
+	res *csi.CreateVolumeResponse,
+) (*csi.CreateVolumeResponse, error) {
+
+	l := s.log.WithField("func", "createClonedVolume()")
+	l.Infof("volume: %s", sourceVolumeID)
+
+	err := s.refreshConfig()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
+
+	snapName := fmt.Sprintf("k8s-clone-snapshot-%s", volumeName)
+	snapshotPath := fmt.Sprintf("%s@%s", sourceVolumeID, snapName)
+
+	_, err = s.CreateSnapshotOnNS(sourceVolumeID, snapName)
+	if err != nil {
+		l.Infof("Could not create snapshot '%s'", snapshotPath)
+		return nil, err
+	}
+
+	err = nsProvider.CloneSnapshot(snapshotPath, ns.CloneSnapshotParams{
+		TargetPath: volumePath,
+	})
+
+	if err != nil {
+		if ns.IsAlreadyExistNefError(err) {
+			//TODO validate snapshot's "bytesReferenced" is less than required volume size
+
+			// existingFilesystem, err := nsProvider.GetFilesystem(volumePath)
+			// if err != nil {
+			// 	return nil, status.Errorf(
+			// 		codes.Internal,
+			// 		"Volume '%s' already exists, but volume properties request failed: %s",
+			// 		volumePath,
+			// 		err,
+			// 	)
+			// } else if existingFilesystem.GetReferencedQuotaSize() != capacityBytes {
+			// 	return nil, status.Errorf(
+			// 		codes.AlreadyExists,
+			// 		"Volume '%s' already exists, but with a different size: requested=%d, existing=%d",
+			// 		volumePath,
+			// 		capacityBytes,
+			// 		existingFilesystem.GetReferencedQuotaSize(),
+			// 	)
+			// }
+
+			l.Infof("volume '%s' already exists and can be used", volumePath)
+			return res, nil
+		}
+
+		return nil, status.Errorf(
+			codes.Internal,
+			"Cannot create volume '%s' using snapshot '%s': %s",
+			volumePath,
+			snapshotPath,
+			err,
+		)
+	}
+
+	return nil, nil
 }
 
 // DeleteVolume - destroys FS on NexentaStor
@@ -390,7 +470,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 
 	// if here, than volumePath exists on some NS
 	err = nsProvider.DestroyFilesystem(volumePath, ns.DestroyFilesystemParams{
-		DestroySnapshots:               false,
+		DestroySnapshots:               true,
 		PromoteMostRecentCloneIfExists: true,
 	})
 	if err != nil && !ns.IsNotExistNefError(err) {
@@ -405,6 +485,57 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	l.Infof("volume '%s' has been deleted", volumePath)
 	return &csi.DeleteVolumeResponse{}, nil
 }
+
+func (s *ControllerServer) CreateSnapshotOnNS(volumePath, snapName string) (
+	snapshot ns.Snapshot, err error) {
+
+	l := s.log.WithField("func", "CreateSnapshotOnNS()")
+	//TODO req.GetParameters() - read recursive param?
+	nsProvider, err := s.resolveNS(volumePath)
+	if err != nil {
+		return snapshot, err
+	}
+	l.Infof("resolved NS: %s, path: %s", nsProvider, volumePath)
+
+	//K8s doesn't allow to have same named snapshots for different volumes
+	sourcePath := filepath.Dir(volumePath)
+	existingSnapshots, err := nsProvider.GetSnapshots(sourcePath, true)
+	if err != nil {
+		return snapshot, status.Errorf(codes.Internal, "Cannot get snapshots list: %s", err)
+	}
+	for _, s := range existingSnapshots {
+		if s.Name == snapName && s.Parent != volumePath {
+			return snapshot, status.Errorf(
+				codes.AlreadyExists,
+				"Snapshot '%s' already exists for filesystem: %s",
+				snapName,
+				s.Path,
+			)
+		}
+	}
+
+	snapshotPath := fmt.Sprintf("%s@%s", volumePath, snapName)
+
+	// if here, than volumePath exists on some NS
+	err = nsProvider.CreateSnapshot(ns.CreateSnapshotParams{
+		Path: snapshotPath,
+	})
+	if err != nil && !ns.IsAlreadyExistNefError(err) {
+		return snapshot, status.Errorf(codes.Internal, "Cannot create snapshot '%s': %s", snapshotPath, err)
+	}
+
+	snapshot, err = nsProvider.GetSnapshot(snapshotPath)
+	if err != nil {
+		return snapshot, status.Errorf(
+			codes.Internal,
+			"Snapshot '%s' has been created, but snapshot properties request failed: %s",
+			snapshotPath,
+			err,
+		)
+	}
+	return snapshot, nil
+}
+
 
 // CreateSnapshot creates a snapshot of given volume
 func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (
@@ -429,52 +560,12 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 		return nil, status.Error(codes.InvalidArgument, "Snapshot name must be provided")
 	}
 
-	//TODO req.GetParameters() - read recursive param?
-
-	nsProvider, err := s.resolveNS(volumePath)
+	snapshotPath := fmt.Sprintf("%s@%s", volumePath, name)
+	createdSnapshot, err := s.CreateSnapshotOnNS(volumePath, name)
 	if err != nil {
+		l.Infof("Could not create snapshot '%s'", snapshotPath)
 		return nil, err
 	}
-
-	l.Infof("resolved NS: %s, path: %s", nsProvider, volumePath)
-
-	//K8s doesn't allow to have same named snapshots for different volumes
-	parentVolumePath := filepath.Dir(volumePath)
-	existingSnapshots, err := nsProvider.GetSnapshots(parentVolumePath, true)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot get snapshots list: %s", err)
-	}
-	for _, s := range existingSnapshots {
-		if s.Name == name && s.Parent != volumePath {
-			return nil, status.Errorf(
-				codes.AlreadyExists,
-				"Snapshot '%s' already exists for filesystem: %s",
-				name,
-				s.Path,
-			)
-		}
-	}
-
-	snapshotPath := fmt.Sprintf("%s@%s", volumePath, name)
-
-	// if here, than volumePath exists on some NS
-	err = nsProvider.CreateSnapshot(ns.CreateSnapshotParams{
-		Path: snapshotPath,
-	})
-	if err != nil && !ns.IsAlreadyExistNefError(err) {
-		return nil, status.Errorf(codes.Internal, "Cannot create snapshot '%s': %s", snapshotPath, err)
-	}
-
-	createdSnapshot, err := nsProvider.GetSnapshot(snapshotPath)
-	if err != nil {
-		return nil, status.Errorf(
-			codes.Internal,
-			"Snapshot '%s' has been created, but snapshot properties request failed: %s",
-			snapshotPath,
-			err,
-		)
-	}
-
 	creationTime := &timestamp.Timestamp{
 		Seconds: createdSnapshot.CreationTime.Unix(),
 	}

@@ -1,0 +1,20 @@
+# ------------------------------------------------------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume Claim cloned from another PVC
+# ------------------------------------------------------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-pvc-nginx-dynamic-clone
+spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
+  dataSource:
+    kind: PersistentVolumeClaim
+    apiGroup: ""
+    name: nexentastor-csi-driver-pvc-nginx-dynamic # pvc name
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---

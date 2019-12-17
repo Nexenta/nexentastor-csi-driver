@@ -34,7 +34,7 @@ This is a **development branch**, for the most recent stable version see "Suppor
 - Required the API server and the kubelet feature gates
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
-  --feature-gates=VolumeSnapshotDataSource=true
+  --feature-gates=VolumeSnapshotDataSource=true,VolumePVCDataSource=true
   ```
 - Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))

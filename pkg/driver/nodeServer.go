@@ -439,6 +439,10 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 			targetPath,
 			err,
 		)
+	}
+
+	if err := mounter.Unmount(targetPath); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to unmount target path '%s': %s", targetPath, err)
 	} else if !notMountPoint { // still mounted
 		return nil, status.Errorf(codes.Internal, "Target path '%s' is still mounted", targetPath)
 	}

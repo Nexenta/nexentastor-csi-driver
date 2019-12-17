@@ -23,7 +23,7 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 	//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
 	csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
-	//csi.ControllerServiceCapability_RPC_GET_CAPACITY, //TODO
+	csi.ControllerServiceCapability_RPC_GET_CAPACITY,
 }
 
 // supportedVolumeCapabilities - driver volume capabilities
@@ -459,6 +459,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 
 	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
+		l.Infof("%s", status.Code(err))
 		if status.Code(err) == codes.NotFound {
 			l.Infof("volume '%s' not found, that's OK for deletion request", volumePath)
 			return &csi.DeleteVolumeResponse{}, nil
@@ -854,7 +855,6 @@ func (s *ControllerServer) ControllerGetCapabilities(ctx context.Context, req *c
 	for _, c := range supportedControllerCapabilities {
 		capabilities = append(capabilities, newControllerServiceCapability(c))
 	}
-
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: capabilities,
 	}, nil
@@ -885,13 +885,41 @@ func validateVolumeCapability(requestedVolumeCapability *csi.VolumeCapability) b
 	return false
 }
 
-// GetCapacity - not implemented
 func (s *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
 	*csi.GetCapacityResponse,
 	error,
 ) {
-	s.log.WithField("func", "GetCapacity()").Warnf("request: '%+v' - not implemented", req)
-	return nil, status.Error(codes.Unimplemented, "")
+	l := s.log.WithField("func", "GetCapacity()")
+	l.Infof("request: '%+v'", req)
+
+	reqParams := req.GetParameters()
+	if reqParams == nil {
+		reqParams = make(map[string]string)
+	}
+
+	// get dataset path from runtime params, set default if not specified
+	datasetPath := ""
+	if v, ok := reqParams["dataset"]; ok {
+		datasetPath = v
+	} else {
+		datasetPath = s.config.DefaultDataset
+	}
+
+	nsProvider, err := s.resolveNS(datasetPath)
+	if err != nil {
+		return nil, err
+	}
+
+	filesystem, err := nsProvider.GetFilesystem(datasetPath)
+	if err != nil {
+		return nil, err
+	}
+
+	availableCapacity := filesystem.GetReferencedQuotaSize()
+	l.Infof("Available capacity: '%+v' bytes", availableCapacity)
+	return &csi.GetCapacityResponse{
+		AvailableCapacity: availableCapacity,
+	}, nil
 }
 
 // ControllerPublishVolume - not supported

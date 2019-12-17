@@ -238,6 +238,41 @@ kubectl apply -f examples/kubernetes/nginx-persistent-volume.yaml
 kubectl delete -f examples/kubernetes/nginx-persistent-volume.yaml
 ```
 
+### Cloned volumes
+
+We can create a clone of an existing csi volume.
+To do so, we need to create a _PersistentVolumeClaim_ with _dataSource_ spec pointing to an existing PVC that we want to clone.
+In this case Kubernetes generates volume name automatically (for example `pvc-ns-cfc67950-fe3c-11e8-a3ca-005056b857f8`).
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-pvc-nginx-dynamic-clone
+spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
+  dataSource:
+    kind: PersistentVolumeClaim
+    apiGroup: ""
+    name: nexentastor-csi-driver-pvc-nginx-dynamic # pvc name
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+#### Example
+
+Run Nginx pod with dynamically provisioned volume:
+
+```bash
+kubectl apply -f examples/kubernetes/nginx-clone-volume.yaml
+
+# to delete this pod:
+kubectl delete -f examples/kubernetes/nginx-clone-volume.yaml
+```
+
 ## Snapshots
 
 **Note**: this feature is an

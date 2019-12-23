@@ -329,6 +329,7 @@ func (s *ControllerServer) createNewVolumeFromSnapshot(
 
 	err = nsProvider.CloneSnapshot(snapshot.Path, ns.CloneSnapshotParams{
 		TargetPath: volumePath,
+		ReferencedQuotaSize: capacityBytes,
 	})
 	if err != nil {
 		if ns.IsAlreadyExistNefError(err) {

@@ -568,6 +568,7 @@ func (p *Provider) DestroySnapshot(path string) error {
 type CloneSnapshotParams struct {
 	// filesystem path w/o leading slash
 	TargetPath string `json:"targetPath"`
+	ReferencedQuotaSize int64 `json:"referencedQuotaSize,omitempty"`
 }
 
 // CloneSnapshot clones snapshot to FS

@@ -438,7 +438,7 @@ func (s *ControllerServer) createClonedVolume(
 		)
 	}
 
-	return nil, nil
+	return res, nil
 }
 
 // DeleteVolume - destroys FS on NexentaStor
@@ -502,6 +502,7 @@ func (s *ControllerServer) CreateSnapshotOnNS(volumePath, snapName string) (
 
 	//K8s doesn't allow to have same named snapshots for different volumes
 	sourcePath := filepath.Dir(volumePath)
+
 	existingSnapshots, err := nsProvider.GetSnapshots(sourcePath, true)
 	if err != nil {
 		return snapshot, status.Errorf(codes.Internal, "Cannot get snapshots list: %s", err)

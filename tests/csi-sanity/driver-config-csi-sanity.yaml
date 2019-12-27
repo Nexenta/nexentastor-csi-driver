@@ -1,8 +1,8 @@
-restIp: https://10.3.199.197:8443
+restIp: https://10.3.199.252:8443
 username: admin
 password: Nexenta@1
 defaultDataset: csiDriverPool/csiDriverDataset
-defaultDataIp: 10.3.199.197
+defaultDataIp: 10.3.199.245
 defaultMountFsType: nfs
 defaultMountOptions: nolock,vers=4 # only vers=4 works in container
 debug: false

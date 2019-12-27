@@ -423,10 +423,6 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 
 	mounter := mount.New("")
 
-	if err := mounter.Unmount(targetPath); err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to unmount target path '%s': %s", targetPath, err)
-	}
-
 	notMountPoint, err := mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -441,10 +437,15 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 		)
 	}
 
+	if notMountPoint {
+		if err := os.Remove(targetPath); err != nil {
+			l.Infof("Remove target path error: %s", err.Error())
+		}
+		return &csi.NodeUnpublishVolumeResponse{}, nil
+	}
+
 	if err := mounter.Unmount(targetPath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to unmount target path '%s': %s", targetPath, err)
-	} else if !notMountPoint { // still mounted
-		return nil, status.Errorf(codes.Internal, "Target path '%s' is still mounted", targetPath)
 	}
 
 	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {

@@ -437,6 +437,71 @@ func TestDriver_deploy(t *testing.T) {
 		t.Log("done.")
 	})
 
+	t.Run("volume cloning check", func(t *testing.T) {
+		nginxPodName := "nginx-dynamic-volume"
+		nginxClonePodName := "nginx-dynamic-volume-clone"
+
+		getNginxRunCommand := func(cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
+		}
+		getNginxCloneRunCommand := func(cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxClonePodName, cmd)
+		}
+
+		k8sNginx, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-dynamic-volume.yaml",
+			Log:          l,
+		})
+		k8sNginxClone, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-clone-volume.yaml",
+			Log:          l,
+		})
+		defer k8sNginx.CleanUp()
+		defer k8sNginx.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+
+		t.Log("deploy nginx container with read-write volume")
+		if err := k8sNginx.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("write data to the volume")
+		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
+			t.Fatal(fmt.Errorf("Cannot write data to nginx volume: %s", err))
+		}
+
+		t.Log("check if the data has been written to the volume")
+		if _, err := rc.Exec(getNginxRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("deploy nginx container with cloned volume")
+		if err := k8sNginxClone.Apply([]string{nginxClonePodName + ".*Running"}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("check if the data has been written to the cloned volume")
+		if _, err := rc.Exec(getNginxCloneRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("delete the nginx clone container with read-write volume")
+		if err := k8sNginxClone.Delete([]string{nginxClonePodName}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("delete the nginx container with read-write volume")
+		if err := k8sNginx.Delete([]string{nginxPodName}); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("done.")
+	})
+
 	t.Run("uninstall driver", func(t *testing.T) {
 		t.Log("deleting the driver")
 		if err := k8sDriver.Delete([]string{"nexentastor-csi-.*"}); err != nil {

@@ -21,12 +21,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:7f21fa1f8ab9a529dba26a7e9cf20de217c307fa1d96cb599d3afd9e5c83e9d6"
+  digest = "1:06e72a3140381f370345af6ed8986a22f4e6e7171fe317407c1d4675fe24e8d9"
   name = "github.com/container-storage-interface/spec"
   packages = ["lib/go/csi"]
   pruneopts = "UT"
-  revision = "f750e6765f5f6b4ac0e13e95214d58901290fb4b"
-  version = "v1.1.0"
+  revision = "314ac542302938640c59b6fb501c635f27015326"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -37,9 +37,10 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:588beb9f80d2b0afddf05663b32d01c867da419458b560471d81cca0286e76b8"
+  digest = "1:09042989768a0c57341402f9991359808ad998d07ddb824393833a7c35fd3d10"
   name = "github.com/golang/protobuf"
   packages = [
+    "descriptor",
     "proto",
     "protoc-gen-go/descriptor",
     "ptypes",
@@ -49,8 +50,8 @@
     "ptypes/wrappers",
   ]
   pruneopts = "UT"
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
-  version = "v1.2.0"
+  revision = "c823c79ea1570fb5ff454033735a8e68575d1d0f"
+  version = "v1.3.0"
 
 [[projects]]
   branch = "master"
@@ -59,6 +60,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "b729f2633dfe35f4d1d8a32385f6685610ce1cb5"
+
+[[projects]]
+  digest = "1:5f039a8e43dc5b00adee7b38e39baf6c36f607372940c11975f00ec9c5f298ae"
+  name = "github.com/kubernetes-csi/csi-lib-utils"
+  packages = ["protosanitizer"]
+  pruneopts = "UT"
+  revision = "9ad8f5fbc894ba5ec2985c020c1097578ca341ff"
+  version = "v0.7.0"
 
 [[projects]]
   digest = "1:04457f9f6f3ffc5fea48e71d62f2ca256637dee0a04d710288e27e05c8b41976"
@@ -203,6 +212,7 @@
     "github.com/antonfisher/nested-logrus-formatter",
     "github.com/container-storage-interface/spec/lib/go/csi",
     "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
     "github.com/sirupsen/logrus",
     "golang.org/x/net/context",
     "google.golang.org/grpc",

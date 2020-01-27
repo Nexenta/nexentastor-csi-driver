@@ -41,7 +41,8 @@ type Config struct {
 	Debug               bool   `yaml:"debug,omitempty"`
 
 	filePath    string
-	lastMobTime time.Time
+	lastModTime time.Time
+	temporary  	bool
 }
 
 // GetFilePath - get filepath of found config file
@@ -50,7 +51,7 @@ func (c *Config) GetFilePath() string {
 }
 
 // Refresh - read and validate config, return `true` if config has been changed
-func (c *Config) Refresh() (changed bool, err error) {
+func (c *Config) Refresh(secret string) (changed bool, err error) {
 	if c.filePath == "" {
 		return false, fmt.Errorf("Cannot read config file, filePath not specified")
 	}
@@ -60,16 +61,20 @@ func (c *Config) Refresh() (changed bool, err error) {
 		return false, fmt.Errorf("Cannot get stats for '%s' config file: %s", c.filePath, err)
 	}
 
-	changed = c.lastMobTime != fileInfo.ModTime()
-
+	changed = c.lastModTime != fileInfo.ModTime() || len(secret) > 0 || c.temporary
+	var content []byte
 	if changed {
-		c.lastMobTime = fileInfo.ModTime()
-
-		content, err := ioutil.ReadFile(c.filePath)
-		if err != nil {
-			return changed, fmt.Errorf("Cannot read '%s' config file: %s", c.filePath, err)
+		if len(secret) > 0 {
+			content = []byte(secret) 
+			c.temporary = true
+		} else  {
+			c.lastModTime = fileInfo.ModTime()
+			c.temporary = false
+			content, err = ioutil.ReadFile(c.filePath)
+			if err != nil {
+				return changed, fmt.Errorf("Cannot read '%s' config file: %s", c.filePath, err)
+			}
 		}
-
 		if err := yaml.Unmarshal(content, c); err != nil {
 			return changed, fmt.Errorf("Cannot parse yaml in '%s' config file: %s", c.filePath, err)
 		}
@@ -149,7 +154,7 @@ func New(lookUpDir string) (*Config, error) {
 
 	// read config file
 	config := &Config{filePath: configFilePath}
-	if _, err := config.Refresh(); err != nil {
+	if _, err := config.Refresh(""); err != nil {
 		return nil, fmt.Errorf("Cannot refresh config from file '%s': %s", configFilePath, err)
 	}
 

@@ -39,7 +39,7 @@ func (ids *IdentityServer) Probe(ctx context.Context, req *csi.ProbeRequest) (*c
 	ids.log.WithField("func", "Probe()").Infof("request: '%+v'", req)
 
 	// read and validate config (do we need it here?)
-	_, err := ids.config.Refresh()
+	_, err := ids.config.Refresh("")
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}

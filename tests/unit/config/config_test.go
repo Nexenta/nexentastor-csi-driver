@@ -115,7 +115,7 @@ func TestConfig_Refresh(t *testing.T) {
 	}
 
 	t.Run("should return changed:false if config file was not changed", func(t *testing.T) {
-		changed, err := c.Refresh()
+		changed, err := c.Refresh("")
 		if err != nil {
 			t.Fatalf("cannot refresh config file '%s': %s", path, err)
 		} else if changed == true {
@@ -129,7 +129,7 @@ func TestConfig_Refresh(t *testing.T) {
 			t.Fatalf("Cannot change atime/mtime for '%s' config file: %s", c.GetFilePath(), err)
 		}
 
-		changed, err := c.Refresh()
+		changed, err := c.Refresh("")
 		if err != nil {
 			t.Fatalf("cannot refresh config file '%s': %s", path, err)
 		} else if changed == false {

@@ -1,0 +1,26 @@
+# Pod using pre-created nginx-dynamic-volume
+
+# ---------
+# Nginx pod
+# ---------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-dynamic-volume
+spec:
+  containers:
+    - image: nginx
+      imagePullPolicy: IfNotPresent
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nexentastor-csi-driver-data
+  volumes:
+    - name: nexentastor-csi-driver-data
+      persistentVolumeClaim:
+        claimName: nexentastor-csi-driver-pvc-nginx-dynamic
+        readOnly: false

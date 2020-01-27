@@ -7,6 +7,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -21,7 +22,7 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
-	//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS, //TODO
+	csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 	csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	csi.ControllerServiceCapability_RPC_GET_CAPACITY,
 }
@@ -52,12 +53,11 @@ type ControllerServer struct {
 	log        *logrus.Entry
 }
 
-func (s *ControllerServer) refreshConfig() error {
-	changed, err := s.config.Refresh()
+func (s *ControllerServer) refreshConfig(secret string) error {
+	changed, err := s.config.Refresh(secret)
 	if err != nil {
 		return err
 	}
-
 	if changed {
 		s.log.Info("config has been changed, updating...")
 		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
@@ -99,7 +99,7 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	error,
 ) {
 	l := s.log.WithField("func", "ListVolumes()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
 	startingToken := req.GetStartingToken()
 
@@ -108,7 +108,7 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 		return nil, status.Errorf(codes.InvalidArgument, "req.MaxEntries must be 0 or greater, got: %d", maxEntries)
 	}
 
-	err := s.refreshConfig()
+	err := s.refreshConfig("")
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -157,8 +157,17 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	err error,
 ) {
 	l := s.log.WithField("func", "CreateVolume()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
+	var secret string
+	secrets := req.GetSecrets()
+	for _, v := range secrets {
+		secret = v
+	}
 
+	err = s.refreshConfig(secret)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
 	volumeName := req.GetName()
 	if len(volumeName) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "req.Name must be provided")
@@ -176,11 +185,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			l.Warn(message)
 			return nil, status.Error(codes.FailedPrecondition, message)
 		}
-	}
-
-	err = s.refreshConfig()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
 	reqParams := req.GetParameters()
@@ -382,17 +386,12 @@ func (s *ControllerServer) createClonedVolume(
 ) (*csi.CreateVolumeResponse, error) {
 
 	l := s.log.WithField("func", "createClonedVolume()")
-	l.Infof("volume: %s", sourceVolumeID)
-
-	err := s.refreshConfig()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	}
+	l.Infof("Clone volume source: %+v, target: %+v", sourceVolumeID, volumeName)
 
 	snapName := fmt.Sprintf("k8s-clone-snapshot-%s", volumeName)
 	snapshotPath := fmt.Sprintf("%s@%s", sourceVolumeID, snapName)
 
-	_, err = s.CreateSnapshotOnNS(sourceVolumeID, snapName)
+	_, err := s.CreateSnapshotOnNS(nsProvider, sourceVolumeID, snapName)
 	if err != nil {
 		l.Infof("Could not create snapshot '%s'", snapshotPath)
 		return nil, err
@@ -447,9 +446,14 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	error,
 ) {
 	l := s.log.WithField("func", "DeleteVolume()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
-	err := s.refreshConfig()
+	var secret string
+	secrets := req.GetSecrets()
+	for _, v := range secrets {
+		secret = v
+	}
+	err := s.refreshConfig(secret)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -489,16 +493,12 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func (s *ControllerServer) CreateSnapshotOnNS(volumePath, snapName string) (
+func (s *ControllerServer) CreateSnapshotOnNS(nsProvider ns.ProviderInterface, volumePath, snapName string) (
 	snapshot ns.Snapshot, err error) {
 
 	l := s.log.WithField("func", "CreateSnapshotOnNS()")
+	l.Infof("creating snapshot %+v@%+v", volumePath, snapName)
 	//TODO req.GetParameters() - read recursive param?
-	nsProvider, err := s.resolveNS(volumePath)
-	if err != nil {
-		return snapshot, err
-	}
-	l.Infof("resolved NS: %s, path: %s", nsProvider, volumePath)
 
 	//K8s doesn't allow to have same named snapshots for different volumes
 	sourcePath := filepath.Dir(volumePath)
@@ -547,9 +547,9 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 	error,
 ) {
 	l := s.log.WithField("func", "CreateSnapshot()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
-	err := s.refreshConfig()
+	err := s.refreshConfig("")
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -564,8 +564,14 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 		return nil, status.Error(codes.InvalidArgument, "Snapshot name must be provided")
 	}
 
+	nsProvider, err := s.resolveNS(volumePath)
+	if err != nil {
+		return nil, err
+	}
+	l.Infof("resolved NS: %s, path: %s", nsProvider, volumePath)
+
 	snapshotPath := fmt.Sprintf("%s@%s", volumePath, name)
-	createdSnapshot, err := s.CreateSnapshotOnNS(volumePath, name)
+	createdSnapshot, err := s.CreateSnapshotOnNS(nsProvider, volumePath, name)
 	if err != nil {
 		l.Infof("Could not create snapshot '%s'", snapshotPath)
 		return nil, err
@@ -599,9 +605,9 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 	error,
 ) {
 	l := s.log.WithField("func", "DeleteSnapshot()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
-	err := s.refreshConfig()
+	err := s.refreshConfig("")
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -651,10 +657,10 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	error,
 ) {
 	l := s.log.WithField("func", "ListSnapshots()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
 	//TODO try this when list issue is solved
-	err := s.refreshConfig()
+	err := s.refreshConfig("")
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -800,7 +806,7 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 	error,
 ) {
 	l := s.log.WithField("func", "ValidateVolumeCapabilities()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
 	volumePath := req.GetVolumeId()
 	if len(volumePath) == 0 {
@@ -815,7 +821,12 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 	// volume attributes are passed from ControllerServer.CreateVolume()
 	volumeContext := req.GetVolumeContext()
 
-	err := s.refreshConfig()
+	var secret string
+	secrets := req.GetSecrets()
+	for _, v := range secrets {
+		secret = v
+	}
+	err := s.refreshConfig(secret)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -893,7 +904,7 @@ func (s *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacity
 	error,
 ) {
 	l := s.log.WithField("func", "GetCapacity()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
 	reqParams := req.GetParameters()
 	if reqParams == nil {

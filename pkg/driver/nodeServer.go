@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -39,8 +40,8 @@ type NodeServer struct {
 	log        *logrus.Entry
 }
 
-func (s *NodeServer) refreshConfig() error {
-	changed, err := s.config.Refresh()
+func (s *NodeServer) refreshConfig(secret string) error {
+	changed, err := s.config.Refresh(secret)
 	if err != nil {
 		return err
 	}
@@ -114,7 +115,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	error,
 ) {
 	l := s.log.WithField("func", "NodePublishVolume()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -131,9 +132,13 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	if volumeCapability == nil {
 		return nil, status.Error(codes.InvalidArgument, "req.VolumeCapability must be provided")
 	}
-
+	var secret string
+	secrets := req.GetSecrets()
+	for _, v := range secrets {
+		secret = v
+	}
 	// read and validate config
-	err := s.refreshConfig()
+	err := s.refreshConfig(secret)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
@@ -409,7 +414,7 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 	error,
 ) {
 	l := s.log.WithField("func", "NodeUnpublishVolume()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -463,7 +468,7 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 	error,
 ) {
 	l := s.log.WithField("func", "NodeGetVolumeStats()")
-	l.Infof("request: '%+v'", req)
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
 
 	// volumePath can be any valid path where volume was previously staged or published.
 	// It MUST be an absolute path in the root filesystem of the process serving this request.
@@ -479,7 +484,7 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 	}
 
 	// read and validate config
-	err := s.refreshConfig()
+	err := s.refreshConfig("")
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}

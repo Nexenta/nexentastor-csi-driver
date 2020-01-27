@@ -386,15 +386,20 @@ func (s *ControllerServer) createClonedVolume(
 ) (*csi.CreateVolumeResponse, error) {
 
 	l := s.log.WithField("func", "createClonedVolume()")
-	l.Infof("Clone volume source: %+v, target: %+v", sourceVolumeID, volumeName)
+	l.Infof("clone volume source: %+v, target: %+v", sourceVolumeID, volumeName)
 
 	snapName := fmt.Sprintf("k8s-clone-snapshot-%s", volumeName)
 	snapshotPath := fmt.Sprintf("%s@%s", sourceVolumeID, snapName)
 
 	_, err := s.CreateSnapshotOnNS(nsProvider, sourceVolumeID, snapName)
 	if err != nil {
-		l.Infof("Could not create snapshot '%s'", snapshotPath)
-		return nil, err
+		msg := fmt.Sprintf("Could not create snapshot '%s'", snapshotPath)
+		l.Infof(msg)
+		return nil, status.Errorf(
+			codes.NotFound,
+			msg,
+			err,
+		)
 	}
 
 	err = nsProvider.CloneSnapshot(snapshotPath, ns.CloneSnapshotParams{

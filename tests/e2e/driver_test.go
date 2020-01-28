@@ -9,6 +9,7 @@ import (
 	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
+	"github.com/educlos/testrail"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Nexenta/nexentastor-csi-driver/tests/utils/k8s"
@@ -28,6 +29,10 @@ type config struct {
 
 var c *config
 var l *logrus.Entry
+var username = os.Getenv("TESTRAIL_USR")
+var password = os.Getenv("TESTRAIL_PSWD")
+var url = os.Getenv("TESTRAIL_URL")
+var testResult testrail.SendableResult
 
 func TestMain(m *testing.M) {
 	var (
@@ -83,6 +88,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestDriver_deploy(t *testing.T) {
+	// connect to TestRail
+	client := testrail.NewClient(url, username, password)
+
 	rc, err := remote.NewClient(c.k8sConnectionString, l)
 	if err != nil {
 		t.Errorf("Cannot create connection: %s", err)
@@ -128,14 +136,22 @@ func TestDriver_deploy(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		testResult.StatusID = 1
+		testResult.Comment = "Installation - success"
+		client.AddResultForCase(5151, 706718, testResult)
 		t.Log("done.")
 	})
 	if !installed {
+		testResult.StatusID = 5
+		testResult.Comment = "Installation - failed"
+		client.AddResultForCase(5151, 706718, testResult)
 		t.Fatal()
 	}
 
 	t.Run("deploy nginx pod with dynamic volume provisioning [read-write]", func(t *testing.T) {
 		nginxPodName := "nginx-dynamic-volume"
+		testResult.StatusID = 5
+		testResult.Comment = "Create Pod and Mount Volume - failed"
 
 		getNginxRunCommand := func(cmd string) string {
 			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
@@ -149,28 +165,37 @@ func TestDriver_deploy(t *testing.T) {
 		defer k8sNginx.CleanUp()
 		defer k8sNginx.Delete(nil)
 		if err != nil {
+			client.AddResultForCase(5151, 717580, testResult)
 			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
 		}
 
 		t.Log("deploy nginx container with read-write volume")
 		if err := k8sNginx.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			client.AddResultForCase(5151, 717580, testResult)
 			t.Fatal(err)
 		}
 
 		t.Log("write data to the volume")
 		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
+			client.AddResultForCase(5151, 717580, testResult)
 			t.Fatal(fmt.Errorf("Cannot write data to nginx volume: %s", err))
 		}
 
 		t.Log("check if the data has been written to the volume")
 		if _, err := rc.Exec(getNginxRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
+			client.AddResultForCase(5151, 717580, testResult)
 			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
 		}
 
 		t.Log("delete the nginx container with read-write volume")
 		if err := k8sNginx.Delete([]string{nginxPodName}); err != nil {
+			client.AddResultForCase(5151, 717580, testResult)
 			t.Fatal(err)
 		}
+
+		testResult.StatusID = 1
+		testResult.Comment = "Create Pod and Mount Volume - success"
+		client.AddResultForCase(5151, 717580, testResult)
 
 		t.Log("done.")
 	})
@@ -453,11 +478,6 @@ func TestDriver_deploy(t *testing.T) {
 			ConfigFile:   "../../examples/kubernetes/nginx-dynamic-volume.yaml",
 			Log:          l,
 		})
-		k8sNginxClone, err := k8s.NewDeployment(k8s.DeploymentArgs{
-			RemoteClient: rc,
-			ConfigFile:   "../../examples/kubernetes/nginx-clone-volume.yaml",
-			Log:          l,
-		})
 		defer k8sNginx.CleanUp()
 		defer k8sNginx.Delete(nil)
 		if err != nil {
@@ -477,6 +497,17 @@ func TestDriver_deploy(t *testing.T) {
 		t.Log("check if the data has been written to the volume")
 		if _, err := rc.Exec(getNginxRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
 			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		k8sNginxClone, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../examples/kubernetes/nginx-clone-volume.yaml",
+			Log:          l,
+		})
+		defer k8sNginxClone.CleanUp()
+		defer k8sNginxClone.Delete(nil)
+		if err != nil {
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
 		}
 
 		t.Log("deploy nginx container with cloned volume")
@@ -505,6 +536,9 @@ func TestDriver_deploy(t *testing.T) {
 	t.Run("uninstall driver", func(t *testing.T) {
 		t.Log("deleting the driver")
 		if err := k8sDriver.Delete([]string{"nexentastor-csi-.*"}); err != nil {
+			testResult.StatusID = 5
+			testResult.Comment = "Uninstallation - failed"
+			client.AddResultForCase(5151, 706721, testResult)
 			t.Fatal(err)
 		}
 
@@ -512,6 +546,10 @@ func TestDriver_deploy(t *testing.T) {
 		if err := k8sDriver.DeleteSecret(); err != nil {
 			t.Fatal(err)
 		}
+
+		testResult.StatusID = 1
+		testResult.Comment = "Uninstallation - success"
+		client.AddResultForCase(5151, 706721, testResult)
 
 		t.Log("done.")
 	})

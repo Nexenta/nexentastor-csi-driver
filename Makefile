@@ -104,11 +104,11 @@ test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
 # run e2e k8s tests using image from hub.docker.com
 .PHONY: test-e2e-k8s-remote-image
 test-e2e-k8s-remote-image: check-env-TEST_K8S_IP
-	go test tests/e2e/driver_test.go -v -count 1 \
+	go test -timeout 20m tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single-default.yaml"
-	go test tests/e2e/driver_test.go -v -count 1 \
+	go test -timeout 20m tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single-cifs.yaml"

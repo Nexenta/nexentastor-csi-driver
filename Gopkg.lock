@@ -30,6 +30,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:da1263192974c4cabfeacf2596f6aad4e9f0d6d52c2f3df5d7b22d399c6f66e3"
+  name = "github.com/educlos/testrail"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ca1b25409ae2a368256807905ec674c187314faf"
+
+[[projects]]
+  branch = "master"
   digest = "1:1ba1d79f2810270045c328ae5d674321db34e3aae468eb4233883b473c5c0467"
   name = "github.com/golang/glog"
   packages = ["."]
@@ -211,6 +219,7 @@
     "github.com/Nexenta/go-nexentastor/pkg/ns",
     "github.com/antonfisher/nested-logrus-formatter",
     "github.com/container-storage-interface/spec/lib/go/csi",
+    "github.com/educlos/testrail",
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
     "github.com/sirupsen/logrus",

@@ -96,7 +96,10 @@ test-e2e-k8s-local-image: check-env-TEST_K8S_IP
 		--k8sSecretFile="./_configs/driver-config-single-cifs.yaml"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} \
+	--build-arg TESTRAIL_URL=${TESTRAIL_URL} \
+	--build-arg TESTRAIL_USR=${TESTRAIL_USR} \
+	--build-arg TESTRAIL_PSWD=${TESTRAIL_PSWD} .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
 		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
 		${IMAGE_NAME}-test test-e2e-k8s-local-image
@@ -104,17 +107,20 @@ test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
 # run e2e k8s tests using image from hub.docker.com
 .PHONY: test-e2e-k8s-remote-image
 test-e2e-k8s-remote-image: check-env-TEST_K8S_IP
-	go test tests/e2e/driver_test.go -v -count 1 \
+	go test -timeout 20m tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single-default.yaml"
-	go test tests/e2e/driver_test.go -v -count 1 \
+	go test -timeout 20m tests/e2e/driver_test.go -v -count 1 \
 		--k8sConnectionString="root@${TEST_K8S_IP}" \
 		--k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single-cifs.yaml"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-remote-image-container: check-env-TEST_K8S_IP
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} \
+	--build-arg TESTRAIL_URL=${TESTRAIL_URL} \
+	--build-arg TESTRAIL_USR=${TESTRAIL_USR} \
+	--build-arg TESTRAIL_PSWD=${TESTRAIL_PSWD} .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
 		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
 		${IMAGE_NAME}-test test-e2e-k8s-remote-image

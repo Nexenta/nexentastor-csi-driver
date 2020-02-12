@@ -1,7 +1,7 @@
 # pre-release container generates:
 # - CNAHGELOG.md
 
-FROM golang:1.12
+FROM golang:1.13
 
 WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 

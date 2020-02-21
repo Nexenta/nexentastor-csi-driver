@@ -20,6 +20,9 @@ parameters:
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
   #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
   #mountOptions: noatime             # to overwrite "defaultMountOptions" config property
+  nfsAccessList: rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10   # list of addresses to allow NFS access to.
+                                                          # Format: [accessMode]:[address]/[mask]
+                                                          # accessMode and mask are optional, default mode is rw.
 ---
 
 

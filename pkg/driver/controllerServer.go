@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"strconv"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
@@ -226,10 +227,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		},
 	}
 
-	// To implement volume cloning the CSI driver MUST:
-	// Implement checks for csi.CreateVolumeRequest.VolumeContentSource in the plugin's CreateVolume function implementation.
-	// Implement CLONE_VOLUME controller capability.
-
 	var sourceSnapshotID string
 	var sourceVolumeID string
 	if volumeContentSource := req.GetVolumeContentSource(); volumeContentSource != nil {
@@ -250,14 +247,69 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	if sourceSnapshotID != "" {
 		// create new volume using existing snapshot
-		return s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshotID, volumePath, capacityBytes, res)
+		res, err = s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshotID, volumePath, capacityBytes, res)
 	}
 	if sourceVolumeID != "" {
 		// clone existing volume
-		return s.createClonedVolume(nsProvider, sourceVolumeID, volumePath, volumeName, capacityBytes, res)
+		res, err = s.createClonedVolume(nsProvider, sourceVolumeID, volumePath, volumeName, capacityBytes, res)
 	}
 
-	return s.createNewVolume(nsProvider, volumePath, capacityBytes, res)
+	res, err = s.createNewVolume(nsProvider, volumePath, capacityBytes, res)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create NFS share if passed in params
+	if v, ok := reqParams["nfsAccessList"]; ok {
+		ruleList := strings.Split(v, ",")
+		nfsParams := ns.CreateNfsShareParams{
+			Filesystem: volumePath,
+		}
+
+		for _, item := range ruleList {
+			mode, address := "", ""
+			mask := 0
+			etype := "fqdn"
+			if strings.Contains(item, ":") {
+				splittedRule := strings.Split(item, ":")
+				mode, address = strings.TrimSpace(splittedRule[0]), strings.TrimSpace(splittedRule[1])
+			} else {
+				mode, address = "rw", strings.TrimSpace(item)
+			}
+
+			if strings.Contains(address, "/") {
+				splittedAddress := strings.Split(address, "/")[:2]
+				address = splittedAddress[0]
+				mask, err = strconv.Atoi(splittedAddress[1])
+					if err != nil {
+						return nil, err
+					}
+			}
+			if mask != 0 {
+				etype = "network"
+			}
+
+			if mode == "ro" {
+				nfsParams.ReadOnlyList = append(nfsParams.ReadOnlyList, ns.NfsRuleList{
+					Entity: address,
+					Etype: etype,
+					Mask: mask,
+				})
+			} else {
+				nfsParams.ReadWriteList = append(nfsParams.ReadWriteList, ns.NfsRuleList{
+					Entity: address,
+					Etype: etype,
+					Mask: mask,
+				})
+			}
+		}
+		err = nsProvider.CreateNfsShare(nfsParams)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
 }
 
 func (s *ControllerServer) createNewVolume(
@@ -275,6 +327,7 @@ func (s *ControllerServer) createNewVolume(
 		// reservationSize (integer, optional): Sets the minimum amount of disk space guaranteed to a dataset
 		// and its descendants. Value zero means no quota.
 	})
+
 	if err != nil {
 		if ns.IsAlreadyExistNefError(err) {
 			existingFilesystem, err := nsProvider.GetFilesystem(volumePath)

@@ -7,6 +7,7 @@ require (
 	github.com/Nexenta/nexentastor-csi-driver v1.2.0
 	github.com/antonfisher/nested-logrus-formatter v1.0.3
 	github.com/container-storage-interface/spec v1.2.0
+	github.com/educlos/testrail v0.0.0-20190627213040-ca1b25409ae2
 	github.com/golang/protobuf v1.3.3
 	github.com/kubernetes-csi/csi-lib-utils v0.7.0
 	github.com/sirupsen/logrus v1.4.2

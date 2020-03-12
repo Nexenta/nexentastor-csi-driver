@@ -15,12 +15,13 @@ metadata:
 provisioner: nexentastor-csi-driver.nexenta.com
 mountOptions:                        # list of options for `mount -o ...` command
 #  - noatime                         #
+allowVolumeExpansion: true
 parameters:
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
   #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
   #mountOptions: noatime             # to overwrite "defaultMountOptions" config property
-  nfsAccessList: rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10   # list of addresses to allow NFS access to.
+  #nfsAccessList: rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10   # list of addresses to allow NFS access to.
                                                           # Format: [accessMode]:[address]/[mask]
                                                           # accessMode and mask are optional, default mode is rw.
 ---

@@ -26,6 +26,7 @@ var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type
 	csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 	csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	csi.ControllerServiceCapability_RPC_GET_CAPACITY,
+	csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 }
 
 // supportedVolumeCapabilities - driver volume capabilities
@@ -248,16 +249,16 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if sourceSnapshotID != "" {
 		// create new volume using existing snapshot
 		res, err = s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshotID, volumePath, capacityBytes, res)
-	}
-	if sourceVolumeID != "" {
+	} else if sourceVolumeID != "" {
 		// clone existing volume
 		res, err = s.createClonedVolume(nsProvider, sourceVolumeID, volumePath, volumeName, capacityBytes, res)
+	} else {
+		res, err = s.createNewVolume(nsProvider, volumePath, capacityBytes, res)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	res, err = s.createNewVolume(nsProvider, volumePath, capacityBytes, res)
-	if err != nil {
-		return nil, err
-	}
 
 	// Create NFS share if passed in params
 	if v, ok := reqParams["nfsAccessList"]; ok {
@@ -439,7 +440,7 @@ func (s *ControllerServer) createClonedVolume(
 ) (*csi.CreateVolumeResponse, error) {
 
 	l := s.log.WithField("func", "createClonedVolume()")
-	l.Infof("clone volume source: %+v, target: %+v", sourceVolumeID, volumeName)
+	l.Infof("clone volume source: %+v, target: %+v", sourceVolumeID, volumePath)
 
 	snapName := fmt.Sprintf("k8s-clone-snapshot-%s", volumeName)
 	snapshotPath := fmt.Sprintf("%s@%s", sourceVolumeID, snapName)
@@ -495,6 +496,7 @@ func (s *ControllerServer) createClonedVolume(
 		)
 	}
 
+	l.Infof("successfully created cloned volume %+v", volumePath)
 	return res, nil
 }
 
@@ -595,6 +597,7 @@ func (s *ControllerServer) CreateSnapshotOnNS(nsProvider ns.ProviderInterface, v
 			err,
 		)
 	}
+	l.Infof("successfully created snapshot %+v@%+v", volumePath, snapName)
 	return snapshot, nil
 }
 
@@ -1017,8 +1020,37 @@ func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 	*csi.ControllerExpandVolumeResponse,
 	error,
 ) {
-	s.log.WithField("func", "ControllerExpandVolume()").Warnf("request: '%+v' - not implemented", req)
-	return nil, status.Error(codes.Unimplemented, "")
+	l := s.log.WithField("func", "ControllerExpandVolume()")
+	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
+	var secret string
+	secrets := req.GetSecrets()
+	for _, v := range secrets {
+		secret = v
+	}
+
+	err := s.refreshConfig(secret)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
+	}
+
+	volumePath := req.GetVolumeId()
+	nsProvider, err := s.resolveNS(volumePath)
+	if err != nil {
+		return nil, err
+	}
+	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)
+
+	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
+	l.Infof("expanding volume %+v to %+v bytes", volumePath, capacityBytes)
+	err = nsProvider.UpdateFilesystem(volumePath, ns.UpdateFilesystemParams{
+		ReferencedQuotaSize: capacityBytes,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to expand volume volume %s: %s", volumePath, err)
+	}
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes: capacityBytes,
+	}, nil
 }
 
 // NewControllerServer - create an instance of controller service

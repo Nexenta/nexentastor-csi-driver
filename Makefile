@@ -57,7 +57,7 @@ build:
 
 .PHONY: container-build
 container-build:
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME} --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
 
 .PHONY: container-push-local
 container-push-local:

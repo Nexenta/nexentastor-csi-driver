@@ -132,9 +132,7 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 	} else if startingToken != "" && len(filesystems) == 0 {
 		return nil, status.Errorf(
 			codes.Aborted,
-			"Failed to find filesystem started from token '%s': %s",
-			startingToken,
-			err,
+			fmt.Sprintf("Failed to find filesystem started from token '%s': %s", startingToken, err),
 		)
 	}
 
@@ -160,6 +158,10 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 ) {
 	l := s.log.WithField("func", "CreateVolume()")
 	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
+	volumeName := req.GetName()
+	if len(volumeName) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "req.Name must be provided")
+	}
 	var secret string
 	secrets := req.GetSecrets()
 	for _, v := range secrets {
@@ -169,10 +171,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	err = s.refreshConfig(secret)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
-	}
-	volumeName := req.GetName()
-	if len(volumeName) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "req.Name must be provided")
 	}
 
 	//TODO validate VolumeCapability
@@ -254,9 +252,9 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		res, err = s.createClonedVolume(nsProvider, sourceVolumeID, volumePath, volumeName, capacityBytes, res)
 	} else {
 		res, err = s.createNewVolume(nsProvider, volumePath, capacityBytes, res)
-		if err != nil {
-			return nil, err
-		}
+	}
+	if err != nil {
+		return nil, err
 	}
 
 
@@ -382,7 +380,7 @@ func (s *ControllerServer) createNewVolumeFromSnapshot(
 		if ns.IsNotExistNefError(err) || ns.IsBadArgNefError(err) {
 			return nil, status.Error(codes.NotFound, message)
 		}
-		return nil, status.Error(codes.Internal, message)
+		return nil, status.Error(codes.NotFound, message)
 	}
 
 	err = nsProvider.CloneSnapshot(snapshot.Path, ns.CloneSnapshotParams{
@@ -447,13 +445,7 @@ func (s *ControllerServer) createClonedVolume(
 
 	_, err := s.CreateSnapshotOnNS(nsProvider, sourceVolumeID, snapName)
 	if err != nil {
-		msg := fmt.Sprintf("Could not create snapshot '%s'", snapshotPath)
-		l.Infof(msg)
-		return nil, status.Errorf(
-			codes.NotFound,
-			msg,
-			err,
-		)
+		return nil, err
 	}
 
 	err = nsProvider.CloneSnapshot(snapshotPath, ns.CloneSnapshotParams{
@@ -488,7 +480,7 @@ func (s *ControllerServer) createClonedVolume(
 		}
 
 		return nil, status.Errorf(
-			codes.Internal,
+			codes.NotFound,
 			"Cannot create volume '%s' using snapshot '%s': %s",
 			volumePath,
 			snapshotPath,
@@ -525,7 +517,6 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 
 	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
-		l.Infof("%s", status.Code(err))
 		if status.Code(err) == codes.NotFound {
 			l.Infof("volume '%s' not found, that's OK for deletion request", volumePath)
 			return &csi.DeleteVolumeResponse{}, nil
@@ -565,7 +556,7 @@ func (s *ControllerServer) CreateSnapshotOnNS(nsProvider ns.ProviderInterface, v
 
 	existingSnapshots, err := nsProvider.GetSnapshots(sourcePath, true)
 	if err != nil {
-		return snapshot, status.Errorf(codes.Internal, "Cannot get snapshots list: %s", err)
+		return snapshot, status.Errorf(codes.NotFound, "Cannot get snapshots list: %s", err)
 	}
 	for _, s := range existingSnapshots {
 		if s.Name == snapName && s.Parent != volumePath {
@@ -634,7 +625,6 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 	snapshotPath := fmt.Sprintf("%s@%s", volumePath, name)
 	createdSnapshot, err := s.CreateSnapshotOnNS(nsProvider, volumePath, name)
 	if err != nil {
-		l.Infof("Could not create snapshot '%s'", snapshotPath)
 		return nil, err
 	}
 	creationTime := &timestamp.Timestamp{
@@ -1022,6 +1012,16 @@ func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 ) {
 	l := s.log.WithField("func", "ControllerExpandVolume()")
 	l.Infof("request: '%+v'", protosanitizer.StripSecrets(req))
+	volumePath := req.GetVolumeId()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "req.VolumeId must be provided")
+	}
+
+	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
+	if capacityBytes == 0 {
+		return nil, status.Error(codes.InvalidArgument, "GetRequiredBytes must be >0")
+	}
+
 	var secret string
 	secrets := req.GetSecrets()
 	for _, v := range secrets {
@@ -1033,14 +1033,12 @@ func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	volumePath := req.GetVolumeId()
 	nsProvider, err := s.resolveNS(volumePath)
 	if err != nil {
 		return nil, err
 	}
 	l.Infof("resolved NS: %s, %s", nsProvider, volumePath)
 
-	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
 	l.Infof("expanding volume %+v to %+v bytes", volumePath, capacityBytes)
 	err = nsProvider.UpdateFilesystem(volumePath, ns.UpdateFilesystemParams{
 		ReferencedQuotaSize: capacityBytes,

@@ -1,28 +1,42 @@
-# nexentastor-csi-driver
-
+# NexentaStor CSI Driver
 [![Build Status](https://travis-ci.org/Nexenta/nexentastor-csi-driver.svg?branch=master)](https://travis-ci.org/Nexenta/nexentastor-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nexenta/nexentastor-csi-driver)](https://goreportcard.com/report/github.com/Nexenta/nexentastor-csi-driver)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 
 NexentaStor product page: [https://nexenta.com/products/nexentastor](https://nexenta.com/products/nexentastor).
 
-This is a **development branch**, for the most recent stable version see "Supported versions":
+This is a **development branch**, for the most recent stable version see "Supported versions".
 
-## Supported versions
+## Overview
+The NexentaStor Container Storage Interface (CSI) Driver provides a CSI interface used by Container Orchestrators (CO) to manage the lifecycle of NexentaStor volumes over NFS and SMB protocols.
+
+## Supported kubernetes versions matrix
 
 |                   | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
 |-------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Kubernetes 1.13   | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |
 | Kubernetes >=1.14 | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |
 | Kubernetes >=1.14 | master                                                                | master                                                                |
+Release can be found here - https://github.com/Nexenta/nexentastor-csi-driver/releases
 
-## Features
+## Feature List
+|Feature|Feature Status|CSI Driver Version|CSI Spec Version|Kubernetes Version|
+|--- |--- |--- |--- |--- |
+|Static Provisioning|GA|>= v1.0.0|>= v1.0.0|>=1.13|
+|Dynamic Provisioning|GA|>= v1.0.0|>= v1.0.0|>=1.13|
+|RW mode|GA|>= v1.0.0|>= v1.0.0|>=1.13|
+|RO mode|GA|>= v1.0.0|>= v1.0.0|>=1.13|
+|Creating and deleting snapshot|Beta|>= v1.2.0|>= v1.0.0|>=1.17|
+|Provision volume from snapshot|Beta|>= v1.2.0|>= v1.0.0|>=1.17|
+|Provision volume from another volume|Beta|master|>= v1.0.0|>=1.17|
+|List snapshots of a volume|Beta|master|>= v1.0.0|>=1.17|
+|Expand volume|Beta|master|>= v1.1.0|>=1.16|
+|Access list for volume (NFS only)|GA|master|>= v1.0.0|>=1.13|
+|Topology|In development|future|>= v1.0.0|>=1.17|
+|Raw block device|In development|future|>= v1.0.0|>=1.14|
+|StorageClass Secrets|GA|master|>=1.0.0|>=1.13|
+|Mount options|GA|>=v1.0.0|>=v1.0.0|>=v1.13|
 
-- Persistence (beyond pod lifetime)
-- Dynamic provisioning
-- Supported access mode: read/write multiple pods
-- Volume snapshot support
-- NFS/SMB mount protocols.
 
 ## Requirements
 

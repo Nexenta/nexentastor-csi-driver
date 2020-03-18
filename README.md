@@ -48,7 +48,7 @@ Release can be found here - https://github.com/Nexenta/nexentastor-csi-driver/re
 - Required the API server and the kubelet feature gates
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
-  --feature-gates=VolumeSnapshotDataSource=true,VolumePVCDataSource=true
+  --feature-gates=VolumeSnapshotDataSource=true,VolumePVCDataSource=true,ExpandInUsePersistentVolumes=true,ExpandCSIVolumes=true,ExpandPersistentVolumes=true,Topology=true,CSINodeInfo=true
   ```
 - Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
@@ -145,6 +145,8 @@ parameters:
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
   #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
   #mountOptions: noatime             # to overwrite "defaultMountOptions" config property
+  #nfsAccessList: rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10   # optional list to manage access by fqdn.
+
 ```
 
 #### Parameters
@@ -155,6 +157,7 @@ parameters:
 | `dataIp`       | NexentaStor data IP or HA VIP for mounting shares      | `20.20.20.253`                                        |
 | `mountFsType`  | mount filesystem type [nfs, cifs](default: 'nfs')      | `cifs`                                                |
 | `mountOptions` | NFS/CIFS mount options: `mount -o ...`                 | NFS: `noatime`<br>CIFS: `username=admin,password=123` |
+| `nfsAccessList` | List of addresses to allow NFS access to. Format: `[accessMode]:[address]/[mask]`. `accessMode` and `mask` are optional, default mode is `rw`.| rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10 |
 
 #### Example
 

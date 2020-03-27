@@ -145,7 +145,7 @@ parameters:
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
   #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
   #mountOptions: noatime             # to overwrite "defaultMountOptions" config property
-  #nfsAccessList: rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10   # optional list to manage access by fqdn.
+  #nfsAccessList: rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10   # optional list of addresses to which the storage class is being shared
 
 ```
 
@@ -157,7 +157,7 @@ parameters:
 | `dataIp`       | NexentaStor data IP or HA VIP for mounting shares      | `20.20.20.253`                                        |
 | `mountFsType`  | mount filesystem type [nfs, cifs](default: 'nfs')      | `cifs`                                                |
 | `mountOptions` | NFS/CIFS mount options: `mount -o ...`                 | NFS: `noatime`<br>CIFS: `username=admin,password=123` |
-| `nfsAccessList` | List of addresses to allow NFS access to. Format: `[accessMode]:[address]/[mask]`. `accessMode` and `mask` are optional, default mode is `rw`.| rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10 |
+| `nfsAccessList` | List of addresses to which the storage class is being shared. Format: `[accessMode]:[address]/[mask]`. `accessMode` and `mask` are optional, default mode is `rw`.| rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10 |
 
 #### Example
 

@@ -185,7 +185,7 @@ release:
 	make container-push-remote
 	git add CHANGELOG.md
 	git commit -m "release v${VERSION}"
-	git push
+	git push origin ${VERSION}
 	git tag v${VERSION}
 	git push --tags
 

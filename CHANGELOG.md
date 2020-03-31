@@ -1,3 +1,25 @@
+
+<a name="v1.3.0"></a>
+## [v1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.2.0...v1.3.0) (2020-03-31)
+
+### Bug Fixes
+
+* changed err.Code when snapshot not found for sanity tests
+* added protobuf dep and updated csi
+* added kubernetes-csi dep to /vendor
+
+### Features
+
+* implemented volume expand fix: fixed volume cloning
+* NEX-20687 - use k8s secrets to support multi-NS configurations
+
+### Pull Requests
+
+* Merge pull request [#5](https://github.com/Nexenta/nexentastor-csi-driver/issues/5) from Nexenta/qa/test
+* Merge pull request [#4](https://github.com/Nexenta/nexentastor-csi-driver/issues/4) from Nexenta/module
+* Merge pull request [#1](https://github.com/Nexenta/nexentastor-csi-driver/issues/1) from Nexenta/eugenei-qa-branch
+
+
 <a name="v1.2.0"></a>
 ## [v1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/compare/v1.1.0...v1.2.0) (2019-09-11)
 
@@ -130,3 +152,4 @@
 * NEX-18883 - configure jenkins
 * NEX-18883 - build in container, run tests in container, jenkins build preparation
 * nexentastor provider, logLn and getPools methods, auth
+

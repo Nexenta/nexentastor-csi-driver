@@ -1,4 +1,4 @@
-# NexentaStor CSI Driver (master)
+# NexentaStor CSI Driver (1.3.0)
 #
 # This driver version works with Kubernetes version >=1.14
 #
@@ -250,7 +250,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: driver
-          image: nexenta/nexentastor-csi-driver:master
+          image: nexentastor-csi-driver:1.3.0
           imagePullPolicy: IfNotPresent
           args:
             - --nodeid=$(KUBE_NODE_NAME)
@@ -358,7 +358,7 @@ spec:
             capabilities:
               add: ['SYS_ADMIN']
             allowPrivilegeEscalation: true
-          image: nexenta/nexentastor-csi-driver:master
+          image: nexentastor-csi-driver:1.3.0
           imagePullPolicy: IfNotPresent
           args:
             - --nodeid=$(KUBE_NODE_NAME)

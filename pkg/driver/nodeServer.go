@@ -31,6 +31,7 @@ var regexpMountOptionVers = regexp.MustCompile("^vers=.*$")
 var regexpMountOptionTimeo = regexp.MustCompile("^timeo=.*$")
 var regexpMountOptionUsername = regexp.MustCompile("^username=.+$")
 var regexpMountOptionPassword = regexp.MustCompile("^password=.+$")
+var regexpMountOptionNolock = regexp.MustCompile("^nolock.+$")
 
 // NodeServer - k8s csi driver node server
 type NodeServer struct {
@@ -269,6 +270,11 @@ func (s *NodeServer) mountNFS(
 
 	// NFS v3 is used by default if no version specified by user
 	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexpMountOptionVers, "vers=3")
+
+	// If NFS v3 use nolock option
+	if arrays.ContainsString(mountOptions, "vers=3") {
+		mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexpMountOptionNolock, "nolock")
+	}
 
 	// NFS option `timeo=100` is used by default if not specified by user
 	mountOptions = arrays.AppendIfRegexpNotExistString(mountOptions, regexpMountOptionTimeo, "timeo=100")

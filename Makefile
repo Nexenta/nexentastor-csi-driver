@@ -61,12 +61,14 @@ container-build:
 
 .PHONY: container-push-local
 container-push-local:
-	docker tag  ${IMAGE_NAME} ${REGISTRY_LOCAL}/${IMAGE_NAME}:${VERSION}
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
+	docker tag  ${IMAGE_NAME}:${VERSION} ${REGISTRY_LOCAL}/${IMAGE_NAME}:${VERSION}
 	docker push ${REGISTRY_LOCAL}/${IMAGE_NAME}:${VERSION}
 
 .PHONY: container-push-remote
 container-push-remote:
-	docker tag  ${IMAGE_NAME} ${REGISTRY}/${IMAGE_NAME}:${VERSION}
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
+	docker tag  ${IMAGE_NAME}:${VERSION} ${REGISTRY}/${IMAGE_NAME}:${VERSION}
 	docker push ${REGISTRY}/${IMAGE_NAME}:${VERSION}
 
 .PHONY: test

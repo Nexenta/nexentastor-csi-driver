@@ -1,1 +1,3 @@
-address: 1
+nexentastor_map:
+  ns1:
+    address: 1

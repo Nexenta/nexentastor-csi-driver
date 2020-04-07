@@ -74,10 +74,13 @@ func main() {
 	}
 
 	l.Info("Config file options:")
-	l.Infof("- NexentaStor address(es): %s", cfg.Address)
-	l.Infof("- NexentaStor username: %s", cfg.Username)
-	l.Infof("- Default dataset: %s", cfg.DefaultDataset)
-	l.Infof("- Default data IP: %s", cfg.DefaultDataIP)
+	for name, config := range cfg.NsMap {
+		l.Infof("  NexentaStor cluster: [%+v]", name)
+		l.Infof("  - NexentaStor address(es): %s", config.Address)
+		l.Infof("  - NexentaStor username: %s", config.Username)
+		l.Infof("  - Default dataset: %s", config.DefaultDataset)
+		l.Infof("  - Default data IP: %s", config.DefaultDataIP)
+	}
 
 	d, err := driver.NewDriver(driver.Args{
 		Role:     validatedRole,

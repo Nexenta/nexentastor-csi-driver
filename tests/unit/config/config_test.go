@@ -33,13 +33,15 @@ func TestConfig_Full(t *testing.T) {
 		t.Fatalf("cannot read config file '%s': %s", path, err)
 	}
 
-	testParam(t, "Address", testConfigParams["Address"], c.Address)
-	testParam(t, "Username", testConfigParams["Username"], c.Username)
-	testParam(t, "Password", testConfigParams["Password"], c.Password)
-	testParam(t, "DefaultDataset", testConfigParams["DefaultDataset"], c.DefaultDataset)
-	testParam(t, "DefaultDataIp", testConfigParams["DefaultDataIp"], c.DefaultDataIP)
-	testParam(t, "DefaultMountFsType", testConfigParams["DefaultMountFsType"], c.DefaultMountFsType)
-	testParam(t, "DefaultMountOptions", testConfigParams["DefaultMountOptions"], c.DefaultMountOptions)
+	for _, cfg := range c.NsMap {
+		testParam(t, "Address", testConfigParams["Address"], cfg.Address)
+		testParam(t, "Username", testConfigParams["Username"], cfg.Username)
+		testParam(t, "Password", testConfigParams["Password"], cfg.Password)
+		testParam(t, "DefaultDataset", testConfigParams["DefaultDataset"], cfg.DefaultDataset)
+		testParam(t, "DefaultDataIp", testConfigParams["DefaultDataIp"], cfg.DefaultDataIP)
+		testParam(t, "DefaultMountFsType", testConfigParams["DefaultMountFsType"], cfg.DefaultMountFsType)
+		testParam(t, "DefaultMountOptions", testConfigParams["DefaultMountOptions"], cfg.DefaultMountOptions)
+	}
 }
 
 func TestConfig_Short(t *testing.T) {
@@ -50,13 +52,15 @@ func TestConfig_Short(t *testing.T) {
 		t.Fatalf("cannot read config file '%s': %s", path, err)
 	}
 
-	testParam(t, "Address", testConfigParams["Address"], c.Address)
-	testParam(t, "Username", testConfigParams["Username"], c.Username)
-	testParam(t, "Password", testConfigParams["Password"], c.Password)
-	testParam(t, "DefaultDataset", "", c.DefaultDataset)
-	testParam(t, "DefaultDataIp", "", c.DefaultDataIP)
-	testParam(t, "DefaultMountFsType", "", c.DefaultMountFsType)
-	testParam(t, "DefaultMountOptions", "", c.DefaultMountOptions)
+	for _, cfg := range c.NsMap {
+		testParam(t, "Address", testConfigParams["Address"], cfg.Address)
+		testParam(t, "Username", testConfigParams["Username"], cfg.Username)
+		testParam(t, "Password", testConfigParams["Password"], cfg.Password)
+		testParam(t, "DefaultDataset", "", cfg.DefaultDataset)
+		testParam(t, "DefaultDataIp", "", cfg.DefaultDataIP)
+		testParam(t, "DefaultMountFsType", "", cfg.DefaultMountFsType)
+		testParam(t, "DefaultMountOptions", "", cfg.DefaultMountOptions)
+	}
 }
 
 func TestConfig_Not_Valid(t *testing.T) {

@@ -74,18 +74,38 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
    ```
 3. Edit `deploy/kubernetes/nexentastor-csi-driver-config.yaml` file. Driver configuration example:
    ```yaml
-   restIp: https://10.3.3.4:8443,https://10.3.3.5:8443     # [required] NexentaStor REST API endpoint(s)
-   username: admin                                         # [required] NexentaStor REST API username
-   password: p@ssword                                      # [required] NexentaStor REST API password
-   defaultDataset: csiDriverPool/csiDriverDataset          # default 'pool/dataset' to use
-   defaultDataIp: 20.20.20.21                              # default NexentaStor data IP or HA VIP
-   defaultMountFsType: nfs                                 # default mount fs type [nfs|cifs]
-   defaultMountOptions: noatime                            # default mount options (mount -o ...)
+   nexentastor_map:
+     nstor-ssd:
+       restIp: https://10.3.3.4:8443,https://10.3.3.5:8443     # [required] NexentaStor REST API endpoint(s)
+       username: admin                                         # [required] NexentaStor REST API username
+       password: p@ssword                                      # [required] NexentaStor REST API password
+       defaultDataset: csiDriverPool/csiDriverDataset          # default 'pool/dataset' to use
+       defaultDataIp: 20.20.20.21                              # default NexentaStor data IP or HA VIP
+       defaultMountFsType: nfs                                 # default mount fs type [nfs|cifs]
+       defaultMountOptions: noatime                            # default mount options (mount -o ...)
+     nstor-slow:
+       restIp: https://10.3.4.4:8443,https://10.3.4.5:8443     # [required] NexentaStor REST API endpoint(s)
+       username: admin                                         # [required] NexentaStor REST API username
+       password: p@ssword                                      # [required] NexentaStor REST API password
+       defaultDataset: csiDriverPool/csiDriverDataset          # default 'pool/dataset' to use
+       defaultDataIp: 10.10.10.21                              # default NexentaStor data IP or HA VIP
+       defaultMountFsType: nfs                                 # default mount fs type [nfs|cifs]
+       defaultMountOptions: noatime                            # default mount options (mount -o ...)
+     nstor-slow-NFSv4:
+       restIp: https://10.3.3.14:8443,https://10.3.3.15:8443   # [required] NexentaStor REST API endpoint(s)
+       username: admin                                         # [required] NexentaStor REST API username
+       password: p@ssword                                      # [required] NexentaStor REST API password
+       defaultDataset: otherPool/otherDataset                  # default 'pool/dataset' to use
+       defaultDataIp: 11.11.22.33                              # default NexentaStor data IP or HA VIP
+       defaultMountFsType: nfs                                 # default mount fs type [nfs|cifs]
+       defaultMountOptions: vers=4                             # default mount options (mount -o ...)
+
 
    # for CIFS mounts:
    #defaultMountFsType: cifs                               # default mount fs type [nfs|cifs]
    #defaultMountOptions: username=admin,password=Nexenta@1 # username/password must be defined for CIFS
    ```
+   **Note**: keyword nexentastor_map followed by cluster name of your choice MUST be used even if you are only using 1 NexentaStor cluster.
 
    All driver configuration options:
 

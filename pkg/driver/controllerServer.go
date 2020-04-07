@@ -50,9 +50,9 @@ var supportedVolumeCapabilities = []*csi.VolumeCapability{
 
 // ControllerServer - k8s csi driver controller server
 type ControllerServer struct {
-	nsResolver *ns.Resolver
-	config     *config.Config
-	log        *logrus.Entry
+	nsResolverMap 	map[string]*ns.Resolver
+	config     		*config.Config
+	log        		*logrus.Entry
 }
 
 func (s *ControllerServer) refreshConfig(secret string) error {
@@ -62,36 +62,44 @@ func (s *ControllerServer) refreshConfig(secret string) error {
 	}
 	if changed {
 		s.log.Info("config has been changed, updating...")
-		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
-			Address:            s.config.Address,
-			Username:           s.config.Username,
-			Password:           s.config.Password,
-			Log:                s.log,
-			InsecureSkipVerify: true, //TODO move to config
-		})
-		if err != nil {
-			return fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+		for name, cfg := range s.config.NsMap {
+			s.nsResolverMap[name], err = ns.NewResolver(ns.ResolverArgs{
+				Address:            cfg.Address,
+				Username:           cfg.Username,
+				Password:           cfg.Password,
+				Log:                s.log,
+				InsecureSkipVerify: true, //TODO move to config
+			})
+			if err != nil {
+				return fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+			}
 		}
 	}
 
 	return nil
 }
 
-func (s *ControllerServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
-	nsProvider, err := s.nsResolver.Resolve(datasetPath)
-	if err != nil {
-		code := codes.Internal
-		if ns.IsNotExistNefError(err) {
-			code = codes.NotFound
+func (s *ControllerServer) resolveNS(datasetPath string) (nsProvider ns.ProviderInterface, err error, dataset string) {
+	for name, resolver := range s.nsResolverMap {
+		if datasetPath == "" {
+			datasetPath = s.config.NsMap[name].DefaultDataset
 		}
-		return nil, status.Errorf(
-			code,
-			"Cannot resolve '%s' on any NexentaStor(s): %s",
-			datasetPath,
-			err,
-		)
+		nsProvider, err = resolver.Resolve(datasetPath)
+		if nsProvider != nil {
+			s.log.WithField("func", "resolveNS()").Infof("Found dataset %s on NexentaStor [%s]", datasetPath, name)
+			return nsProvider, nil, datasetPath
+		}
 	}
-	return nsProvider, nil
+	code := codes.Internal
+	if ns.IsNotExistNefError(err) {
+		code = codes.NotFound
+	}
+	return nil, status.Errorf(
+		code,
+		"Cannot resolve '%s' on any NexentaStor(s): %s",
+		datasetPath,
+		err,
+	), ""
 }
 
 // ListVolumes - list volumes, shows only volumes created in defaultDataset
@@ -115,15 +123,15 @@ func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumes
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	nsProvider, err := s.resolveNS(s.config.DefaultDataset)
+	nsProvider, err, datasetPath := s.resolveNS("s.config.DefaultDataset")
 	if err != nil {
 		return nil, err
 	}
 
-	l.Infof("resolved NS: %s, %s", nsProvider, s.config.DefaultDataset)
+	l.Infof("resolved NS: %s, %s", nsProvider, datasetPath)
 
 	filesystems, nextToken, err := nsProvider.GetFilesystemsWithStartingToken(
-		s.config.DefaultDataset,
+		datasetPath,
 		startingToken,
 		maxEntries,
 	)
@@ -196,11 +204,9 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	datasetPath := ""
 	if v, ok := reqParams["dataset"]; ok {
 		datasetPath = v
-	} else {
-		datasetPath = s.config.DefaultDataset
 	}
 
-	nsProvider, err := s.resolveNS(datasetPath)
+	nsProvider, err, datasetPath := s.resolveNS(datasetPath)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +249,6 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			)
 		}
 	}
-
 	if sourceSnapshotID != "" {
 		// create new volume using existing snapshot
 		res, err = s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshotID, volumePath, capacityBytes, res)
@@ -515,7 +520,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
-	nsProvider, err := s.resolveNS(volumePath)
+	nsProvider, err, _ := s.resolveNS(volumePath)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			l.Infof("volume '%s' not found, that's OK for deletion request", volumePath)
@@ -616,7 +621,7 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 		return nil, status.Error(codes.InvalidArgument, "Snapshot name must be provided")
 	}
 
-	nsProvider, err := s.resolveNS(volumePath)
+	nsProvider, err, _ := s.resolveNS(volumePath)
 	if err != nil {
 		return nil, err
 	}
@@ -677,7 +682,7 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 		return &csi.DeleteSnapshotResponse{}, nil
 	}
 
-	nsProvider, err := s.resolveNS(volumePath)
+	nsProvider, err, _ := s.resolveNS(volumePath)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
@@ -722,15 +727,22 @@ func (s *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 	} else if req.GetSourceVolumeId() != "" {
 		// identity information for the source volume, can be used to list snapshots by volume
 		return s.getFilesystemSnapshotList(req.GetSourceVolumeId(), req)
-	} else if s.config.DefaultDataset != "" {
-		// return list of all snapshots from default dataset
-		return s.getFilesystemSnapshotList(s.config.DefaultDataset, req)
+	} else {
+		// return list of all snapshots from default datasets
+		response := csi.ListSnapshotsResponse{
+			Entries: []*csi.ListSnapshotsResponse_Entry{},
+		}
+		for _, cfg := range s.config.NsMap {
+			resp, err := s.getFilesystemSnapshotList(cfg.DefaultDataset, req)
+			if err != nil {
+				return nil, err
+			}
+			for _, snapshot := range resp.Entries {
+				response.Entries = append(response.Entries, snapshot)
+			}
+		}
+		return &response, nil
 	}
-
-	// no volume id provided, return empty list
-	return &csi.ListSnapshotsResponse{
-		Entries: []*csi.ListSnapshotsResponse_Entry{},
-	}, nil
 }
 
 func (s *ControllerServer) getSnapshotListWithSingleSnapshot(snapshotPath string, req *csi.ListSnapshotsRequest) (
@@ -752,7 +764,7 @@ func (s *ControllerServer) getSnapshotListWithSingleSnapshot(snapshotPath string
 
 	filesystemPath := splittedSnapshotPath[0]
 
-	nsProvider, err := s.resolveNS(filesystemPath)
+	nsProvider, err, _ := s.resolveNS(filesystemPath)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			l.Infof("filesystem '%s' not found, that's OK for list request", filesystemPath)
@@ -790,7 +802,7 @@ func (s *ControllerServer) getFilesystemSnapshotList(filesystemPath string, req 
 		Entries: []*csi.ListSnapshotsResponse_Entry{},
 	}
 
-	nsProvider, err := s.resolveNS(filesystemPath)
+	nsProvider, err, _ := s.resolveNS(filesystemPath)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			l.Infof("volume '%s' not found, that's OK for list request", filesystemPath)
@@ -882,7 +894,7 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	nsProvider, err := s.resolveNS(volumePath)
+	nsProvider, err, _ := s.resolveNS(volumePath)
 	if err != nil {
 		return nil, err
 	}
@@ -966,11 +978,9 @@ func (s *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacity
 	datasetPath := ""
 	if v, ok := reqParams["dataset"]; ok {
 		datasetPath = v
-	} else {
-		datasetPath = s.config.DefaultDataset
 	}
 
-	nsProvider, err := s.resolveNS(datasetPath)
+	nsProvider, err, datasetPath := s.resolveNS(datasetPath)
 	if err != nil {
 		return nil, err
 	}
@@ -1033,7 +1043,7 @@ func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	nsProvider, err := s.resolveNS(volumePath)
+	nsProvider, err, _ := s.resolveNS(volumePath)
 	if err != nil {
 		return nil, err
 	}
@@ -1055,20 +1065,24 @@ func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 func NewControllerServer(driver *Driver) (*ControllerServer, error) {
 	l := driver.log.WithField("cmp", "ControllerServer")
 	l.Info("create new ControllerServer...")
+	resolverMap := make(map[string]*ns.Resolver)
 
-	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:            driver.config.Address,
-		Username:           driver.config.Username,
-		Password:           driver.config.Password,
-		Log:                l,
-		InsecureSkipVerify: true, //TODO move to config
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+	for name, cfg := range driver.config.NsMap {
+		nsResolver, err := ns.NewResolver(ns.ResolverArgs{
+			Address:            cfg.Address,
+			Username:           cfg.Username,
+			Password:           cfg.Password,
+			Log:                l,
+			InsecureSkipVerify: true, //TODO move to config
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+		}
+		resolverMap[name] = nsResolver
 	}
 
 	return &ControllerServer{
-		nsResolver: nsResolver,
+		nsResolverMap: resolverMap,
 		config:     driver.config,
 		log:        l,
 	}, nil

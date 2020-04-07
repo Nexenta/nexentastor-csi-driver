@@ -36,7 +36,7 @@ var regexpMountOptionNolock = regexp.MustCompile("^nolock.+$")
 // NodeServer - k8s csi driver node server
 type NodeServer struct {
 	nodeID     string
-	nsResolver *ns.Resolver
+	nsResolverMap 	map[string]*ns.Resolver
 	config     *config.Config
 	log        *logrus.Entry
 }
@@ -48,36 +48,43 @@ func (s *NodeServer) refreshConfig(secret string) error {
 	}
 	if changed {
 		s.log.Info("config has been changed, updating...")
-		s.nsResolver, err = ns.NewResolver(ns.ResolverArgs{
-			Address:            s.config.Address,
-			Username:           s.config.Username,
-			Password:           s.config.Password,
-			Log:                s.log,
-			InsecureSkipVerify: true, //TODO move to config
-		})
-		if err != nil {
-			return fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+		for name, cfg := range s.config.NsMap {
+			s.nsResolverMap[name], err = ns.NewResolver(ns.ResolverArgs{
+				Address:            cfg.Address,
+				Username:           cfg.Username,
+				Password:           cfg.Password,
+				Log:                s.log,
+				InsecureSkipVerify: true, //TODO move to config
+			})
+			if err != nil {
+				return fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+			}
 		}
 	}
 
 	return nil
 }
 
-func (s *NodeServer) resolveNS(datasetPath string) (ns.ProviderInterface, error) {
-	nsProvider, err := s.nsResolver.Resolve(datasetPath)
-	if err != nil {
-		code := codes.Internal
-		if ns.IsNotExistNefError(err) {
-			code = codes.NotFound
+func (s *NodeServer) resolveNS(datasetPath string) (nsProvider ns.ProviderInterface, err error, name string) {
+	for name, resolver := range s.nsResolverMap {
+		if datasetPath == "" {
+			datasetPath = s.config.NsMap[name].DefaultDataset
 		}
-		return nil, status.Errorf(
-			code,
-			"Cannot resolve '%s' on any NexentaStor(s): %s",
-			datasetPath,
-			err,
-		)
+		nsProvider, err = resolver.Resolve(datasetPath)
+		if nsProvider != nil {
+			return nsProvider, nil, name
+		}
 	}
-	return nsProvider, nil
+	code := codes.Internal
+	if ns.IsNotExistNefError(err) {
+		code = codes.NotFound
+	}
+	return nil, status.Errorf(
+		code,
+		"Cannot resolve '%s' on any NexentaStor(s): %s",
+		datasetPath,
+		err,
+	), ""
 }
 
 // NodeGetInfo - get node info
@@ -144,11 +151,11 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	nsProvider, err := s.resolveNS(volumeID)
+	nsProvider, err, name := s.resolveNS(volumeID)
 	if err != nil {
 		return nil, err
 	}
-
+	cfg := s.config.NsMap[name]
 	l.Infof("resolved NS: %s, %s", nsProvider, volumeID)
 
 	// get NexentaStor filesystem information
@@ -180,7 +187,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 			configMountOptions = v
 		} else {
 			// `defaultMountOptions` in driver config file
-			configMountOptions = s.config.DefaultMountOptions
+			configMountOptions = cfg.DefaultMountOptions
 		}
 		for _, option := range strings.Split(configMountOptions, ",") {
 			if option != "" {
@@ -202,7 +209,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	if v, ok := volumeContext["dataIP"]; ok && v != "" {
 		dataIP = v
 	} else {
-		dataIP = s.config.DefaultDataIP
+		dataIP = cfg.DefaultDataIP
 	}
 
 	// get mount filesystem type checking by priority:
@@ -212,8 +219,8 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 	var fsType string
 	if v, ok := volumeContext["mountFsType"]; ok && v != "" {
 		fsType = v
-	} else if s.config.DefaultMountFsType != "" {
-		fsType = s.config.DefaultMountFsType
+	} else if cfg.DefaultMountFsType != "" {
+		fsType = cfg.DefaultMountFsType
 	} else {
 		fsType = config.FsTypeNFS
 	}
@@ -488,14 +495,13 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "req.VolumeId must be provided")
 	}
-
 	// read and validate config
 	err := s.refreshConfig("")
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	nsProvider, err := s.resolveNS(volumeID)
+	nsProvider, err, _ := s.resolveNS(volumeID)
 	if err != nil {
 		return nil, err
 	}
@@ -552,21 +558,25 @@ func (s *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVo
 func NewNodeServer(driver *Driver) (*NodeServer, error) {
 	l := driver.log.WithField("cmp", "NodeServer")
 	l.Info("create new NodeServer...")
+	resolverMap := make(map[string]*ns.Resolver)
 
-	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:            driver.config.Address,
-		Username:           driver.config.Username,
-		Password:           driver.config.Password,
-		Log:                l,
-		InsecureSkipVerify: true, //TODO move to config
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+	for name, cfg := range driver.config.NsMap {
+		nsResolver, err := ns.NewResolver(ns.ResolverArgs{
+			Address:            cfg.Address,
+			Username:           cfg.Username,
+			Password:           cfg.Password,
+			Log:                l,
+			InsecureSkipVerify: true, //TODO move to config
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)
+		}
+		resolverMap[name] = nsResolver
 	}
 
 	return &NodeServer{
 		nodeID:     driver.nodeID,
-		nsResolver: nsResolver,
+		nsResolverMap: resolverMap,
 		config:     driver.config,
 		log:        l,
 	}, nil

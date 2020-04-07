@@ -101,45 +101,46 @@ func (d *Driver) Run() error {
 // - check NS license
 // - in case of cluster, check if provided addresses belong to the same cluster
 func (d *Driver) Validate() error {
-	nsResolver, err := ns.NewResolver(ns.ResolverArgs{
-		Address:            d.config.Address,
-		Username:           d.config.Username,
-		Password:           d.config.Password,
-		Log:                d.log,
-		InsecureSkipVerify: true, //TODO move to config
-	})
-	if err != nil {
-		return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %s", err)
-	}
-
-	// check license for each NS node
-	//TODO check the license only in case some driver operations are failed
-	for _, nsProvider := range nsResolver.Nodes {
-		license, err := nsProvider.GetLicense()
+	for _, cfg := range d.config.NsMap {
+		nsResolver, err := ns.NewResolver(ns.ResolverArgs{
+			Address:            cfg.Address,
+			Username:           cfg.Username,
+			Password:           cfg.Password,
+			Log:                d.log,
+			InsecureSkipVerify: true, //TODO move to config
+		})
 		if err != nil {
-			d.log.Warnf("Driver license validation failed: %s", err)
-		} else if !license.Valid {
-			d.log.Warnf(
-				"Driver license validation failed, NexentaStor %s has invalid license (expired: %s)",
-				nsProvider,
-				license.Expires,
-			)
+			return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %s", err)
+		}
+
+		// check license for each NS node
+		//TODO check the license only in case some driver operations are failed
+		for _, nsProvider := range nsResolver.Nodes {
+			license, err := nsProvider.GetLicense()
+			if err != nil {
+				d.log.Warnf("Driver license validation failed: %s", err)
+			} else if !license.Valid {
+				d.log.Warnf(
+					"Driver license validation failed, NexentaStor %s has invalid license (expired: %s)",
+					nsProvider,
+					license.Expires,
+				)
+			}
+		}
+
+		// check if NS nodes belong to one cluster
+		if len(nsResolver.Nodes) > 1 {
+			isCluster, err := nsResolver.IsCluster()
+			if err != nil {
+				d.log.Warnf(
+					"Provided NexentaStor addresses may not belong to the same cluster, cannot check the cluster: %s",
+					err,
+				)
+			} else if !isCluster {
+				d.log.Warn("Provided NexentaStor addresses may not belong to the same cluster")
+			}
 		}
 	}
-
-	// check if NS nodes belong to one cluster
-	if len(nsResolver.Nodes) > 1 {
-		isCluster, err := nsResolver.IsCluster()
-		if err != nil {
-			d.log.Warnf(
-				"Provided NexentaStor addresses may not belong to the same cluster, cannot check the cluster: %s",
-				err,
-			)
-		} else if !isCluster {
-			d.log.Warn("Provided NexentaStor addresses may not belong to the same cluster")
-		}
-	}
-
 	return nil
 }
 

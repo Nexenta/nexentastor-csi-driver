@@ -29,6 +29,8 @@ type config struct {
 
 var c *config
 var l *logrus.Entry
+var fsTypeFlag string
+var fsType string
 var username = os.Getenv("TESTRAIL_USR")
 var password = os.Getenv("TESTRAIL_PSWD")
 var url = os.Getenv("TESTRAIL_URL")
@@ -40,6 +42,7 @@ func TestMain(m *testing.M) {
 		k8sDeploymentFile   = flag.String("k8sDeploymentFile", "", "path to driver deployment yaml file")
 		k8sSecretFile       = flag.String("k8sSecretFile", "", "path to yaml driver config file (for k8s secret)")
 		k8sSecretName       = flag.String("k8sSecretName", defaultSecretName, "k8s secret name")
+		fsTypeFlag          = flag.String("fsTypeFlag", "", "FS type for tests (nfs/cifs/block)")
 	)
 
 	flag.Parse()
@@ -61,6 +64,8 @@ func TestMain(m *testing.M) {
 		k8sSecretFile:       *k8sSecretFile,
 		k8sSecretName:       *k8sSecretName,
 	}
+
+	fsType = *fsTypeFlag
 
 	// init logger
 	l = logrus.New().WithField("title", "tests")
@@ -94,13 +99,6 @@ func TestDriver_deploy(t *testing.T) {
 	rc, err := remote.NewClient(c.k8sConnectionString, l)
 	if err != nil {
 		t.Errorf("Cannot create connection: %s", err)
-		return
-	}
-
-	// DEBUG
-	deb, err := rc.Exec("echo $TESTRAIL_USR")
-	if err != nil {
-		t.Errorf("cannot get env var TESTRAIL_USR: %s; out: %s", err, deb)
 		return
 	}
 
@@ -710,6 +708,115 @@ func TestDriver_deploy(t *testing.T) {
 		testResult.StatusID = 1
 		testResult.Comment = "Volume clone - success"
 		if _, err := client.AddResultForCase(5151, 795977, testResult); err != nil {
+			l.Warn("Can't add test result to TestRail")
+		}
+
+		t.Log("done.")
+	})
+
+	t.Run("deploy nginx pod with dynamic volume provisioning and NFS ACL", func(t *testing.T) {
+		if fsType != "nfs" {
+			t.Skip("Skip test. For NFS only.")
+		}
+		nginxPodName := "nginx-dynamic-volume-acl"
+		testResult.StatusID = 5
+		testResult.Comment = "Checking NFS ACL - failed"
+
+		getNginxRunCommand := func(cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
+		}
+
+		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/nginx-dynamic-volume-acl-rw.yaml",
+			Log:          l,
+		})
+		defer k8sNginx1.CleanUp()
+		defer k8sNginx1.Delete(nil)
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+
+		t.Log("deploy nginx container with read-write ACL rules")
+		if err := k8sNginx1.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		t.Log("write data to the volume")
+		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("Cannot write data to nginx volume: %s", err))
+		}
+
+		t.Log("check if the data has been written to the volume")
+		if _, err := rc.Exec(getNginxRunCommand("grep 'test' /usr/share/nginx/html/data.txt")); err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("delete the nginx container with read-write ACL rules")
+		if err := k8sNginx1.Delete([]string{nginxPodName}); err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		t.Log("deploy second container with read-only ACL rules")
+		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/nginx-dynamic-volume-acl-ro.yaml",
+			Log:          l,
+		})
+		defer k8sNginx2.CleanUp()
+		defer k8sNginx2.Delete(nil)
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx2.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		t.Log("write data to a read-only volume should failed")
+		if _, err := rc.Exec(getNginxRunCommand("echo 'test' > /usr/share/nginx/html/data.txt")); err == nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal("Writing data to read-only volume on nginx container should failed, but it's not")
+		} else if !strings.Contains(fmt.Sprint(err), "Read-only file system") {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Error doesn't contain 'Read-only file system' message: %s", err)
+		}
+
+		t.Log("delete the second container with read-only ACL rules")
+		if err := k8sNginx2.Delete([]string{nginxPodName}); err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		testResult.StatusID = 1
+		testResult.Comment = "Checking NFS ACL - success"
+		if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
 			l.Warn("Can't add test result to TestRail")
 		}
 

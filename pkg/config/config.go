@@ -42,6 +42,7 @@ type NsData struct {
     Address             string `yaml:"restIp"`
     Username            string `yaml:"username"`
     Password            string `yaml:"password"`
+    Zone                string `yaml: "zone"`
     DefaultDataset      string `yaml:"defaultDataset,omitempty"`
     DefaultDataIP       string `yaml:"defaultDataIp,omitempty"`
     DefaultMountFsType  string `yaml:"defaultMountFsType,omitempty"`

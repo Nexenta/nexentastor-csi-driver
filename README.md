@@ -17,7 +17,7 @@ The NexentaStor Container Storage Interface (CSI) Driver provides a CSI interfac
 | Kubernetes 1.13   | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |
 | Kubernetes 1.14 & 1.15 | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |
 | Kubernetes >=1.16 | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |
-| Kubernetes >=1.16 | master                                                                | master                                                                |
+| Kubernetes >=1.17 | master                                                                | master                                                                |
 
 Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/releases
 
@@ -34,7 +34,7 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
 |List snapshots of a volume|Beta|master|>= v1.0.0|>=1.17|
 |Expand volume|Beta|master|>= v1.1.0|>=1.16|
 |Access list for volume (NFS only)|GA|master|>= v1.0.0|>=1.13|
-|Topology|In development|future|>= v1.0.0|>=1.17|
+|Topology|Beta|master|>= v1.0.0|>=1.17|
 |Raw block device|In development|future|>= v1.0.0|>=1.14|
 |StorageClass Secrets|GA|master|>=1.0.0|>=1.13|
 |Mount options|GA|>=v1.0.0|>=v1.0.0|>=v1.13|
@@ -51,6 +51,10 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-features)):
   ```
   --feature-gates=VolumeSnapshotDataSource=true,VolumePVCDataSource=true,ExpandInUsePersistentVolumes=true,ExpandCSIVolumes=true,ExpandPersistentVolumes=true,Topology=true,CSINodeInfo=true
+  ```
+  If you are planning on using topology, the following feature-gates are required
+  ```
+  ServiceTopology=true,CSINodeInfo=true
   ```
 - Mount propagation must be enabled, the Docker daemon for the cluster must allow shared mounts
   ([instructions](https://github.com/kubernetes-csi/docs/blob/735f1ef4adfcb157afce47c64d750b71012c8151/book/src/Setup.md#enabling-mount-propagation))
@@ -83,6 +87,7 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
        defaultDataIp: 20.20.20.21                              # default NexentaStor data IP or HA VIP
        defaultMountFsType: nfs                                 # default mount fs type [nfs|cifs]
        defaultMountOptions: noatime                            # default mount options (mount -o ...)
+       zone: us-east                                           # zone to match kubernetes topology
      nstor-slow:
        restIp: https://10.3.4.4:8443,https://10.3.4.5:8443     # [required] NexentaStor REST API endpoint(s)
        username: admin                                         # [required] NexentaStor REST API username
@@ -119,6 +124,7 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
    | `defaultMountFsType`  | mount filesystem type [nfs, cifs](default: 'nfs')               | no         | `cifs`                                                       |
    | `defaultMountOptions` | NFS/CIFS mount options: `mount -o ...` (default: "")            | no         | NFS: `noatime,nosuid`<br>CIFS: `username=admin,password=123` |
    | `debug`               | print more logs (default: false)                                | no         | `true`                                                       |
+   | `zone`                | Zone to match topology.kubernetes.io/zone.                      | no         | ` `                                                       |
 
    **Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,
    then parameter `dataset`/`dataIp` must be specified in _StorageClass_ configuration.
@@ -162,7 +168,12 @@ metadata:
 provisioner: nexentastor-csi-driver.nexenta.com
 mountOptions:                        # list of options for `mount -o ...` command
 #  - noatime                         #
+#- matchLabelExpressions:            # use to following lines to configure topology by zones
+#  - key: topology.kubernetes.io/zone
+#    values:
+#    - us-east
 parameters:
+  #configName: nstor-slow            # specify exact NexentaStor appliance that you want to use to provision volumes.
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
   #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
@@ -179,7 +190,8 @@ parameters:
 | `dataIp`       | NexentaStor data IP or HA VIP for mounting shares      | `20.20.20.253`                                        |
 | `mountFsType`  | mount filesystem type [nfs, cifs](default: 'nfs')      | `cifs`                                                |
 | `mountOptions` | NFS/CIFS mount options: `mount -o ...`                 | NFS: `noatime`<br>CIFS: `username=admin,password=123` |
-| `nfsAccessList` | List of addresses to allow NFS access to. Format: `[accessMode]:[address]/[mask]`. `accessMode` and `mask` are optional, default mode is `rw`.| rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10 |
+| `configName`   | name of NexentaStor appliance from config file         | `nstor-ssd`                                        |
+| `nfsAccessList`| List of addresses to allow NFS access to. Format: `[accessMode]:[address]/[mask]`. `accessMode` and `mask` are optional, default mode is `rw`.| rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10 |
 
 #### Example
 
@@ -231,7 +243,7 @@ spec:
     storage: 1Gi
   csi:
     driver: nexentastor-csi-driver.nexenta.com
-    volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+    volumeHandle: nstor-ssd:csiDriverPool/csiDriverDataset/nginx-persistent
   #mountOptions:  # list of options for `mount` command
   #  - noatime    #
 ```
@@ -241,7 +253,7 @@ CSI Parameters:
 | Name           | Description                                                       | Example                              |
 |----------------|-------------------------------------------------------------------|--------------------------------------|
 | `driver`       | installed driver name "nexentastor-csi-driver.nexenta.com"        | `nexentastor-csi-driver.nexenta.com` |
-| `volumeHandle` | path to existing NexentaStor filesystem [pool/dataset/filesystem] | `PoolA/datasetA/nginx`               |
+| `volumeHandle` | NS appliance name from config and path to existing NexentaStor filesystem [configName:pool/dataset/filesystem] | `nstor-ssd:PoolA/datasetA/nginx`               |
 
 #### _PersistentVolumeClaim_ (pointed to created _PersistentVolume_)
 

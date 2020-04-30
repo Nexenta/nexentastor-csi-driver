@@ -41,7 +41,8 @@ spec:
     storage: 1Gi
   csi:
     driver: nexentastor-csi-driver.nexenta.com
-    volumeHandle: csiDriverPool/csiDriverDataset/nginx-persistent
+    # volumeHandle should be of the following format: <configName>:<path-to-filesystem>
+    volumeHandle: nstor-box1:csiDriverPool/csiDriverDataset/nginx-persistent
   #mountOptions:  # list of options for `mount` command
   #  - noatime    #
 ---

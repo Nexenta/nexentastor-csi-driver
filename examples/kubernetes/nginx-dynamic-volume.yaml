@@ -16,7 +16,14 @@ provisioner: nexentastor-csi-driver.nexenta.com
 mountOptions:                        # list of options for `mount -o ...` command
 #  - noatime                         #
 allowVolumeExpansion: true
-parameters:
+volumeBindingMode: Immediate
+allowedTopologies:
+- matchLabelExpressions:
+  - key: topology.kubernetes.io/zone
+    values:
+    - zone-1
+# parameters:
+#   configName: nstor-box2
   #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
   #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
   #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property

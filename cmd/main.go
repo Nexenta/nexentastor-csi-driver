@@ -80,6 +80,7 @@ func main() {
 		l.Infof("  - NexentaStor username: %s", config.Username)
 		l.Infof("  - Default dataset: %s", config.DefaultDataset)
 		l.Infof("  - Default data IP: %s", config.DefaultDataIP)
+		l.Infof("  - Zone: %s", config.Zone)
 	}
 
 	d, err := driver.NewDriver(driver.Args{

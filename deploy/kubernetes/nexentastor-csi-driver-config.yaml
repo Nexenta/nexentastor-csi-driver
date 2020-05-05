@@ -35,4 +35,4 @@ nexentastor_map:
     defaultMountFsType: nfs                                     # default mount fs type [nfs|cifs]
     defaultMountOptions: vers=4                                 # default mount options (mount -o ...)
 
-# debug: true                                                # more logs
+debug: false                                                # more logs

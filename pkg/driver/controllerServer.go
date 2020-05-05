@@ -121,6 +121,8 @@ func (s *ControllerServer) resolveNS(params ResolveNSParams) (response ResolveNS
 
 func (s *ControllerServer) resolveNSNoZone(params ResolveNSParams) (response ResolveNSResponse, err error) {
     // No zone -> pick NS for given dataset and configName. TODO: load balancing
+    l := s.log.WithField("func", "resolveNSWithZone()")
+    l.Debugf("Resolving with zone, params: %+v", params)
     var nsProvider ns.ProviderInterface
     datasetPath := params.datasetPath
     if len(params.configName) > 0 {
@@ -299,16 +301,17 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
     var sourceSnapshotID string
     var sourceVolumeID string
     var volumePath string
+    var contentSource *csi.VolumeContentSource
     var nsProvider ns.ProviderInterface
     var resolveResp ResolveNSResponse
 
     if volumeContentSource := req.GetVolumeContentSource(); volumeContentSource != nil {
         if sourceSnapshot := volumeContentSource.GetSnapshot(); sourceSnapshot != nil {
             sourceSnapshotID = sourceSnapshot.GetSnapshotId()
-            res.Volume.ContentSource = req.GetVolumeContentSource()
+            contentSource = req.GetVolumeContentSource()
         } else if sourceVolume := volumeContentSource.GetVolume(); sourceVolume != nil {
             sourceVolumeID = sourceVolume.GetVolumeId()
-            res.Volume.ContentSource = req.GetVolumeContentSource()
+            contentSource = req.GetVolumeContentSource()
         } else {
             return nil, status.Errorf(
                 codes.InvalidArgument,
@@ -383,7 +386,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
     }
     res = &csi.CreateVolumeResponse{
         Volume: &csi.Volume{
-            //ContentSource //TODO add id created from snapshot
+            ContentSource: contentSource,
             VolumeId:      fmt.Sprintf("%s:%s", resolveResp.configName, volumePath),
             CapacityBytes: capacityBytes,
             VolumeContext: map[string]string{
@@ -391,12 +394,14 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
                 "mountOptions": reqParams["mountOptions"],
                 "mountFsType":  reqParams["mountFsType"],
             },
-            AccessibleTopology: []*csi.Topology{
-                {
-                    Segments: map[string]string{TopologyKeyZone: zone},
-                },
-            },
         },
+    }
+    if len(zone) > 0 {
+        res.Volume.AccessibleTopology = []*csi.Topology{
+            {
+                Segments: map[string]string{TopologyKeyZone: zone},
+            },
+        }
     }
 
     // Create NFS share if passed in params
@@ -749,10 +754,11 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
         return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
     }
 
-    volumePath := req.GetSourceVolumeId()
-    if len(volumePath) == 0 {
+    if len(req.GetSourceVolumeId()) == 0 {
         return nil, status.Error(codes.InvalidArgument, "Snapshot source volume ID must be provided")
     }
+    splittedVol := strings.Split(req.GetSourceVolumeId(), ":")
+    configName, volumePath := splittedVol[0], splittedVol[1]
 
     name := req.GetName()
     if len(name) == 0 {
@@ -761,6 +767,7 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 
     params := ResolveNSParams{
         datasetPath: volumePath,
+        configName:  configName,
     }
     resolveResp, err := s.resolveNS(params)
     if err != nil {
@@ -777,10 +784,11 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
         Seconds: createdSnapshot.CreationTime.Unix(),
     }
 
+    snapshotId := fmt.Sprintf("%s:%s", configName, snapshotPath)
     res := &csi.CreateSnapshotResponse{
         Snapshot: &csi.Snapshot{
-            SnapshotId:     snapshotPath,
-            SourceVolumeId: volumePath,
+            SnapshotId:     snapshotId,
+            SourceVolumeId: fmt.Sprintf("%s:%s", configName, volumePath),
             CreationTime:   creationTime,
             ReadyToUse:     true, //TODO use actual state
             //SizeByte: 0 //TODO size of zero means it is unspecified
@@ -788,11 +796,11 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
     }
 
     if ns.IsAlreadyExistNefError(err) {
-        l.Infof("snapshot '%s' already exists and can be used", snapshotPath)
+        l.Infof("snapshot '%s' already exists and can be used", snapshotId)
         return res, nil
     }
 
-    l.Infof("snapshot '%s' has been created", snapshotPath)
+    l.Infof("snapshot '%s' has been created", snapshotId)
     return res, nil
 }
 
@@ -814,16 +822,20 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
         return nil, status.Error(codes.InvalidArgument, "Snapshot ID must be provided")
     }
 
-    volumePath := ""
+    volume := ""
     splittedString := strings.Split(snapshotPath, "@")
     if len(splittedString) == 2 {
-        volumePath = splittedString[0]
+        volume = splittedString[0]
     } else {
         l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
         return &csi.DeleteSnapshotResponse{}, nil
     }
+    splittedVol := strings.Split(volume, ":")
+    configName, volumePath := splittedVol[0], splittedVol[1]
+
     params := ResolveNSParams{
         datasetPath: volumePath,
+        configName: configName,
     }
     resolveResp, err := s.resolveNS(params)
     if err != nil {

@@ -61,11 +61,12 @@ func (s *NodeServer) refreshConfig(secret string) error {
             }
         }
     }
-
     return nil
 }
 
 func (s *NodeServer) resolveNS(configName, datasetPath string) (nsProvider ns.ProviderInterface, err error, name string) {
+    l := s.log.WithField("func", "resolveNS()")
+    l.Infof("configName: %+v, datasetPath: %+v", configName, datasetPath)
     resolver := s.nsResolverMap[configName]
     nsProvider, err = resolver.Resolve(datasetPath)
     if err != nil {
@@ -89,6 +90,9 @@ func (s *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReques
 
     return &csi.NodeGetInfoResponse{
         NodeId: s.nodeID,
+        AccessibleTopology: &csi.Topology{
+                Segments: map[string]string{TopologyKeyZone: s.nodeID},
+        },
     }, nil
 }
 
@@ -148,6 +152,9 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
     }
 
     splittedVol := strings.Split(volumeID, ":")
+    if len(splittedVol) != 2 {
+        return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", volumeID))
+    }
     configName, volumePath := splittedVol[0], splittedVol[1]
     nsProvider, err, configName := s.resolveNS(configName, volumePath)
     if err != nil {
@@ -500,6 +507,9 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
     }
 
     splittedVol := strings.Split(volumeID, ":")
+    if len(splittedVol) != 2 {
+        return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", volumeID))
+    }
     configName, volumePath := splittedVol[0], splittedVol[1]
     nsProvider, err, _ := s.resolveNS(configName, volumePath)
     if err != nil {

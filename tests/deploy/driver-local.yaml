@@ -1,7 +1,12 @@
-# NexentaStor CSI Driver
+# NexentaStor CSI Driver (master)
+#
+# This driver version works with Kubernetes version >=1.16
+#
+# In production, each CSI driver deployment has to be customized to avoid conflicts,
+# use non-default namespace and different names for non-namespaced entities like the ClusterRole
 #
 # Install to Kubernetes:
-# $ kubectl apply -f tests/deploy/driver-local-manual.yaml
+# $ kubectl apply -f deploy/kubernetes/nexentastor-csi-driver.yaml
 #
 
 
@@ -9,13 +14,13 @@
 # NexentaStor CSI Driver
 # ----------------------
 
-apiVersion: csi.storage.k8s.io/v1alpha1
+apiVersion: storage.k8s.io/v1beta1 #k8s =>1.14
 kind: CSIDriver
 metadata:
   name: nexentastor-csi-driver.nexenta.com
 spec:
   attachRequired: false
-  podInfoOnMountVersion: ''
+  podInfoOnMount: false
 ---
 
 
@@ -33,11 +38,6 @@ metadata:
   namespace: default # replace with non-default namespace name if needed
 ---
 
-# if consider to use cluster-driver-registrar, then add this rule:
-# - apiGroups: ["csi.storage.k8s.io"]
-#   resources: ["csidrivers"]
-#   verbs: ["create", "delete"]
-
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -45,7 +45,7 @@ metadata:
 rules:
   - apiGroups: ['']
     resources: ['secrets']
-    verbs: ['get', 'list']
+    verbs: ['get', 'list', "watch"]
   - apiGroups: ['']
     resources: ['persistentvolumes']
     verbs: ['get', 'list', 'watch', 'create', 'update', 'delete'] # "update" for attacher
@@ -87,6 +87,13 @@ rules:
   - apiGroups: ['apiextensions.k8s.io']
     resources: ['customresourcedefinitions']
     verbs: ['create', 'list', 'watch', 'delete']
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  # CSINode specific
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["watch", "list", "get"]
 ---
 
 kind: ClusterRoleBinding
@@ -103,10 +110,78 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ---
 
+# External Resizer
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-resizer-role
+rules:
+  # The following rule should be uncommented for plugins that require secrets
+  # for provisioning.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-resizer-binding
+subjects:
+  - kind: ServiceAccount
+    name: nexentastor-csi-controller-service-account
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: csi-resizer-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: default
+  name: external-resizer-cfg
+rules:
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "watch", "list", "delete", "update", "create"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-resizer-role-cfg
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: nexentastor-csi-controller-service-account
+    namespace: default
+roleRef:
+  kind: Role
+  name: external-resizer-cfg
+  apiGroup: rbac.authorization.k8s.io
+---
+
 kind: Service
 apiVersion: v1
 metadata:
-  name: nexentastor-csi-controller
+  name: nexentastor-csi-controller-service
   labels:
     app: nexentastor-csi-controller
 spec:
@@ -117,24 +192,16 @@ spec:
       port: 12345
 ---
 
-# if consider to use cluster-driver-register, then add this container:
-# - name: cluster-driver-registrar
-#   image: quay.io/k8scsi/csi-cluster-driver-registrar:v1.0.1
-#   args:
-#     - --v=3
-#     - --pod-info-mount-version="v1"
-#     - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
-#   volumeMounts:
-#     - name: socket-dir
-#       mountPath: /var/lib/csi/sockets/pluginproxy
-
 kind: StatefulSet
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 metadata:
   name: nexentastor-csi-controller
 spec:
-  serviceName: nexentastor-csi-controller
+  serviceName: nexentastor-csi-controller-service
   replicas: 1
+  selector:
+    matchLabels:
+      app: nexentastor-csi-controller # has to match .spec.template.metadata.labels
   template:
     metadata:
       labels:
@@ -145,29 +212,30 @@ spec:
         # csi-provisioner: sidecar container that watches Kubernetes PersistentVolumeClaim objects
         # and triggers CreateVolume/DeleteVolume against a CSI endpoint
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.0.1
+          image: quay.io/k8scsi/csi-provisioner:v1.4.0
           imagePullPolicy: IfNotPresent
           args:
-            - --connection-timeout=25s #TODO check defaults
+            - --connection-timeout=25s
             - --provisioner=nexentastor-csi-driver.nexenta.com
             - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
             - --volume-name-prefix=pvc-ns
+            - --feature-gates=Topology=true
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy
         # csi-attacher: sidecar container that watches Kubernetes VolumeAttachment objects
         # and triggers ControllerPublish/Unpublish against a CSI endpoint
-        - name: csi-attacher
-          image: quay.io/k8scsi/csi-attacher:v1.0.1
-          imagePullPolicy: IfNotPresent
-          args:
-            - --v=5
-            - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /var/lib/csi/sockets/pluginproxy
+        # - name: csi-attacher
+        #   image: quay.io/k8scsi/csi-attacher:v1.2.0
+        #   imagePullPolicy: IfNotPresent
+        #   args:
+        #     - --v=3
+        #     - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
+        #   volumeMounts:
+        #     - name: socket-dir
+        #       mountPath: /var/lib/csi/sockets/pluginproxy
         - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v1.0.1
+          image: quay.io/k8scsi/csi-snapshotter:v1.1.0 # v1.2.0 doesn't work
           imagePullPolicy: IfNotPresent
           args:
             - --connection-timeout=25s
@@ -175,8 +243,19 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy
+        - name: csi-resizer
+          image: quay.io/k8scsi/csi-resizer:v0.4.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: driver
-          image: 10.3.199.92:5000/nexentastor-csi-driver:master
+          image: nexenta/nexentastor-csi-driver:master
           imagePullPolicy: Always
           args:
             - --nodeid=$(KUBE_NODE_NAME)
@@ -262,10 +341,10 @@ spec:
         # 1) registers the CSI driver with kubelet
         # 2) adds the drivers custom NodeId to a label on the Kubernetes Node API Object
         - name: driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.1
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
           imagePullPolicy: IfNotPresent
           args:
-            - --v=5
+            - --v=3
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins_registry/nexentastor-csi-driver.nexenta.com/csi.sock
           env:
@@ -284,7 +363,7 @@ spec:
             capabilities:
               add: ['SYS_ADMIN']
             allowPrivilegeEscalation: true
-          image: 10.3.199.92:5000/nexentastor-csi-driver:master
+          image: nexenta/nexentastor-csi-driver:master
           imagePullPolicy: Always
           args:
             - --nodeid=$(KUBE_NODE_NAME)

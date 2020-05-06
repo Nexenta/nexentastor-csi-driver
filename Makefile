@@ -1,7 +1,7 @@
 # NexentaStor CSI Driver makefile
 #
 # Test options to be set before run tests:
-# - NOCOLOR=1                # disable colors
+# NOCOLOR=1                # disable colors
 # - TEST_K8S_IP=10.3.199.250 # e2e k8s tests
 #
 
@@ -138,7 +138,7 @@ test-csi-sanity-container:
 		--build-arg CSI_SANITY_VERSION_TAG=v2.1.0 \
 		-f ${DOCKER_FILE_TEST_CSI_SANITY} \
 		-t ${IMAGE_NAME}-test-csi-sanity .
-	docker run --privileged=true -i --rm -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test-csi-sanity
+	docker run --privileged=true -i -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test-csi-sanity
 
 # run all tests (local registry image)
 .PHONY: test-all-local-image

@@ -18,6 +18,7 @@ The NexentaStor Container Storage Interface (CSI) Driver provides a CSI interfac
 | Kubernetes 1.14 & 1.15 | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |[1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |
 | Kubernetes >=1.16 | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |[1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |
 | Kubernetes >=1.17 | master | master|master|
+
 Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/releases
 
 ## Feature List

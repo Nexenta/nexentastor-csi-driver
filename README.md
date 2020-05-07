@@ -12,13 +12,12 @@ The NexentaStor Container Storage Interface (CSI) Driver provides a CSI interfac
 
 ## Supported kubernetes versions matrix
 
-|                   | NexentaStor 5.1                                                       | NexentaStor 5.2                                                       |
-|-------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Kubernetes 1.13   | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |
-| Kubernetes 1.14 & 1.15 | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |
-| Kubernetes >=1.16 | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |
-| Kubernetes >=1.17 | master                                                                | master                                                                |
-
+|                   | NexentaStor 5.1| NexentaStor 5.2| NexentaStor 5.3|
+|-------------------|----------------|----------------|----------------|
+| Kubernetes 1.13   | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |[1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |
+| Kubernetes 1.14 & 1.15 | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |[1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |
+| Kubernetes >=1.16 | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |[1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |
+| Kubernetes >=1.17 | master | master|master|
 Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/releases
 
 ## Feature List
@@ -28,15 +27,15 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
 |Dynamic Provisioning|GA|>= v1.0.0|>= v1.0.0|>=1.13|
 |RW mode|GA|>= v1.0.0|>= v1.0.0|>=1.13|
 |RO mode|GA|>= v1.0.0|>= v1.0.0|>=1.13|
-|Creating and deleting snapshot|Beta|>= v1.2.0|>= v1.0.0|>=1.17|
-|Provision volume from snapshot|Beta|>= v1.2.0|>= v1.0.0|>=1.17|
-|Provision volume from another volume|Beta|master|>= v1.0.0|>=1.17|
-|List snapshots of a volume|Beta|master|>= v1.0.0|>=1.17|
-|Expand volume|Beta|master|>= v1.1.0|>=1.16|
-|Access list for volume (NFS only)|GA|master|>= v1.0.0|>=1.13|
-|Topology|Beta|master|>= v1.0.0|>=1.17|
+|Creating and deleting snapshot|GA|>= v1.2.0|>= v1.0.0|>=1.17|
+|Provision volume from snapshot|GA|>= v1.2.0|>= v1.0.0|>=1.17|
+|Provision volume from another volume|GA|>= v1.3.0|>= v1.0.0|>=1.17|
+|List snapshots of a volume|Beta|>= v1.2.0|>= v1.0.0|>=1.17|
+|Expand volume|GA|>= v1.3.0|>= v1.1.0|>=1.16|
+|Access list for volume (NFS only)|GA|>= v1.3.0|>= v1.0.0|>=1.13|
+|Topology|Beta|>= v1.4.0|>= v1.0.0|>=1.17|
 |Raw block device|In development|future|>= v1.0.0|>=1.14|
-|StorageClass Secrets|GA|master|>=1.0.0|>=1.13|
+|StorageClass Secrets|Beta|>= v1.3.0|>=1.0.0|>=1.13|
 |Mount options|GA|>=v1.0.0|>=v1.0.0|>=v1.13|
 
 

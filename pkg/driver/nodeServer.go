@@ -91,7 +91,7 @@ func (s *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReques
     return &csi.NodeGetInfoResponse{
         NodeId: s.nodeID,
         AccessibleTopology: &csi.Topology{
-                Segments: map[string]string{TopologyKeyZone: s.nodeID},
+                Segments: map[string]string{},
         },
     }, nil
 }

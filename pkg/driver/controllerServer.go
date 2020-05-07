@@ -368,7 +368,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
         if err != nil {
             return nil, err
         }
-        nsProvider := resolveResp.nsProvider
+        nsProvider = resolveResp.nsProvider
         datasetPath = resolveResp.datasetPath
         volumePath = filepath.Join(datasetPath, volumeName)
         err = s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshot, volumePath, capacityBytes)
@@ -384,7 +384,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
         if err != nil {
             return nil, err
         }
-        nsProvider := resolveResp.nsProvider
+        nsProvider = resolveResp.nsProvider
         datasetPath = resolveResp.datasetPath
         volumePath = filepath.Join(datasetPath, volumeName)
         err = s.createClonedVolume(nsProvider, sourceVolume, volumePath, volumeName, capacityBytes)
@@ -393,7 +393,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
         if err != nil {
             return nil, err
         }
-        nsProvider := resolveResp.nsProvider
+        nsProvider = resolveResp.nsProvider
         datasetPath = resolveResp.datasetPath
         volumePath = filepath.Join(datasetPath, volumeName)
         err = s.createNewVolume(nsProvider, volumePath, capacityBytes)

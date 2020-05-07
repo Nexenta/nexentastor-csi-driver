@@ -5,4 +5,4 @@ nexentastor_map:
     password: Nexenta@1                             # [required] NexentaStor REST API password
     defaultDataset: csiDriverPool/csiDriverDataset  # default dataset for driver's fs/volume [pool/dataset]
     defaultDataIp: 10.3.199.197                     # default NexentaStor data IP or HA VIP
-    zone: minikube
+    # zone: minikube

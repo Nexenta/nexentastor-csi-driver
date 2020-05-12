@@ -1,0 +1,57 @@
+# --------------------------------------
+# NexentaStor CSI Driver - Storage Class
+# --------------------------------------
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-driver-cs-nginx-dynamic
+provisioner: nexentastor-csi-driver.nexenta.com
+
+parameters:
+  nfsAccessList: ro:10.0.0.0/8
+---
+
+
+# ------------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume Claim
+# ------------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-pvc-nginx-dynamic
+spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+
+
+# ---------
+# Nginx pod
+# ---------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-dynamic-volume-acl
+spec:
+  containers:
+    - image: nginx
+      imagePullPolicy: IfNotPresent
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nexentastor-csi-driver-data
+  volumes:
+    - name: nexentastor-csi-driver-data
+      persistentVolumeClaim:
+        claimName: nexentastor-csi-driver-pvc-nginx-dynamic
+        readOnly: false

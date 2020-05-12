@@ -420,58 +420,81 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
             },
         }
     }
-
     // Create NFS share if passed in params
     if v, ok := reqParams["nfsAccessList"]; ok {
-        ruleList := strings.Split(v, ",")
-        nfsParams := ns.CreateNfsShareParams{
-            Filesystem: volumePath,
-        }
-
-        for _, item := range ruleList {
-            mode, address := "", ""
-            mask := 0
-            etype := "fqdn"
-            if strings.Contains(item, ":") {
-                splittedRule := strings.Split(item, ":")
-                mode, address = strings.TrimSpace(splittedRule[0]), strings.TrimSpace(splittedRule[1])
-            } else {
-                mode, address = "rw", strings.TrimSpace(item)
-            }
-
-            if strings.Contains(address, "/") {
-                splittedAddress := strings.Split(address, "/")[:2]
-                address = splittedAddress[0]
-                mask, err = strconv.Atoi(splittedAddress[1])
-                    if err != nil {
-                        return nil, err
-                    }
-            }
-            if mask != 0 {
-                etype = "network"
-            }
-
-            if mode == "ro" {
-                nfsParams.ReadOnlyList = append(nfsParams.ReadOnlyList, ns.NfsRuleList{
-                    Entity: address,
-                    Etype: etype,
-                    Mask: mask,
-                })
-            } else {
-                nfsParams.ReadWriteList = append(nfsParams.ReadWriteList, ns.NfsRuleList{
-                    Entity: address,
-                    Etype: etype,
-                    Mask: mask,
-                })
-            }
-        }
-        err = nsProvider.CreateNfsShare(nfsParams)
+        err = s.createNfsShare(volumePath, v, nsProvider)
         if err != nil {
             return nil, err
         }
     }
-
     return res, nil
+}
+
+func (s *ControllerServer) createNfsShare(
+    volumePath string,
+    reqParams string,
+    nsProvider ns.ProviderInterface,
+) (err error) {
+    l := s.log.WithField("func", "CreateVolume()")
+    l.Infof("volumePath: %+v, reqParams: %+v, nsProvider: %+v", volumePath, reqParams, nsProvider)
+
+    ruleList := strings.Split(reqParams, ",")
+    nfsParams := ns.CreateNfsShareParams{
+        Filesystem: volumePath,
+    }
+    for _, item := range ruleList {
+        mode, address := "", ""
+        mask := 0
+        etype := "fqdn"
+        if strings.Contains(item, ":") {
+            splittedRule := strings.Split(item, ":")
+            mode, address = strings.TrimSpace(splittedRule[0]), strings.TrimSpace(splittedRule[1])
+        } else {
+            mode, address = "rw", strings.TrimSpace(item)
+        }
+
+        if strings.Contains(address, "/") {
+            splittedAddress := strings.Split(address, "/")[:2]
+            address = splittedAddress[0]
+            mask, err = strconv.Atoi(splittedAddress[1])
+                if err != nil {
+                    return err
+                }
+        }
+        if mask != 0 {
+            etype = "network"
+        }
+
+        if mode == "ro" {
+            nfsParams.ReadOnlyList = append(nfsParams.ReadOnlyList, ns.NfsRuleList{
+                Entity: address,
+                Etype: etype,
+                Mask: mask,
+            })
+        } else {
+            nfsParams.ReadWriteList = append(nfsParams.ReadWriteList, ns.NfsRuleList{
+                Entity: address,
+                Etype: etype,
+                Mask: mask,
+            })
+        }
+    }
+    err = nsProvider.CreateNfsShare(nfsParams)
+    if err != nil {
+        if ns.IsAlreadyExistNefError(err) {
+            err = nsProvider.DeleteNfsShare(volumePath)
+            if err != nil {
+                return err
+            }
+            err = nsProvider.CreateNfsShare(nfsParams)
+            if err != nil {
+                return err
+            }
+        } else {
+            return err
+        }
+    }
+    return nil
 }
 
 func (s *ControllerServer) createNewVolume(

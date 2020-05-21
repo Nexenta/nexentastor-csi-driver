@@ -823,6 +823,180 @@ func TestDriver_deploy(t *testing.T) {
 		t.Log("done.")
 	})
 
+	t.Run("deploy nginx pods using several appliances in one config file", func(t *testing.T) {
+		command := ""
+		data1 := "DATA1: " + time.Now().Format(time.RFC3339)
+		data2 := "DATA2: " + time.Now().Format(time.RFC1123)
+		nginxPodName := "nginx-persistent-volume"
+		testResult.StatusID = 5
+		testResult.Comment = "Using several NS appliances in one configuration file - failed"
+
+		getNginxRunCommand := func(cmd string) string {
+			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
+		}
+
+		t.Log("deploy first nginx container with persistent volume on first NS")
+		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/nginx-persistent-volume-box-1.yaml",
+			Log:          l,
+		})
+		defer k8sNginx1.CleanUp()
+		defer k8sNginx1.Delete(nil)
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx1.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		t.Log("write data to the first nginx container persistent volume on the first NS")
+		command = fmt.Sprintf("echo '%s' > /usr/share/nginx/html/data.txt", data1)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %s", err))
+		}
+
+		t.Log("check if data has been written")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data1)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("delete the first nginx container")
+		if err := k8sNginx1.Delete([]string{nginxPodName}); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		t.Log("deploy second container with persistent volume on another NS")
+		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/nginx-persistent-volume-box-2.yaml",
+			Log:          l,
+		})
+		defer k8sNginx2.CleanUp()
+		defer k8sNginx2.Delete(nil)
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx2.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		// check if there is no data from the first container
+		t.Log("check if data is not exist in the persistent volume")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data1)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err == nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("It is the same data as for another PV"))
+		}
+
+		t.Log("write data to the second nginx container persistent volume on the second NS")
+		command = fmt.Sprintf("echo '%s' > /usr/share/nginx/html/data.txt", data2)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("Cannot write date to nginx volume: %s", err))
+		}
+
+		t.Log("check if data has been written")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data2)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		t.Log("delete the second nginx container")
+		if err := k8sNginx2.Delete([]string{nginxPodName}); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		t.Log("deploy third container with persistent volume on the first NS")
+		k8sNginx3, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/nginx-persistent-volume-box-1.yaml",
+			Log:          l,
+		})
+		defer k8sNginx3.CleanUp()
+		defer k8sNginx3.Delete(nil)
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+		if err := k8sNginx3.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		// check if there is data from the first container
+		t.Log("check if there is data from the first container")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data1)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("Data hasn't been written to nginx container: %s", err))
+		}
+
+		// check if there is no data from the second container
+		t.Log("check if there is data from the second container")
+		command = fmt.Sprintf("grep '%s' /usr/share/nginx/html/data.txt", data2)
+		if _, err := rc.Exec(getNginxRunCommand(command)); err == nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(fmt.Errorf("It is the same data as for another PV"))
+		}
+
+		t.Log("delete the second nginx container")
+		if err := k8sNginx3.Delete([]string{nginxPodName}); err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatal(err)
+		}
+
+		testResult.StatusID = 1
+		testResult.Comment = "Using several NS appliances in one configuration file - success"
+		if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+			l.Warn("Can't add test result to TestRail")
+		}
+
+		t.Log("done.")
+	})
+
 	t.Run("uninstall driver", func(t *testing.T) {
 		t.Log("deleting the driver")
 		if err := k8sDriver.Delete([]string{"nexentastor-csi-.*"}); err != nil {

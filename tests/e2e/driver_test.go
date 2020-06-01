@@ -997,6 +997,104 @@ func TestDriver_deploy(t *testing.T) {
 		t.Log("done.")
 	})
 
+	t.Run("deploy nginx pod in diffenrent k8s zones", func(t *testing.T) {
+		nginxPodName := "nginx-dynamic-volume"
+		testResult.StatusID = 5
+		testResult.Comment = "Create Pod and Mount Volume in Specific Zone - failed"
+
+		getZoneCommand := func(nodeNumber string) string {
+			return fmt.Sprintf("kubectl get pods -o wide|grep %s|grep node%s", nginxPodName, nodeNumber)
+		}
+
+		getNodesCommand := "kubectl get nodes --show-labels|grep topology.kubernetes.io/zone=zone-"
+
+		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/nginx-dynamic-volume-zone-1.yaml",
+			Log:          l,
+		})
+		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "./_configs/nginx-dynamic-volume-zone-2.yaml",
+			Log:          l,
+		})
+
+		// Check if there is nodes with topology zone-1/2/...
+		if _, err := rc.Exec(getNodesCommand); err != nil {
+			t.Skip("Skip test. Need to add zones to K8s cluster.")
+		}
+
+		defer k8sNginx1.CleanUp()
+		defer k8sNginx1.Delete(nil)
+		defer k8sNginx2.CleanUp()
+		defer k8sNginx2.Delete(nil)
+
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+
+		for i := 0; i < 3; i++ {
+			// Try first zone
+			t.Log("deploy first nginx container on first k8s node")
+			if err := k8sNginx1.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+
+			t.Log("check if first nginx pod is on right node")
+			if _, err := rc.Exec(getZoneCommand("1")); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(fmt.Errorf("Cannot find nginx pod on right node: %s", err))
+			}
+
+			t.Log("delete first nginx container on first k8s node")
+			if err := k8sNginx1.Delete([]string{nginxPodName}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+			// Try second zone
+			t.Log("deploy second nginx container on second k8s node")
+			if err := k8sNginx2.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+
+			t.Log("check if second nginx pod is on right node")
+			if _, err := rc.Exec(getZoneCommand("2")); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(fmt.Errorf("Cannot find nginx pod on right node: %s", err))
+			}
+
+			t.Log("delete second nginx container on second k8s node")
+			if err := k8sNginx2.Delete([]string{nginxPodName}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+		}
+		testResult.StatusID = 1
+		testResult.Comment = "Create Pod and Mount Volume in Specific Zone - success"
+		if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+			l.Warn("Can't add test result to TestRail")
+		}
+
+		t.Log("done.")
+	})
+
 	t.Run("uninstall driver", func(t *testing.T) {
 		t.Log("deleting the driver")
 		if err := k8sDriver.Delete([]string{"nexentastor-csi-.*"}); err != nil {

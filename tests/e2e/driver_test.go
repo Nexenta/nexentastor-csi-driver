@@ -1143,6 +1143,12 @@ func TestDriver_deploy(t *testing.T) {
 
 		// Check if there is nodes with topology zone-1/2/...
 		if _, err := rc.Exec(getNodesCommand); err != nil {
+			if err := os.Remove(pathConfigZone1); err != nil {
+				l.Warn("Can't remove temporary config file")
+			}
+			if err := os.Remove(pathConfigZone2); err != nil {
+				l.Warn("Can't remove temporary config file")
+			}
 			t.Skip("Skip test. Need to add zones to K8s cluster.")
 		}
 

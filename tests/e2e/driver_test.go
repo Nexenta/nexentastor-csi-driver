@@ -1,11 +1,13 @@
 package driver_test
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
@@ -90,6 +92,53 @@ func TestMain(m *testing.M) {
 	l.Infof(" - secret name:   %s", c.k8sSecretName)
 
 	os.Exit(m.Run())
+}
+
+func GenerateConfigFunc(configType, id, aclRule, zone, nstorBox string) (string, error) {
+	type forDynamic struct {
+		Acl, Zone string
+	}
+	type forPersistent struct {
+		VolumeHandle string
+	}
+	configPath := "./_configs/" + configType + "-" + id + "-volume-nginx.yaml"
+
+	if configType == "dynamic" {
+		var dataForCfg = forDynamic{aclRule, zone}
+		fileCfg, err := os.Create(configPath)
+		if err != nil {
+			return "", errors.New("cannot create config file")
+		}
+		cfgContent, err := template.ParseFiles("./_configs/templates/dynamic.yaml")
+		if err != nil {
+			return "", errors.New("cannot parse template")
+		}
+		err = cfgContent.Execute(fileCfg, dataForCfg)
+		if err != nil {
+			return "", errors.New("cannot implement data to template")
+		}
+		fileCfg.Close()
+		return configPath, nil
+	} else if configType == "persistent" {
+
+		var dataForCfg = forPersistent{nstorBox}
+		fileCfg, err := os.Create(configPath)
+		if err != nil {
+			return "", errors.New("cannot create config file")
+		}
+		cfgContent, err := template.ParseFiles("./_configs/templates/persistent.yaml")
+		if err != nil {
+			return "", errors.New("cannot parse template")
+		}
+		err = cfgContent.Execute(fileCfg, dataForCfg)
+		if err != nil {
+			return "", errors.New("cannot implement data to template")
+		}
+		fileCfg.Close()
+		return configPath, nil
+	} else {
+		return "", errors.New("wrong type: should be dynamic or persistent")
+	}
 }
 
 func TestDriver_deploy(t *testing.T) {
@@ -718,7 +767,7 @@ func TestDriver_deploy(t *testing.T) {
 		if fsType != "nfs" {
 			t.Skip("Skip test. For NFS only.")
 		}
-		nginxPodName := "nginx-dynamic-volume-acl"
+		nginxPodName := "nginx-dynamic-volume"
 		testResult.StatusID = 5
 		testResult.Comment = "Checking NFS ACL - failed"
 
@@ -726,9 +775,18 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
 		}
 
+		// Create config file
+		pathConfigAclRw, err := GenerateConfigFunc("dynamic", "1", "rw:10.0.0.0/8", "", "")
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot generate configs for K8s nginx deployment: %s", err)
+		}
+
 		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
 			RemoteClient: rc,
-			ConfigFile:   "./_configs/nginx-dynamic-volume-acl-rw.yaml",
+			ConfigFile:   pathConfigAclRw,
 			Log:          l,
 		})
 		defer k8sNginx1.CleanUp()
@@ -772,10 +830,19 @@ func TestDriver_deploy(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		// Create config file
+		pathConfigAclRo, err := GenerateConfigFunc("dynamic", "2", "ro:10.0.0.0/8", "", "")
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 796266, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot generate configs for K8s nginx deployment: %s", err)
+		}
+
 		t.Log("deploy second container with read-only ACL rules")
 		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
 			RemoteClient: rc,
-			ConfigFile:   "./_configs/nginx-dynamic-volume-acl-ro.yaml",
+			ConfigFile:   pathConfigAclRo,
 			Log:          l,
 		})
 		defer k8sNginx2.CleanUp()
@@ -820,6 +887,14 @@ func TestDriver_deploy(t *testing.T) {
 			l.Warn("Can't add test result to TestRail")
 		}
 
+		// Removing temporary config file
+		if err := os.Remove(pathConfigAclRw); err != nil {
+			l.Warn("Can't remove temporary config file")
+		}
+		if err := os.Remove(pathConfigAclRo); err != nil {
+			l.Warn("Can't remove temporary config file")
+		}
+
 		t.Log("done.")
 	})
 
@@ -835,10 +910,19 @@ func TestDriver_deploy(t *testing.T) {
 			return fmt.Sprintf("kubectl exec -c nginx %s -- /bin/bash -c \"%s\"", nginxPodName, cmd)
 		}
 
+		// Create config file for 1st and 3rd nginx container
+		pathConfigMultiNs1, err := GenerateConfigFunc("persistent", "1", "", "", "nstor-box1:csiDriverPool/csiDriverDataset/nginx-persistent")
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot generate configs for K8s nginx deployment: %s", err)
+		}
+
 		t.Log("deploy first nginx container with persistent volume on first NS")
 		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
 			RemoteClient: rc,
-			ConfigFile:   "./_configs/nginx-persistent-volume-box-1.yaml",
+			ConfigFile:   pathConfigMultiNs1,
 			Log:          l,
 		})
 		defer k8sNginx1.CleanUp()
@@ -849,6 +933,7 @@ func TestDriver_deploy(t *testing.T) {
 			}
 			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
 		}
+
 		if err := k8sNginx1.Apply([]string{nginxPodName + ".*Running"}); err != nil {
 			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
 				l.Warn("Can't add test result to TestRail")
@@ -882,10 +967,19 @@ func TestDriver_deploy(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		// Create config file for 2nd nginx container
+		pathConfigMultiNs2, err := GenerateConfigFunc("persistent", "2", "", "", "nstor-box2:tank01/fs01/pvol01")
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot generate configs for K8s nginx deployment: %s", err)
+		}
+
 		t.Log("deploy second container with persistent volume on another NS")
 		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
 			RemoteClient: rc,
-			ConfigFile:   "./_configs/nginx-persistent-volume-box-2.yaml",
+			ConfigFile:   pathConfigMultiNs2,
 			Log:          l,
 		})
 		defer k8sNginx2.CleanUp()
@@ -942,7 +1036,7 @@ func TestDriver_deploy(t *testing.T) {
 		t.Log("deploy third container with persistent volume on the first NS")
 		k8sNginx3, err := k8s.NewDeployment(k8s.DeploymentArgs{
 			RemoteClient: rc,
-			ConfigFile:   "./_configs/nginx-persistent-volume-box-1.yaml",
+			ConfigFile:   pathConfigMultiNs1,
 			Log:          l,
 		})
 		defer k8sNginx3.CleanUp()
@@ -992,6 +1086,134 @@ func TestDriver_deploy(t *testing.T) {
 		testResult.Comment = "Using several NS appliances in one configuration file - success"
 		if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
 			l.Warn("Can't add test result to TestRail")
+		}
+
+		// Removing temporary config file
+		if err := os.Remove(pathConfigMultiNs1); err != nil {
+			l.Warn("Can't remove temporary config file")
+		}
+		if err := os.Remove(pathConfigMultiNs2); err != nil {
+			l.Warn("Can't remove temporary config file")
+		}
+
+		t.Log("done.")
+	})
+
+	t.Run("deploy nginx pod in diffenrent k8s zones", func(t *testing.T) {
+		nginxPodName := "nginx-dynamic-volume"
+		testResult.StatusID = 5
+		testResult.Comment = "Create Pod and Mount Volume in Specific Zone - failed"
+
+		getZoneCommand := func(nodeNumber string) string {
+			return fmt.Sprintf("kubectl get pods -o wide|grep %s|grep node%s", nginxPodName, nodeNumber)
+		}
+
+		getNodesCommand := "kubectl get nodes --show-labels|grep topology.kubernetes.io/zone=zone-"
+
+		// Create config files
+		pathConfigZone1, err := GenerateConfigFunc("dynamic", "1", "", "zone-1", "")
+		pathConfigZone2, err := GenerateConfigFunc("dynamic", "2", "", "zone-2", "")
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot generate configs for K8s nginx deployment: %s", err)
+		}
+
+		k8sNginx1, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   pathConfigZone1,
+			Log:          l,
+		})
+		k8sNginx2, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   pathConfigZone2,
+			Log:          l,
+		})
+		defer k8sNginx1.CleanUp()
+		defer k8sNginx1.Delete(nil)
+		defer k8sNginx2.CleanUp()
+		defer k8sNginx2.Delete(nil)
+		if err != nil {
+			if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+				l.Warn("Can't add test result to TestRail")
+			}
+			t.Fatalf("Cannot create K8s nginx deployment: %s", err)
+		}
+
+		// Check if there is nodes with topology zone-1/2/...
+		if _, err := rc.Exec(getNodesCommand); err != nil {
+			if err := os.Remove(pathConfigZone1); err != nil {
+				l.Warn("Can't remove temporary config file")
+			}
+			if err := os.Remove(pathConfigZone2); err != nil {
+				l.Warn("Can't remove temporary config file")
+			}
+			t.Skip("Skip test. Need to add zones to K8s cluster.")
+		}
+
+		for i := 0; i < 3; i++ {
+			// Try first zone
+			t.Log("deploy first nginx container on first k8s node")
+			if err := k8sNginx1.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+
+			t.Log("check if first nginx pod is on right node")
+			if _, err := rc.Exec(getZoneCommand("1")); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(fmt.Errorf("Cannot find nginx pod on right node: %s", err))
+			}
+
+			t.Log("delete first nginx container on first k8s node")
+			if err := k8sNginx1.Delete([]string{nginxPodName}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+			// Try second zone
+			t.Log("deploy second nginx container on second k8s node")
+			if err := k8sNginx2.Apply([]string{nginxPodName + ".*Running"}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+
+			t.Log("check if second nginx pod is on right node")
+			if _, err := rc.Exec(getZoneCommand("2")); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(fmt.Errorf("Cannot find nginx pod on right node: %s", err))
+			}
+
+			t.Log("delete second nginx container on second k8s node")
+			if err := k8sNginx2.Delete([]string{nginxPodName}); err != nil {
+				if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+					l.Warn("Can't add test result to TestRail")
+				}
+				t.Fatal(err)
+			}
+		}
+		testResult.StatusID = 1
+		testResult.Comment = "Create Pod and Mount Volume in Specific Zone - success"
+		if _, err := client.AddResultForCase(5151, 801256, testResult); err != nil {
+			l.Warn("Can't add test result to TestRail")
+		}
+
+		// Removing temporary config file
+		if err := os.Remove(pathConfigZone1); err != nil {
+			l.Warn("Can't remove temporary config file")
+		}
+		if err := os.Remove(pathConfigZone2); err != nil {
+			l.Warn("Can't remove temporary config file")
 		}
 
 		t.Log("done.")

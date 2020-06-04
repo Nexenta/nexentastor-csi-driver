@@ -1,0 +1,62 @@
+#
+# .VolumeHandle example:  "nstor-box2:tank01/fs01/pvol01"
+#
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-driver-cs-nginx-persistent
+provisioner: nexentastor-csi-driver.nexenta.com
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nexentastor-csi-driver-pv-nginx-persistent
+  labels:
+    name: nexentastor-csi-driver-pv-nginx-persistent
+{{with .VolumeHandle -}}
+spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-persistent
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  csi:
+    driver: nexentastor-csi-driver.nexenta.com
+    volumeHandle: {{.}}
+{{end -}}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-pvc-nginx-persistent
+spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-persistent
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      name: nexentastor-csi-driver-pv-nginx-persistent
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-persistent-volume
+spec:
+  containers:
+    - image: nginx
+      imagePullPolicy: IfNotPresent
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nexentastor-csi-driver-data
+  volumes:
+    - name: nexentastor-csi-driver-data
+      persistentVolumeClaim:
+        claimName: nexentastor-csi-driver-pvc-nginx-persistent
+        readOnly: false

@@ -1,22 +1,24 @@
-# --------------------------------------
-# NexentaStor CSI Driver - Storage Class
-# --------------------------------------
-
+#
+# .Acl example:  "ro:10.0.0.0/8"
+# .Zone example: "zone-1"
+#
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-cs-nginx-dynamic
 provisioner: nexentastor-csi-driver.nexenta.com
-
+{{with .Acl -}}
 parameters:
-  nfsAccessList: ro:10.0.0.0/8
+  nfsAccessList: {{.}}
+{{- end -}}
+{{with .Zone -}}
+allowedTopologies:
+- matchLabelExpressions:
+  - key: topology.kubernetes.io/zone
+    values:
+    - {{.}}
+{{- end}}
 ---
-
-
-# ------------------------------------------------
-# NexentaStor CSI Driver - Persistent Volume Claim
-# ------------------------------------------------
-
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -29,16 +31,10 @@ spec:
     requests:
       storage: 1Gi
 ---
-
-
-# ---------
-# Nginx pod
-# ---------
-
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-dynamic-volume-acl
+  name: nginx-dynamic-volume
 spec:
   containers:
     - image: nginx

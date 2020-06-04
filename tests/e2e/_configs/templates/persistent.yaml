@@ -1,5 +1,5 @@
 #
-# .VolumeHandler example:  "nstor-box2:tank01/fs01/pvol01"
+# .VolumeHandle example:  "nstor-box2:tank01/fs01/pvol01"
 #
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -13,7 +13,7 @@ metadata:
   name: nexentastor-csi-driver-pv-nginx-persistent
   labels:
     name: nexentastor-csi-driver-pv-nginx-persistent
-{{with .VolumeHandler -}}
+{{with .VolumeHandle -}}
 spec:
   storageClassName: nexentastor-csi-driver-cs-nginx-persistent
   accessModes:

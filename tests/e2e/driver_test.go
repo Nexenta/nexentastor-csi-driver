@@ -99,7 +99,7 @@ func GenerateConfigFunc(configType, id, aclRule, zone, nstorBox string) (string,
 		Acl, Zone string
 	}
 	type forPersistent struct {
-		VolumeHandler string
+		VolumeHandle string
 	}
 	configPath := "./_configs/" + configType + "-" + id + "-volume-nginx.yaml"
 

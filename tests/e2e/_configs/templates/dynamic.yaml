@@ -1,17 +1,24 @@
+#
+# .Acl example:  "ro:10.0.0.0/8"
+# .Zone example: "zone-1"
+#
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nexentastor-csi-driver-cs-nginx-dynamic
 provisioner: nexentastor-csi-driver.nexenta.com
-mountOptions:
-allowVolumeExpansion: true
+{{with .Acl -}}
+parameters:
+  nfsAccessList: {{.}}
+{{- end -}}
+{{with .Zone -}}
 allowedTopologies:
 - matchLabelExpressions:
   - key: topology.kubernetes.io/zone
     values:
-    - zone-1
+    - {{.}}
+{{- end}}
 ---
-
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -24,7 +31,6 @@ spec:
     requests:
       storage: 1Gi
 ---
-
 apiVersion: v1
 kind: Pod
 metadata:

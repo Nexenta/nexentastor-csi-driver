@@ -785,7 +785,6 @@ func (s *ControllerServer) CreateSnapshotOnNS(nsProvider ns.ProviderInterface, v
     return snapshot, nil
 }
 
-
 // CreateSnapshot creates a snapshot of given volume
 func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (
     *csi.CreateSnapshotResponse,
@@ -868,17 +867,19 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
         return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
     }
 
-    snapshotPath := req.GetSnapshotId()
-    if len(snapshotPath) == 0 {
+    snapshotId := req.GetSnapshotId()
+    if len(snapshotId) == 0 {
         return nil, status.Error(codes.InvalidArgument, "Snapshot ID must be provided")
     }
 
     volume := ""
-    splittedString := strings.Split(snapshotPath, "@")
+    snapshot := ""
+    splittedString := strings.Split(snapshotId, "@")
     if len(splittedString) == 2 {
         volume = splittedString[0]
+        snapshot = splittedString[1]
     } else {
-        l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
+        l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotId)
         return &csi.DeleteSnapshotResponse{}, nil
     }
     splittedVol := strings.Split(volume, ":")
@@ -894,7 +895,7 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
     resolveResp, err := s.resolveNS(params)
     if err != nil {
         if status.Code(err) == codes.NotFound {
-            l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotPath)
+            l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotId)
             return &csi.DeleteSnapshotResponse{}, nil
         }
         return nil, err
@@ -902,6 +903,7 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
     nsProvider := resolveResp.nsProvider
 
     // if here, than volumePath exists on some NS
+    snapshotPath := strings.Join([]string{volumePath, snapshot}, "@")
     err = nsProvider.DestroySnapshot(snapshotPath)
     if err != nil && !ns.IsNotExistNefError(err) {
         message := fmt.Sprintf("Failed to delete snapshot '%s'", snapshotPath)
@@ -1237,7 +1239,6 @@ func (s *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *c
     return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ControllerExpandVolume - not supported
 func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (
     *csi.ControllerExpandVolumeResponse,
     error,

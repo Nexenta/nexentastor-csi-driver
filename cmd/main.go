@@ -81,6 +81,7 @@ func main() {
 		l.Infof("  - Default dataset: %s", config.DefaultDataset)
 		l.Infof("  - Default data IP: %s", config.DefaultDataIP)
 		l.Infof("  - Zone: %s", config.Zone)
+		l.Infof("  - V13Compatibility: %t", config.V13Compatibility)
 	}
 
 	d, err := driver.NewDriver(driver.Args{

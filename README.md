@@ -124,7 +124,8 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
    | `defaultMountFsType`  | mount filesystem type [nfs, cifs](default: 'nfs')               | no         | `cifs`                                                       |
    | `defaultMountOptions` | NFS/CIFS mount options: `mount -o ...` (default: "")            | no         | NFS: `noatime,nosuid`<br>CIFS: `username=admin,password=123` |
    | `debug`               | print more logs (default: false)                                | no         | `true`                                                       |
-   | `zone`                | Zone to match topology.kubernetes.io/zone.                      | no         | ` `                                                       |
+   | `zone`                | Zone to match topology.kubernetes.io/zone.                      | no         | ` `                                                          |
+   | `v13Compatibility`    | Flag to support already created volumes for driver version 1.3| no         | false                                                 |
 
    **Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,
    then parameter `dataset`/`dataIp` must be specified in _StorageClass_ configuration.
@@ -133,6 +134,8 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
 
    **Note**: if `defaultMountFsType` is set to `cifs` then parameter `defaultMountOptions` must include
    CIFS username and password (`username=admin,password=123`).
+
+   **Note**: if `v13Compatibility` is set to `true` then parameter `zone` must not be used. And `v13Compatibility` must be set for only one NexentaStor backend configuration per driver.
 
 4. Create Kubernetes secret from the file:
    ```bash
@@ -151,6 +154,31 @@ NAME                           READY   STATUS    RESTARTS   AGE
 nexentastor-csi-controller-0   3/3     Running   0          42s
 nexentastor-csi-node-cwp4v     2/2     Running   0          42s
 ```
+
+## Upgrade driver
+
+### Upgrade driver from version 1.3 to 1.4.x
+
+To upgrade NexentaStor CSI driver from version 1.3 to 1.4.x need to:
+
+1. Uninstall current CSI driver from Kubernetes cluster
+
+```bash
+kubectl delete -f deploy/kubernetes/nexentastor-csi-driver.yaml
+```
+
+**Note**: this manifest should be taken from CSI driver version 1.3
+
+2. Delete current driver configuration
+
+```bash
+kubectl delete secret generic nexentastor-csi-driver-config
+```
+
+3. Create new configuration secret (see Installation part above) and add `v13Compatibility = true` parameter to the configuration section witch backend has existing volumes on Kubernetes cluster.
+
+4. Install new version of NexentaStor CSI driver.
+
 
 ## Usage
 

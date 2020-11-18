@@ -47,6 +47,7 @@ type NsData struct {
 	DefaultDataIP       string `yaml:"defaultDataIp,omitempty"`
 	DefaultMountFsType  string `yaml:"defaultMountFsType,omitempty"`
 	DefaultMountOptions string `yaml:"defaultMountOptions,omitempty"`
+	V13Compatibility    bool   `yaml:"v13Compatibility,omitempty"`
 }
 
 // GetFilePath - get filepath of found config file

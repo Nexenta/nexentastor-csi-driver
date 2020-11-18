@@ -58,9 +58,10 @@ type ControllerServer struct {
 }
 
 type ResolveNSParams struct {
-	datasetPath string
-	zone        string
-	configName  string
+	datasetPath     string
+	zone            string
+	configName      string
+	IsV13Compatible bool
 }
 
 type ResolveNSResponse struct {
@@ -119,12 +120,50 @@ func (s *ControllerServer) resolveNS(params ResolveNSParams) (response ResolveNS
 	}
 }
 
+func (s *ControllerServer) resolveCompatibilityConfig(params ResolveNSParams) (response ResolveNSResponse, err error) {
+	var nsProvider ns.ProviderInterface
+	datasetPath := params.datasetPath
+	l := s.log.WithField("func", "resolveCompatibilityConfig()")
+	l.Infof("Resolving backward compatible volume handle, params: %+v", params)
+	for configName, config := range s.config.NsMap {
+		if config.V13Compatibility == true {
+			if datasetPath == "" {
+				datasetPath = config.DefaultDataset
+			}
+
+			resolver, ok := s.nsResolverMap[configName]
+			if !ok {
+				return response, status.Errorf(codes.NotFound, fmt.Sprintf("No nsProvider found for params: %+v", params))
+			}
+
+			nsProvider, err = resolver.Resolve(datasetPath)
+			if err != nil {
+				return response, err
+			}
+
+			return ResolveNSResponse{
+				datasetPath: datasetPath,
+				nsProvider:  nsProvider,
+				configName:  configName,
+			}, nil
+		}
+	}
+
+	return response, status.Errorf(codes.NotFound, fmt.Sprintf("No nsProvider found with backward compatability flag for params: %+v", params))
+}
+
 func (s *ControllerServer) resolveNSNoZone(params ResolveNSParams) (response ResolveNSResponse, err error) {
 	// No zone -> pick NS for given dataset and configName. TODO: load balancing
 	l := s.log.WithField("func", "resolveNSNoZone()")
 	l.Infof("Resolving without zone, params: %+v", params)
+
+	if params.IsV13Compatible {
+		return s.resolveCompatibilityConfig(params)
+	}
+
 	var nsProvider ns.ProviderInterface
 	datasetPath := params.datasetPath
+
 	if len(params.configName) > 0 {
 		if datasetPath == "" {
 			datasetPath = s.config.NsMap[params.configName].DefaultDataset
@@ -147,12 +186,11 @@ func (s *ControllerServer) resolveNSNoZone(params ResolveNSParams) (response Res
 			}
 			nsProvider, err = resolver.Resolve(datasetPath)
 			if nsProvider != nil {
-				response = ResolveNSResponse{
+				return ResolveNSResponse{
 					datasetPath: datasetPath,
 					nsProvider:  nsProvider,
 					configName:  name,
-				}
-				return response, err
+				}, err
 			}
 		}
 	}
@@ -357,12 +395,15 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	capacityBytes := req.GetCapacityRange().GetRequiredBytes()
 	if sourceSnapshotId != "" {
 		// create new volume using existing snapshot
-		splittedSnap := strings.Split(sourceSnapshotId, ":")
-		if len(splittedSnap) != 2 {
+		var volInfo VolumeInfo
+		volInfo, err = ParseVolumeID(sourceSnapshotId)
+		if err != nil {
+			l.Errorf("Got wrong volumeId, VolumeInfo error: %s", err)
 			return nil, status.Error(codes.NotFound, fmt.Sprintf("SnapshotId is in wrong format: %s", sourceSnapshotId))
 		}
-		configName, sourceSnapshot := splittedSnap[0], splittedSnap[1]
-		params.configName = configName
+
+		params.configName = volInfo.ConfigName
+		params.IsV13Compatible = volInfo.IsV13VolumeIDVersion
 		resolveResp, err = s.resolveNS(params)
 		if err != nil {
 			return nil, err
@@ -370,15 +411,18 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		nsProvider = resolveResp.nsProvider
 		datasetPath = resolveResp.datasetPath
 		volumePath = filepath.Join(datasetPath, volumeName)
-		err = s.createNewVolumeFromSnapshot(nsProvider, sourceSnapshot, volumePath, capacityBytes)
+		err = s.createNewVolumeFromSnapshot(nsProvider, volInfo.Path, volumePath, capacityBytes)
 	} else if sourceVolumeId != "" {
 		// clone existing volume
-		splittedVol := strings.Split(sourceVolumeId, ":")
-		if len(splittedVol) != 2 {
+		var volInfo VolumeInfo
+		volInfo, err = ParseVolumeID(sourceVolumeId)
+		if err != nil {
+			l.Errorf("Got wrong volumeId, VolumeInfo error: %s", err)
 			return nil, status.Error(codes.NotFound, fmt.Sprintf("VolumeId is in wrong format: %s", sourceVolumeId))
 		}
-		configName, sourceVolume := splittedVol[0], splittedVol[1]
-		params.configName = configName
+
+		params.configName = volInfo.ConfigName
+		params.IsV13Compatible = volInfo.IsV13VolumeIDVersion
 		resolveResp, err = s.resolveNS(params)
 		if err != nil {
 			return nil, err
@@ -386,7 +430,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		nsProvider = resolveResp.nsProvider
 		datasetPath = resolveResp.datasetPath
 		volumePath = filepath.Join(datasetPath, volumeName)
-		err = s.createClonedVolume(nsProvider, sourceVolume, volumePath, volumeName, capacityBytes)
+		err = s.createClonedVolume(nsProvider, volInfo.Path, volumePath, volumeName, capacityBytes)
 	} else {
 		resolveResp, err = s.resolveNS(params)
 		if err != nil {
@@ -697,21 +741,24 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	if len(volumeId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
-	splittedVol := strings.Split(volumeId, ":")
-	if len(splittedVol) != 2 {
+
+	volInfo, err := ParseVolumeID(volumeId)
+	if err != nil {
 		l.Infof("Got wrong volumeId, but that is OK for deletion")
+		l.Infof("VolumeInfo error: %s", err)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
-	configName, volumePath := splittedVol[0], splittedVol[1]
 
 	params := ResolveNSParams{
-		datasetPath: volumePath,
-		configName:  configName,
+		datasetPath:     volInfo.Path,
+		configName:      volInfo.ConfigName,
+		IsV13Compatible: volInfo.IsV13VolumeIDVersion,
 	}
+
 	resolveResp, err := s.resolveNS(params)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			l.Infof("volume '%s' not found, that's OK for deletion request", volumePath)
+			l.Infof("volume '%s' not found, that's OK for deletion request", volInfo.Path)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 		return nil, err
@@ -719,7 +766,7 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	nsProvider := resolveResp.nsProvider
 
 	// if here, than volumePath exists on some NS
-	err = nsProvider.DestroyFilesystem(volumePath, ns.DestroyFilesystemParams{
+	err = nsProvider.DestroyFilesystem(volInfo.Path, ns.DestroyFilesystemParams{
 		DestroySnapshots:               true,
 		PromoteMostRecentCloneIfExists: true,
 	})
@@ -727,12 +774,12 @@ func (s *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 		return nil, status.Errorf(
 			codes.Internal,
 			"Cannot delete '%s' volume: %s",
-			volumePath,
+			volInfo.Path,
 			err,
 		)
 	}
 
-	l.Infof("volume '%s' has been deleted", volumePath)
+	l.Infof("volume '%s' has been deleted", volInfo.Path)
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
@@ -801,14 +848,12 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 	if len(sourceVolumeId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Snapshot source volume ID must be provided")
 	}
-	splittedVol := strings.Split(sourceVolumeId, ":")
-	if len(splittedVol) != 2 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", sourceVolumeId))
+
+	volInfo, err := ParseVolumeID(sourceVolumeId)
+	if err != nil {
+		l.Infof("VolumeInfo error: %s", err)
+		return nil, err
 	}
-	if len(splittedVol) != 2 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", sourceVolumeId))
-	}
-	configName, volumePath := splittedVol[0], splittedVol[1]
 
 	name := req.GetName()
 	if len(name) == 0 {
@@ -816,16 +861,18 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 	}
 
 	params := ResolveNSParams{
-		datasetPath: volumePath,
-		configName:  configName,
+		datasetPath:     volInfo.Path,
+		configName:      volInfo.ConfigName,
+		IsV13Compatible: volInfo.IsV13VolumeIDVersion,
 	}
+
 	resolveResp, err := s.resolveNS(params)
 	if err != nil {
 		return nil, err
 	}
 
-	snapshotPath := fmt.Sprintf("%s@%s", volumePath, name)
-	createdSnapshot, err := s.CreateSnapshotOnNS(resolveResp.nsProvider, volumePath, name)
+	snapshotPath := fmt.Sprintf("%s@%s", volInfo.Path, name)
+	createdSnapshot, err := s.CreateSnapshotOnNS(resolveResp.nsProvider, volInfo.Path, name)
 	if err != nil {
 		return nil, err
 	}
@@ -833,7 +880,7 @@ func (s *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSn
 		Seconds: createdSnapshot.CreationTime.Unix(),
 	}
 
-	snapshotId := fmt.Sprintf("%s:%s", configName, snapshotPath)
+	snapshotId := fmt.Sprintf("%s:%s", resolveResp.configName, snapshotPath)
 	res := &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			SnapshotId:     snapshotId,
@@ -881,16 +928,19 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 		l.Infof("snapshot '%s' not found, that's OK for deletion request", snapshotId)
 		return &csi.DeleteSnapshotResponse{}, nil
 	}
-	splittedVol := strings.Split(volume, ":")
-	if len(splittedVol) != 2 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", volume))
+
+	volInfo, err := ParseVolumeID(volume)
+	if err != nil {
+		l.Infof("VolumeInfo error: %s", err)
+		return nil, err
 	}
-	configName, volumePath := splittedVol[0], splittedVol[1]
 
 	params := ResolveNSParams{
-		datasetPath: volumePath,
-		configName:  configName,
+		datasetPath:     volInfo.Path,
+		configName:      volInfo.ConfigName,
+		IsV13Compatible: volInfo.IsV13VolumeIDVersion,
 	}
+
 	resolveResp, err := s.resolveNS(params)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
@@ -902,7 +952,7 @@ func (s *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSn
 	nsProvider := resolveResp.nsProvider
 
 	// if here, than volumePath exists on some NS
-	snapshotPath := strings.Join([]string{volumePath, snapshot}, "@")
+	snapshotPath := strings.Join([]string{volInfo.Path, snapshot}, "@")
 	err = nsProvider.DestroySnapshot(snapshotPath)
 	if err != nil && !ns.IsNotExistNefError(err) {
 		message := fmt.Sprintf("Failed to delete snapshot '%s'", snapshotPath)
@@ -972,23 +1022,29 @@ func (s *ControllerServer) getSnapshotListWithSingleSnapshot(snapshotId string, 
 		l.Infof("Bad snapshot format: %s", splittedSnapshotPath)
 		return &response, nil
 	}
-	splittedSnapshotId := strings.Split(splittedSnapshotPath[0], ":")
-	configName, filesystemPath := splittedSnapshotId[0], splittedSnapshotId[1]
+
+	volInfo, err := ParseVolumeID(splittedSnapshotPath[0])
+	if err != nil {
+		l.Infof("VolumeInfo error: %s", err)
+		return nil, err
+	}
 
 	params := ResolveNSParams{
-		datasetPath: filesystemPath,
-		configName:  configName,
+		datasetPath:     volInfo.Path,
+		configName:      volInfo.ConfigName,
+		IsV13Compatible: volInfo.IsV13VolumeIDVersion,
 	}
+
 	resolveResp, err := s.resolveNS(params)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			l.Infof("filesystem '%s' not found, that's OK for list request", filesystemPath)
+			l.Infof("filesystem '%s' not found, that's OK for list request", volInfo.Path)
 			return &response, nil
 		}
 		return nil, err
 	}
 	nsProvider := resolveResp.nsProvider
-	snapshotPath := fmt.Sprintf("%s@%s", filesystemPath, splittedSnapshotPath[1])
+	snapshotPath := fmt.Sprintf("%s@%s", volInfo.Path, splittedSnapshotPath[1])
 	snapshot, err := nsProvider.GetSnapshot(snapshotPath)
 	if err != nil {
 		if ns.IsNotExistNefError(err) {
@@ -996,8 +1052,8 @@ func (s *ControllerServer) getSnapshotListWithSingleSnapshot(snapshotId string, 
 		}
 		return nil, status.Errorf(codes.Internal, "Cannot get snapshot '%s' for snapshot list: %s", snapshotPath, err)
 	}
-	response.Entries = append(response.Entries, convertNSSnapshotToCSISnapshot(snapshot, configName))
-	l.Infof("snapshot '%s' found for '%s' filesystem", snapshot.Path, filesystemPath)
+	response.Entries = append(response.Entries, convertNSSnapshotToCSISnapshot(snapshot, resolveResp.configName))
+	l.Infof("snapshot '%s' found for '%s' filesystem", snapshot.Path, volInfo.Path)
 	return &response, nil
 }
 
@@ -1097,8 +1153,11 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 	if len(volumeId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
-	splittedVol := strings.Split(volumeId, ":")
-	if len(splittedVol) != 2 {
+
+	// not clear why we need to check VolumeID format only, without checking pathes
+	volInfo, err := ParseVolumeID(volumeId)
+	if err != nil {
+		l.Errorf("Got wrong volumeId, VolumeInfo error: %s", err)
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("VolumeId is in wrong format: %s", volumeId))
 	}
 
@@ -1115,10 +1174,23 @@ func (s *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *
 	for _, v := range secrets {
 		secret = v
 	}
-	err := s.refreshConfig(secret)
+	err = s.refreshConfig(secret)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
+
+	params := ResolveNSParams{
+		datasetPath:     volInfo.Path,
+		configName:      volInfo.ConfigName,
+		IsV13Compatible: volInfo.IsV13VolumeIDVersion,
+	}
+
+	nsProvider, err := s.resolveNS(params)
+	if err != nil {
+		return nil, err
+	}
+
+	l.Infof("resolved NS: %s, %+v", nsProvider, params)
 
 	for _, reqC := range volumeCapabilities {
 		supported := validateVolumeCapability(reqC)
@@ -1263,28 +1335,31 @@ func (s *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.
 	if len(volumeId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
-	splittedVol := strings.Split(volumeId, ":")
-	if len(splittedVol) != 2 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", volumeId))
+
+	volInfo, err := ParseVolumeID(volumeId)
+	if err != nil {
+		l.Infof("VolumeInfo error: %s", err)
+		return nil, err
 	}
-	configName, volumePath := splittedVol[0], splittedVol[1]
 
 	params := ResolveNSParams{
-		datasetPath: volumePath,
-		configName:  configName,
+		datasetPath:     volInfo.Path,
+		configName:      volInfo.ConfigName,
+		IsV13Compatible: volInfo.IsV13VolumeIDVersion,
 	}
+
 	resolveResp, err := s.resolveNS(params)
 	if err != nil {
 		return nil, err
 	}
 	nsProvider := resolveResp.nsProvider
 
-	l.Infof("expanding volume %+v to %+v bytes", volumePath, capacityBytes)
-	err = nsProvider.UpdateFilesystem(volumePath, ns.UpdateFilesystemParams{
+	l.Infof("expanding volume %+v to %+v bytes", volInfo.Path, capacityBytes)
+	err = nsProvider.UpdateFilesystem(volInfo.Path, ns.UpdateFilesystemParams{
 		ReferencedQuotaSize: capacityBytes,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to expand volume volume %s: %s", volumePath, err)
+		return nil, fmt.Errorf("Failed to expand volume volume %s: %s", volInfo.Path, err)
 	}
 	return &csi.ControllerExpandVolumeResponse{
 		CapacityBytes: capacityBytes,

@@ -151,11 +151,23 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	splittedVol := strings.Split(volumeID, ":")
-	if len(splittedVol) != 2 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", volumeID))
+	volInfo, err := ParseVolumeID(volumeID)
+	if err != nil {
+		l.Errorf("Got wrong volumeId, VolumeInfo error: %s", err)
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("VolumeId is in wrong format: %s", volumeID))
 	}
-	configName, volumePath := splittedVol[0], splittedVol[1]
+
+	configName := volInfo.ConfigName
+	volumePath := volInfo.Path
+	if volInfo.IsV13VolumeIDVersion {
+		l.Warningf("v13 volumeID detected: %s", volumeID)
+		configName, err = s.GetV13CompatibleConfigName()
+		if err != nil {
+			return nil, err
+		}
+		l.Warningf("v13 volumeID `%s` resolved to `%s` config", volumeID, configName)
+	}
+
 	nsProvider, err, configName := s.resolveNS(configName, volumePath)
 	if err != nil {
 		return nil, err
@@ -479,6 +491,15 @@ func (s *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
+func (s *NodeServer) GetV13CompatibleConfigName() (string, error) {
+	for configName, config := range s.config.NsMap {
+		if config.V13Compatibility {
+			return configName, nil
+		}
+	}
+	return "", status.Error(codes.InvalidArgument, "V13Compatible configuration not found")
+}
+
 // NodeGetVolumeStats - volume stats (available capacity)
 //TODO https://github.com/container-storage-interface/spec/blob/master/spec.md#nodegetvolumestats
 func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (
@@ -506,11 +527,21 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot use config file: %s", err)
 	}
 
-	splittedVol := strings.Split(volumeID, ":")
-	if len(splittedVol) != 2 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeId is in wrong format: %s", volumeID))
+	volInfo, err := ParseVolumeID(volumeID)
+	if err != nil {
+		l.Errorf("Got wrong volumeId, VolumeInfo error: %s", err)
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("VolumeId is in wrong format: %s", volumeID))
 	}
-	configName, volumePath := splittedVol[0], splittedVol[1]
+
+	configName := volInfo.ConfigName
+	volumePath = volInfo.Path
+	if volInfo.IsV13VolumeIDVersion {
+		configName, err = s.GetV13CompatibleConfigName()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	nsProvider, err, _ := s.resolveNS(configName, volumePath)
 	if err != nil {
 		return nil, err

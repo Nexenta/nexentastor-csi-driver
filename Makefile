@@ -51,12 +51,20 @@ print-variables:
 	@echo "Testing variables:"
 	@echo "  TEST_K8S_IP: ${TEST_K8S_IP}"
 
+.PHONY: vet
+vet:
+	CGO_ENABLED=0 go vet -v ./...
+
+.PHONY: fmt
+fmt:
+	CGO_ENABLED=0 go fmt ./...
+
 .PHONY: build
-build:
+build: vet fmt
 	env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/${DRIVER_NAME} -ldflags "${LDFLAGS}" ./cmd
 
 .PHONY: container-build
-container-build:
+container-build: vet fmt
 	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
 
 .PHONY: container-push-local

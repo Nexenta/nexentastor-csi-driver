@@ -6,31 +6,31 @@
 
 nexentastor_map:
   nstor-box1:
-    restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)
+    restIp: https://10.3.199.28:8443                            # [required] NexentaStor REST API endpoint(s)
     username: admin                                             # [required] NexentaStor REST API username
     password: Nexenta@1                                         # [required] NexentaStor REST API password
-    defaultDataset: csiDriverPool/csiDriverDataset              # default dataset for driver's fs/volume [pool/dataset]
-    defaultDataIp: 10.3.199.245                                 # default NexentaStor data IP or HA VIP
+    defaultDataset: pool1/nfs_share                                 # default dataset for driver's fs/volume [pool/dataset]
+    defaultDataIp: 10.3.199.28                                  # default NexentaStor data IP or HA VIP
     # for NFS mounts
     defaultMountFsType: nfs                                     # default mount fs type [nfs|cifs]
     defaultMountOptions: vers=4                                 # default mount options (mount -o ...)
     # zone: zone-1
 
   nstor-box2:
-    restIp: https://10.3.199.28:8443                            # [required] NexentaStor REST API endpoint(s)
+    restIp: https://10.3.199.29:8443                            # [required] NexentaStor REST API endpoint(s)
     username: admin                                             # [required] NexentaStor REST API username
     password: Nexenta@1                                         # [required] NexentaStor REST API password
-    defaultDataset: pool1/nfs_share                             # default dataset for driver's fs/volume [pool/dataset]
-    defaultDataIp: 10.3.199.28                                  # default NexentaStor data IP or HA VIP
+    defaultDataset: qa/nfs_share                             # default dataset for driver's fs/volume [pool/dataset]
+    defaultDataIp: 10.3.199.29                                  # default NexentaStor data IP or HA VIP
     defaultMountFsType: nfs 
     # zone: zone-2
 
   nstor-box3:
-    restIp: https://10.3.199.252:8443,https://10.3.199.253:8443 # [required] NexentaStor REST API endpoint(s)
+    restIp: https://10.3.199.190:8443,https://10.3.199.191:8443 # [required] NexentaStor REST API endpoint(s)
     username: admin                                             # [required] NexentaStor REST API username
     password: Nexenta@1                                         # [required] NexentaStor REST API password
-    defaultDataset: csiDriverPool/csiDriverDataset              # default dataset for driver's fs/volume [pool/dataset]
-    defaultDataIp: 10.3.199.245                                 # default NexentaStor data IP or HA VIP
+    defaultDataset: qa/nfs_share                                # default dataset for driver's fs/volume [pool/dataset]
+    defaultDataIp: 10.3.199.192                                 # default NexentaStor data IP or HA VIP
     # for NFS mounts
     defaultMountFsType: nfs                                     # default mount fs type [nfs|cifs]
     defaultMountOptions: vers=4                                 # default mount options (mount -o ...)

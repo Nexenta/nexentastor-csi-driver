@@ -3,7 +3,7 @@ nexentastor_map:
     restIp: https://10.3.199.29:8443
     username: admin
     password: Nexenta@1
-    defaultDataset: qa/manual
+    defaultDataset: qa/nfs_share
     defaultDataIp: 10.3.199.29
     defaultMountFsType: nfs
     defaultMountOptions: nolock,vers=4 # only vers=4 works in container

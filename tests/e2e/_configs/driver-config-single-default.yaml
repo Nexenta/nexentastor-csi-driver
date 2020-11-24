@@ -1,16 +1,16 @@
 nexentastor_map:
   nstor-box1:
-    restIp: https://10.3.199.197:8443
+    restIp: https://10.3.199.28:8443
     username: admin
     password: Nexenta@1
-    defaultDataset: csiDriverPool/csiDriverDataset
-    defaultDataIp: 10.3.199.197
+    defaultDataset: pool1/nfs_share
+    defaultDataIp: 10.3.199.28
     zone: zone-1
 
   nstor-box2:
-    restIp: https://10.3.199.189:8443
+    restIp: https://10.3.199.190:8443,https://10.3.199.191:8443
     username: admin
     password: Nexenta@1
-    defaultDataset: tank01/fs01
-    defaultDataIp: 10.3.199.189
+    defaultDataset: qa/nfs_share
+    defaultDataIp: 10.3.199.192
     zone: zone-2

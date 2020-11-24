@@ -911,7 +911,7 @@ func TestDriver_deploy(t *testing.T) {
 		}
 
 		// Create config file for 1st and 3rd nginx container
-		pathConfigMultiNs1, err := GenerateConfigFunc("persistent", "1", "", "", "nstor-box1:csiDriverPool/csiDriverDataset/nginx-persistent")
+		pathConfigMultiNs1, err := GenerateConfigFunc("persistent", "1", "", "", "nstor-box1:pool1/nfs_share/persistent")
 		if err != nil {
 			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
 				l.Warn("Can't add test result to TestRail")
@@ -968,7 +968,7 @@ func TestDriver_deploy(t *testing.T) {
 		}
 
 		// Create config file for 2nd nginx container
-		pathConfigMultiNs2, err := GenerateConfigFunc("persistent", "2", "", "", "nstor-box2:tank01/fs01/pvol01")
+		pathConfigMultiNs2, err := GenerateConfigFunc("persistent", "2", "", "", "nstor-box2:qa/nfs_share/persistent")
 		if err != nil {
 			if _, err := client.AddResultForCase(5151, 801250, testResult); err != nil {
 				l.Warn("Can't add test result to TestRail")

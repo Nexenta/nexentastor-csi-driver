@@ -2,7 +2,7 @@ pipeline {
     parameters {
         string(
             name: 'TEST_K8S_IP',
-            defaultValue: '10.3.199.174',
+            defaultValue: '10.3.132.116',
             description: 'K8s setup IP address to test on',
             trim: true
         )

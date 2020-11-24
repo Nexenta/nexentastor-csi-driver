@@ -64,7 +64,7 @@ build: vet fmt
 	env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/${DRIVER_NAME} -ldflags "${LDFLAGS}" ./cmd
 
 .PHONY: container-build
-container-build: vet fmt
+container-build:
 	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
 
 .PHONY: container-push-local

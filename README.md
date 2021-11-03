@@ -17,7 +17,8 @@ The NexentaStor Container Storage Interface (CSI) Driver provides a CSI interfac
 | Kubernetes 1.13   | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) | [1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |[1.1.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.1.0) |
 | Kubernetes 1.14 & 1.15 | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) | [1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |[1.2.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.2.0) |
 | Kubernetes >=1.16 | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) | [1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |[1.3.0](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.0) |
-| Kubernetes >=1.17 | master | master|master|
+| Kubernetes >=1.20 | [1.3.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.1) | [1.3.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.1) |[1.3.1](https://github.com/Nexenta/nexentastor-csi-driver/tree/1.3.1) |
+| Kubernetes >=1.20 | master | master|master|
 
 Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/releases
 
@@ -125,7 +126,8 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
    | `defaultMountOptions` | NFS/CIFS mount options: `mount -o ...` (default: "")            | no         | NFS: `noatime,nosuid`<br>CIFS: `username=admin,password=123` |
    | `debug`               | print more logs (default: false)                                | no         | `true`                                                       |
    | `zone`                | Zone to match topology.kubernetes.io/zone.                      | no         | ` `                                                          |
-   | `v13Compatibility`    | Flag to support already created volumes for driver version 1.3| no         | false                                                 |
+   | `v13Compatibility`    | Flag to support already created volumes for driver version 1.3  | no         | false                                                 |
+   | `mountPointPermissions`| Permissions to be set on volume's mount point                | no            | `0777`     |
 
    **Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,
    then parameter `dataset`/`dataIp` must be specified in _StorageClass_ configuration.

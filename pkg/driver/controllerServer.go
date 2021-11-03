@@ -383,6 +383,7 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if v, ok := reqParams["configName"]; ok {
 		configName = v
 	}
+
 	requirements := req.GetAccessibilityRequirements()
 	zone := s.pickAvailabilityZone(requirements)
 	params := ResolveNSParams{
@@ -444,15 +445,25 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if err != nil {
 		return nil, err
 	}
+
+	cfg := s.config.NsMap[resolveResp.configName]
+	mountPointPermissions := ""
+	if v, ok := reqParams["mountPointPermissions"]; ok {
+		mountPointPermissions = v
+	} else {
+		mountPointPermissions = cfg.MountPointPermissions
+	}
+
 	res = &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			ContentSource: contentSource,
 			VolumeId:      fmt.Sprintf("%s:%s", resolveResp.configName, volumePath),
 			CapacityBytes: capacityBytes,
 			VolumeContext: map[string]string{
-				"dataIp":       reqParams["dataIp"],
-				"mountOptions": reqParams["mountOptions"],
-				"mountFsType":  reqParams["mountFsType"],
+				"dataIp":                reqParams["dataIp"],
+				"mountOptions":          reqParams["mountOptions"],
+				"mountFsType":           reqParams["mountFsType"],
+				"mountPointPermissions": mountPointPermissions,
 			},
 		},
 	}

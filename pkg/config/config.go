@@ -39,15 +39,16 @@ type Config struct {
 }
 
 type NsData struct {
-	Address             string `yaml:"restIp"`
-	Username            string `yaml:"username"`
-	Password            string `yaml:"password"`
-	Zone                string `yaml:"zone"`
-	DefaultDataset      string `yaml:"defaultDataset,omitempty"`
-	DefaultDataIP       string `yaml:"defaultDataIp,omitempty"`
-	DefaultMountFsType  string `yaml:"defaultMountFsType,omitempty"`
-	DefaultMountOptions string `yaml:"defaultMountOptions,omitempty"`
-	V13Compatibility    bool   `yaml:"v13Compatibility,omitempty"`
+	Address               string `yaml:"restIp"`
+	Username              string `yaml:"username"`
+	Password              string `yaml:"password"`
+	Zone                  string `yaml:"zone"`
+	DefaultDataset        string `yaml:"defaultDataset,omitempty"`
+	DefaultDataIP         string `yaml:"defaultDataIp,omitempty"`
+	DefaultMountFsType    string `yaml:"defaultMountFsType,omitempty"`
+	DefaultMountOptions   string `yaml:"defaultMountOptions,omitempty"`
+	V13Compatibility      bool   `yaml:"v13Compatibility,omitempty"`
+	MountPointPermissions string `yaml:"mountPointPermissions"`
 }
 
 // GetFilePath - get filepath of found config file

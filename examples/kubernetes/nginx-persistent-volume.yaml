@@ -42,7 +42,7 @@ spec:
   csi:
     driver: nexentastor-csi-driver.nexenta.com
     # volumeHandle should be of the following format: <configName>:<path-to-filesystem>
-    volumeHandle: nstor-box1:pool1/nfs_share/persistent
+    volumeHandle: nstor-box1:pool01/nfs_share/persistent
   #mountOptions:  # list of options for `mount` command
   #  - noatime    #
 ---

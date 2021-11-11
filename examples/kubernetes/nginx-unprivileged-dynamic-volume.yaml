@@ -1,0 +1,84 @@
+# Nginx pod with dynamic storage creation using NexentaStor CSI driver
+#
+# $ kubectl apply -f examples/kubernetes/nginx-dynamic-volume.yaml
+#
+
+
+# --------------------------------------
+# NexentaStor CSI Driver - Storage Class
+# --------------------------------------
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nexentastor-csi-driver-cs-nginx-dynamic
+provisioner: nexentastor-csi-driver.nexenta.com
+mountOptions:                        # list of options for `mount -o ...` command
+#  - noatime                         #
+allowVolumeExpansion: true
+# volumeBindingMode: Immediate
+# allowedTopologies:
+# - matchLabelExpressions:
+#   - key: topology.kubernetes.io/zone
+#     values:
+#     - zone-1
+parameters:
+  # mountPointPermissions: "750"
+#   configName: nstor-box3
+  #dataset: customPool/customDataset # to overwrite "defaultDataset" config property [pool/dataset]
+  #dataIp: 20.20.20.253              # to overwrite "defaultDataIp" config property
+  #mountFsType: nfs                  # to overwrite "defaultMountFsType" config property
+  #mountOptions: noatime             # to overwrite "defaultMountOptions" config property
+  #nfsAccessList: rw:10.3.196.93, ro:2.2.2.2, 3.3.3.3/10   # list of addresses to allow NFS access to.
+                                                          # Format: [accessMode]:[address]/[mask]
+                                                          # accessMode and mask are optional, default mode is rw.
+---
+
+
+# ------------------------------------------------
+# NexentaStor CSI Driver - Persistent Volume Claim
+# ------------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexentastor-csi-driver-pvc-nginx-dynamic
+spec:
+  storageClassName: nexentastor-csi-driver-cs-nginx-dynamic
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+
+
+# ---------
+# Nginx pod
+# ---------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-dynamic-volume-nfs
+spec:
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+  containers:
+    - image: nginxinc/nginx-unprivileged
+      imagePullPolicy: IfNotPresent
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      command: [ "/bin/bash", "-c", "--" ]
+      args: [ "while true; do echo $(date) > /var/lib/www/html/timefile; sleep 5; sync; done;" ]
+      volumeMounts:
+       - mountPath: /var/lib/www/html
+         name: pvc
+  volumes:
+  - name: pvc
+    persistentVolumeClaim:
+      claimName: nexentastor-csi-driver-pvc-nginx-dynamic
+      readOnly: false

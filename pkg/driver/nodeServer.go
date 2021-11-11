@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -32,6 +33,7 @@ var regexpMountOptionTimeo = regexp.MustCompile("^timeo=.*$")
 var regexpMountOptionUsername = regexp.MustCompile("^username=.+$")
 var regexpMountOptionPassword = regexp.MustCompile("^password=.+$")
 var regexpMountOptionNolock = regexp.MustCompile("^nolock.+$")
+const DefaultMountPointPermissions = 0777
 
 // NodeServer - k8s csi driver node server
 type NodeServer struct {
@@ -83,6 +85,24 @@ func (s *NodeServer) resolveNS(configName, datasetPath string) (nsProvider ns.Pr
 	}
 	return nsProvider, nil, configName
 }
+
+// GetMountPointPermissions - check if mountPoint persmissions were set in config or use default
+func (s *NodeServer) GetMountPointPermissions(volumeContext map[string]string) (os.FileMode, error) {
+    l := s.log.WithField("func", "GetMountPointPermissions()")
+    l.Infof("volumeContext: '%+v'", volumeContext)
+    mountPointPermissions := volumeContext["mountPointPermissions"]
+    if mountPointPermissions == "" {
+        l.Infof("mountPointPermissions is not set, using default: '%+v'", strconv.FormatInt(
+            int64(DefaultMountPointPermissions), 8))
+        return os.FileMode(DefaultMountPointPermissions), nil
+    }
+    octalPerm, err := strconv.ParseInt(mountPointPermissions, 8, 16)
+    if err != nil {
+        return 0, err
+    }
+    return os.FileMode(octalPerm), nil
+}
+
 
 // NodeGetInfo - get node info
 func (s *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
@@ -254,6 +274,22 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		return nil, err
 	}
 
+	permissions, err := s.GetMountPointPermissions(volumeContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set write permissions if not read-only
+	if !arrays.ContainsString(mountOptions, "ro") {
+		l.Infof("Setting mount point permissions to %+v", permissions)
+		err = os.Chmod(targetPath, permissions)
+		if err != nil {
+			if !strings.Contains(err.Error(), "read-only") {
+			    return nil, err
+			}
+		}
+	}
+
 	l.Infof("volume '%s' has been published to '%s'", volumeID, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -366,9 +402,9 @@ func (s *NodeServer) mountCIFS(
 }
 
 // only "nfs" is supported for now
-func (s *NodeServer) doMount(mountSource, targetPath, fsType string, mountOptions []string) error {
+func (s *NodeServer) doMount(
+		mountSource, targetPath, fsType string, mountOptions []string) error {
 	l := s.log.WithField("func", "doMount()")
-
 	mounter := mount.New("")
 
 	// check if mountpoint exists, create if there is no such directory

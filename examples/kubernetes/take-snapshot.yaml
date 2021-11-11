@@ -6,12 +6,12 @@
 # $ kubectl apply -f examples/kubernetes/take-snapshot.yaml
 #
 
-apiVersion: snapshot.storage.k8s.io/v1alpha1 #TODO check for beta
+apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshot
 metadata:
   name: snapshot-test
 spec:
-  snapshotClassName: nexentastor-csi-snapshot-class
+  volumeSnapshotClassName: nexentastor-csi-snapshot-class
   source:
-    name: nexentastor-csi-driver-pvc-nginx-persistent
-    kind: PersistentVolumeClaim
+    persistentVolumeClaimName: nexentastor-csi-driver-pvc-nginx-persistent
+    # kind: PersistentVolumeClaim

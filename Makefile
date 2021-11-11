@@ -65,19 +65,35 @@ build: vet fmt
 
 .PHONY: container-build
 container-build:
+ifeq (${VERSION}, master)
 	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
+else
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} .
+endif
 
 .PHONY: container-push-local
 container-push-local:
+ifeq (${VERSION}, master)
 	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
 	docker tag  ${IMAGE_NAME}:${VERSION} ${REGISTRY_LOCAL}/${IMAGE_NAME}:${VERSION}
 	docker push ${REGISTRY_LOCAL}/${IMAGE_NAME}:${VERSION}
+else
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} .
+	docker tag  ${IMAGE_NAME}:v${VERSION} ${REGISTRY_LOCAL}/${IMAGE_NAME}:v${VERSION}
+	docker push ${REGISTRY_LOCAL}/${IMAGE_NAME}:v${VERSION}
+endif
 
 .PHONY: container-push-remote
 container-push-remote:
+ifeq (${VERSION}, master)
 	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
 	docker tag  ${IMAGE_NAME}:${VERSION} ${REGISTRY}/${IMAGE_NAME}:${VERSION}
 	docker push ${REGISTRY}/${IMAGE_NAME}:${VERSION}
+else
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} .
+	docker tag  ${IMAGE_NAME}:v${VERSION} ${REGISTRY}/${IMAGE_NAME}:v${VERSION}
+	docker push ${REGISTRY}/${IMAGE_NAME}:v${VERSION}
+endif
 
 .PHONY: test
 test: test-unit
@@ -149,6 +165,8 @@ test-csi-sanity-container:
 		-f ${DOCKER_FILE_TEST_CSI_SANITY} \
 		-t ${IMAGE_NAME}-test-csi-sanity .
 	docker run --privileged=true -i -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test-csi-sanity
+	docker image prune -f
+	docker images | grep nexentastor-csi-driver-test-csi-sanity | awk '{print $$1}' | xargs docker rmi -f
 
 # run all tests (local registry image)
 .PHONY: test-all-local-image
@@ -186,16 +204,19 @@ release:
 		1. New version will be based on current '${GIT_BRANCH}' git branch\n \
 		2. Driver container '${IMAGE_NAME}' will be built\n \
 		3. Login to hub.docker.com will be requested\n \
-		4. Driver version '${REGISTRY}/${IMAGE_NAME}:${VERSION}' will be pushed to hub.docker.com\n \
+		4. Driver version '${REGISTRY}/${IMAGE_NAME}:v${VERSION}' will be pushed to hub.docker.com\n \
 		5. CHANGELOG.md file will be updated\n \
 		6. Git tag 'v${VERSION}' will be created and pushed to the repository.\n\n \
 		Are you sure? [y/N]: "
 	@(read ANSWER && case "$$ANSWER" in [yY]) true;; *) false;; esac)
+	git checkout -b ${VERSION}
+	sed -i 's/:master/:v$(VERSION)/g' deploy/kubernetes/nexentastor-csi-driver.yaml
 	docker login
 	make generate-changelog
 	make container-build
 	make container-push-remote
 	git add CHANGELOG.md
+	git add deploy/kubernetes/nexentastor-csi-driver.yaml
 	git commit -m "release v${VERSION}"
 	git push origin ${VERSION}
 	git tag v${VERSION}

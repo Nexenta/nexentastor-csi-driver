@@ -5,11 +5,12 @@
 # $ kubectl apply -f examples/kubernetes/snapshot-class.yaml
 #
 
-apiVersion: snapshot.storage.k8s.io/v1alpha1
+apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   name: nexentastor-csi-snapshot-class
-snapshotter: nexentastor-csi-driver.nexenta.com
+driver: nexentastor-csi-driver.nexenta.com
+deletionPolicy: Delete
 # parameters:
 #   csiSnapshotterSecretName: csi-secret
 #   csiSnapshotterSecretNamespace: csi-namespace

@@ -173,6 +173,18 @@ func TestDriver_deploy(t *testing.T) {
 		return
 	}
 
+	k8sSnapshotter, err := k8s.NewDeployment(k8s.DeploymentArgs{
+			RemoteClient: rc,
+			ConfigFile:   "../../deploy/kubernetes/snapshots/snapshotter.yaml",
+			Log:          l,
+	})
+	defer k8sSnapshotter.CleanUp()
+	defer k8sSnapshotter.Delete(nil)
+	if err != nil {
+		t.Errorf("Cannot create K8s Snapshotter: %s", err)
+		return
+	}
+
 	installed := t.Run("install driver", func(t *testing.T) {
 		t.Log("create k8s secret for driver")
 		k8sDriver.DeleteSecret()
@@ -185,8 +197,17 @@ func TestDriver_deploy(t *testing.T) {
 			"nexentastor-csi-node-.*Running",
 		}
 
+		waitSnapshotterPod := []string{
+			"snapshot-controller-.*Running",
+		}
+
 		t.Log("instal the driver")
 		if err := k8sDriver.Apply(waitPods); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log("instal the snapshotter")
+		if err := k8sSnapshotter.Apply(waitSnapshotterPod); err != nil {
 			t.Fatal(err)
 		}
 
@@ -764,6 +785,7 @@ func TestDriver_deploy(t *testing.T) {
 	})
 
 	t.Run("deploy nginx pod with dynamic volume provisioning and NFS ACL", func(t *testing.T) {
+		t.Skip("Temporary skip test.")
 		if fsType != "nfs" {
 			t.Skip("Skip test. For NFS only.")
 		}
@@ -1227,6 +1249,11 @@ func TestDriver_deploy(t *testing.T) {
 			if _, err := client.AddResultForCase(5151, 706721, testResult); err != nil {
 				l.Warn("Can't add test result to TestRail")
 			}
+			t.Fatal(err)
+		}
+
+		t.Log("deleting the snapshotter")
+		if err := k8sSnapshotter.Delete([]string{"snapshot-controller-.*"}); err != nil {
 			t.Fatal(err)
 		}
 

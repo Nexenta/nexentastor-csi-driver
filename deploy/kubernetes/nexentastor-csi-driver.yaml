@@ -264,12 +264,19 @@ spec:
             - name: secret
               mountPath: /config
               readOnly: true
+            - name: certs-dir
+              mountPropagation: HostToContainer
+              mountPath: /usr/local/share/ca-certificates
       volumes:
         - name: socket-dir
           emptyDir:
         - name: secret
           secret:
             secretName: nexentastor-csi-driver-config
+        - name: certs-dir
+          hostPath:
+            path: /etc/ssl/  # change this to your tls certificates folder
+            type: Directory
 ---
 
 
@@ -378,6 +385,9 @@ spec:
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: Bidirectional
+            - name: certs-dir
+              mountPropagation: HostToContainer
+              mountPath: /usr/local/share/ca-certificates
       volumes:
         - name: socket-dir
           hostPath:
@@ -394,4 +404,8 @@ spec:
         - name: secret
           secret:
             secretName: nexentastor-csi-driver-config
+        - name: certs-dir
+          hostPath:
+            path: /etc/ssl/  # change this to your tls certificates folder
+            type: Directory
 ---

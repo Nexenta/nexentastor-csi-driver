@@ -15,6 +15,7 @@ nexentastor_map:
     defaultMountFsType: nfs                                     # default mount fs type [nfs|cifs]
     defaultMountOptions: vers=4                                 # default mount options (mount -o ...)
     # zone: zone-1
+    insecureSkipVerify: false
 
   nstor-box2:
     restIp: https://10.3.199.29:8443                            # [required] NexentaStor REST API endpoint(s)

@@ -128,6 +128,7 @@ Releases can be found here - https://github.com/Nexenta/nexentastor-csi-driver/r
    | `zone`                | Zone to match topology.kubernetes.io/zone.                      | no         | ` `                                                          |
    | `v13Compatibility`    | Flag to support already created volumes for driver version 1.3  | no         | false                                                 |
    | `mountPointPermissions`| Permissions to be set on volume's mount point                | no            | `0777`     |
+   | `insecureSkipVerify`| TLS certificates check will be skipped when `true` (default: 'true')| no            | `false`     |
 
    **Note**: if parameter `defaultDataset`/`defaultDataIp` is not specified in driver configuration,
    then parameter `dataset`/`dataIp` must be specified in _StorageClass_ configuration.
@@ -378,6 +379,26 @@ kubectl get volumesnapshots.snapshot.storage.k8s.io
 # snapshot content list
 kubectl get volumesnapshotcontents.snapshot.storage.k8s.io
 ```
+
+## Checking TLS cecrtificates
+Default driver behavior is to skip certificate checks for all Rest API calls.
+v1.4.4 Release introduces new config parameter `insecureSkipVerify`=<true>.
+When `InsecureSkipVerify` is set to false, the driver will enforce certificate checking.
+To allow adding certificates, nexentastor-csi-driver.yaml has additional volumes added to cnexentastor-csi-controller deployment and nexentastor-csi-node daemonset.
+```bash
+            - name: certs-dir
+              mountPropagation: HostToContainer
+              mountPath: /usr/local/share/ca-certificates
+        - name: certs-dir
+          hostPath:
+            path: /etc/ssl/  # change this to your tls certificates folder
+            type: Directory
+```
+`/etc/ssl` folder is the default certificates location for Ubuntu. Change this according to your
+OS configuration.
+If you only want to propagate a specific set of certificates instead of the whole cert folder 
+from the host, you can put them in any folder on the host and set in the yaml file accordingly.
+Note that this should be done on every node of the kubernetes cluster.
 
 ## Uninstall
 

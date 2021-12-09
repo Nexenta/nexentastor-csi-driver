@@ -49,6 +49,7 @@ type NsData struct {
 	DefaultMountOptions   string `yaml:"defaultMountOptions,omitempty"`
 	V13Compatibility      bool   `yaml:"v13Compatibility,omitempty"`
 	MountPointPermissions string `yaml:"mountPointPermissions"`
+	InsecureSkipVerify    *bool  `yaml:"insecureSkipVerify,omitempty"`
 }
 
 // GetFilePath - get filepath of found config file

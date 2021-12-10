@@ -785,7 +785,6 @@ func TestDriver_deploy(t *testing.T) {
 	})
 
 	t.Run("deploy nginx pod with dynamic volume provisioning and NFS ACL", func(t *testing.T) {
-		t.Skip("Temporary skip test.")
 		if fsType != "nfs" {
 			t.Skip("Skip test. For NFS only.")
 		}

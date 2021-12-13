@@ -115,6 +115,12 @@ func (s *ControllerServer) resolveNS(params ResolveNSParams) (response ResolveNS
 		code := codes.Internal
 		if ns.IsNotExistNefError(err) {
 			code = codes.NotFound
+		} else if strings.Contains(err.Error(), "certificate signed by unknown authority") {
+			return response, status.Errorf(
+				code,
+				"TLS certificate check failed, error: %v",
+				err,
+			)
 		}
 		return response, status.Errorf(
 			code,

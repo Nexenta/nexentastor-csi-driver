@@ -20,7 +20,8 @@ const (
 	FsTypeNFS string = "nfs"
 
 	// FsTypeCIFS - to mount NS filesystem over SMB
-	FsTypeCIFS string = "cifs"
+	FsTypeCIFS                string = "cifs"
+	DefaultInsecureSkipVerify        = true
 )
 
 // SuppertedFsTypeList - list of supported filesystem types to mount
@@ -126,6 +127,11 @@ func (c *Config) Validate() error {
 				errors,
 				fmt.Sprintf("parameter 'defaultMountFsType' must be omitted or one of: [%s, %s]", FsTypeNFS, FsTypeCIFS),
 			)
+		}
+		if data.InsecureSkipVerify == nil {
+			insecureSkipVerify := DefaultInsecureSkipVerify
+			data.InsecureSkipVerify = &insecureSkipVerify
+			c.NsMap[name] = data
 		}
 
 		if len(errors) != 0 {

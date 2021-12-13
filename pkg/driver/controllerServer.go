@@ -19,7 +19,6 @@ import (
 )
 
 const TopologyKeyZone = "topology.kubernetes.io/zone"
-const DefaultInsecureSkipVerify = true
 
 // supportedControllerCapabilities - driver controller capabilities
 var supportedControllerCapabilities = []csi.ControllerServiceCapability_RPC_Type{
@@ -80,18 +79,12 @@ func (s *ControllerServer) refreshConfig(secret string) error {
 	if changed {
 		s.log.Info("config has been changed, updating...")
 		for name, cfg := range s.config.NsMap {
-			var insecureSkipVerify bool
-			if cfg.InsecureSkipVerify == nil {
-				insecureSkipVerify = DefaultInsecureSkipVerify
-			} else {
-				insecureSkipVerify = *cfg.InsecureSkipVerify
-			}
 			resolver, err := ns.NewResolver(ns.ResolverArgs{
 				Address:            cfg.Address,
 				Username:           cfg.Username,
 				Password:           cfg.Password,
 				Log:                s.log,
-				InsecureSkipVerify: insecureSkipVerify,
+				InsecureSkipVerify: *cfg.InsecureSkipVerify,
 			})
 			s.nsResolverMap[name] = *resolver
 			if err != nil {
@@ -474,9 +467,9 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			VolumeId:      fmt.Sprintf("%s:%s", resolveResp.configName, volumePath),
 			CapacityBytes: capacityBytes,
 			VolumeContext: map[string]string{
-				"dataIp":                reqParams["dataIp"],
-				"mountOptions":          reqParams["mountOptions"],
-				"mountFsType":           reqParams["mountFsType"],
+				"dataIp":       reqParams["dataIp"],
+				"mountOptions": reqParams["mountOptions"],
+				"mountFsType":  reqParams["mountFsType"],
 				"mountPointPermissions": mountPointPermissions,
 			},
 		},
@@ -1419,18 +1412,12 @@ func NewControllerServer(driver *Driver) (*ControllerServer, error) {
 	resolverMap := make(map[string]ns.Resolver)
 
 	for name, cfg := range driver.config.NsMap {
-		var insecureSkipVerify bool
-		if cfg.InsecureSkipVerify == nil {
-			insecureSkipVerify = DefaultInsecureSkipVerify
-		} else {
-			insecureSkipVerify = *cfg.InsecureSkipVerify
-		}
 		nsResolver, err := ns.NewResolver(ns.ResolverArgs{
 			Address:            cfg.Address,
 			Username:           cfg.Username,
 			Password:           cfg.Password,
 			Log:                l,
-			InsecureSkipVerify: insecureSkipVerify,
+			InsecureSkipVerify: *cfg.InsecureSkipVerify,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)

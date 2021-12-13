@@ -108,12 +108,6 @@ func (s *ControllerServer) resolveNS(params ResolveNSParams) (response ResolveNS
 		code := codes.Internal
 		if ns.IsNotExistNefError(err) {
 			code = codes.NotFound
-		} else if strings.Contains(err.Error(), "certificate signed by unknown authority") {
-			return response, status.Errorf(
-				code,
-				"TLS certificate check failed, error: %v",
-				err,
-			)
 		}
 		return response, status.Errorf(
 			code,
@@ -201,6 +195,10 @@ func (s *ControllerServer) resolveNSNoZone(params ResolveNSParams) (response Res
 			}
 		}
 	}
+	if strings.Contains(err.Error(), "unknown authority") {
+		return response, status.Errorf(
+			codes.Unauthenticated, fmt.Sprintf("TLS certificate check error: %v", err.Error()))
+	}
 	return response, status.Errorf(codes.NotFound, fmt.Sprintf("No nsProvider found for params: %+v", params))
 }
 
@@ -251,6 +249,10 @@ func (s *ControllerServer) resolveNSWithZone(params ResolveNSParams) (response R
 				}
 			}
 		}
+	}
+	if strings.Contains(err.Error(), "unknown authority") {
+		return response, status.Errorf(
+			codes.Unauthenticated, fmt.Sprintf("TLS certificate check error: %v", err.Error()))
 	}
 	return response, status.Errorf(codes.NotFound, fmt.Sprintf("No nsProvider found for params: %+v", params))
 }

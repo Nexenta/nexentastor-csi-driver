@@ -20,7 +20,8 @@ const (
 	FsTypeNFS string = "nfs"
 
 	// FsTypeCIFS - to mount NS filesystem over SMB
-	FsTypeCIFS string = "cifs"
+	FsTypeCIFS                string = "cifs"
+	DefaultInsecureSkipVerify        = true
 )
 
 // SuppertedFsTypeList - list of supported filesystem types to mount
@@ -49,6 +50,7 @@ type NsData struct {
 	DefaultMountOptions   string `yaml:"defaultMountOptions,omitempty"`
 	V13Compatibility      bool   `yaml:"v13Compatibility,omitempty"`
 	MountPointPermissions string `yaml:"mountPointPermissions"`
+	InsecureSkipVerify    *bool  `yaml:"insecureSkipVerify,omitempty"`
 }
 
 // GetFilePath - get filepath of found config file
@@ -125,6 +127,11 @@ func (c *Config) Validate() error {
 				errors,
 				fmt.Sprintf("parameter 'defaultMountFsType' must be omitted or one of: [%s, %s]", FsTypeNFS, FsTypeCIFS),
 			)
+		}
+		if data.InsecureSkipVerify == nil {
+			insecureSkipVerify := DefaultInsecureSkipVerify
+			data.InsecureSkipVerify = &insecureSkipVerify
+			c.NsMap[name] = data
 		}
 
 		if len(errors) != 0 {

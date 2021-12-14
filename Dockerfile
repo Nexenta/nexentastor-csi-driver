@@ -1,5 +1,5 @@
 # build container
-FROM golang:1.13 as builder
+FROM golang:1.17.4 as builder
 WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 COPY . ./
 ARG VERSION
@@ -15,12 +15,12 @@ LABEL maintainer="Nexenta Systems, Inc."
 LABEL description="NexentaStor CSI Driver"
 LABEL io.k8s.description="NexentaStor CSI Driver"
 # install nfs and smb dependencies
-RUN apk add --no-cache rpcbind nfs-utils cifs-utils
+RUN apk add --no-cache rpcbind nfs-utils cifs-utils ca-certificates
 # create driver config folder and print version
 RUN mkdir -p /config/
 COPY --from=builder /nexentastor-csi-driver /
 RUN /nexentastor-csi-driver --version
 # init script: runs rpcbind before starting the plugin
-RUN echo $'#!/usr/bin/env sh\nrpcbind;\n/nexentastor-csi-driver "$@";\n' > /init.sh
+RUN echo $'#!/usr/bin/env sh\nupdate-ca-certificates\nrpcbind;\n/nexentastor-csi-driver "$@";\n' > /init.sh
 RUN chmod +x /init.sh
 ENTRYPOINT ["/init.sh"]

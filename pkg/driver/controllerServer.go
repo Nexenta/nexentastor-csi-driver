@@ -75,6 +75,7 @@ func (s *ControllerServer) refreshConfig(secret string) error {
 	if err != nil {
 		return err
 	}
+
 	if changed {
 		s.log.Info("config has been changed, updating...")
 		for name, cfg := range s.config.NsMap {
@@ -83,7 +84,7 @@ func (s *ControllerServer) refreshConfig(secret string) error {
 				Username:           cfg.Username,
 				Password:           cfg.Password,
 				Log:                s.log,
-				InsecureSkipVerify: true, //TODO move to config
+				InsecureSkipVerify: *cfg.InsecureSkipVerify,
 			})
 			s.nsResolverMap[name] = *resolver
 			if err != nil {
@@ -194,6 +195,10 @@ func (s *ControllerServer) resolveNSNoZone(params ResolveNSParams) (response Res
 			}
 		}
 	}
+	if strings.Contains(err.Error(), "unknown authority") {
+		return response, status.Errorf(
+			codes.Unauthenticated, fmt.Sprintf("TLS certificate check error: %v", err.Error()))
+	}
 	return response, status.Errorf(codes.NotFound, fmt.Sprintf("No nsProvider found for params: %+v", params))
 }
 
@@ -244,6 +249,10 @@ func (s *ControllerServer) resolveNSWithZone(params ResolveNSParams) (response R
 				}
 			}
 		}
+	}
+	if strings.Contains(err.Error(), "unknown authority") {
+		return response, status.Errorf(
+			codes.Unauthenticated, fmt.Sprintf("TLS certificate check error: %v", err.Error()))
 	}
 	return response, status.Errorf(codes.NotFound, fmt.Sprintf("No nsProvider found for params: %+v", params))
 }
@@ -460,9 +469,9 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			VolumeId:      fmt.Sprintf("%s:%s", resolveResp.configName, volumePath),
 			CapacityBytes: capacityBytes,
 			VolumeContext: map[string]string{
-				"dataIp":                reqParams["dataIp"],
-				"mountOptions":          reqParams["mountOptions"],
-				"mountFsType":           reqParams["mountFsType"],
+				"dataIp":       reqParams["dataIp"],
+				"mountOptions": reqParams["mountOptions"],
+				"mountFsType":  reqParams["mountFsType"],
 				"mountPointPermissions": mountPointPermissions,
 			},
 		},
@@ -1410,7 +1419,7 @@ func NewControllerServer(driver *Driver) (*ControllerServer, error) {
 			Username:           cfg.Username,
 			Password:           cfg.Password,
 			Log:                l,
-			InsecureSkipVerify: true, //TODO move to config
+			InsecureSkipVerify: *cfg.InsecureSkipVerify,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("Cannot create NexentaStor resolver: %s", err)

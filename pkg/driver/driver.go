@@ -107,7 +107,7 @@ func (d *Driver) Validate() error {
 			Username:           cfg.Username,
 			Password:           cfg.Password,
 			Log:                d.log,
-			InsecureSkipVerify: true, //TODO move to config
+			InsecureSkipVerify: *cfg.InsecureSkipVerify,
 		})
 		if err != nil {
 			return fmt.Errorf("Driver validation failed, cannot create NexentaStor(s) resolver: %s", err)

@@ -212,10 +212,6 @@ release:
 	git checkout -b ${VERSION}
 	sed -i 's/:master/:v$(VERSION)/g' deploy/kubernetes/nexentastor-csi-driver.yaml
 	docker login
-	make generate-changelog
-	make container-build
-	make container-push-remote
-	git add CHANGELOG.md
 	git add deploy/kubernetes/nexentastor-csi-driver.yaml
 	git commit -m "release v${VERSION}"
 	git push origin ${VERSION}

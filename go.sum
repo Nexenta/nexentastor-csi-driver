@@ -12,6 +12,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
 github.com/Nexenta/go-nexentastor v2.3.0+incompatible h1:VEgcvXq8o3aJZg83/DeunIovbkUykaQcHGkVwc8Bc0A=
 github.com/Nexenta/go-nexentastor v2.3.0+incompatible/go.mod h1:AeOU2WLKqHJqeeTfz2xCxx0jGuNKbhbrb6/SLOy53vo=
+github.com/Nexenta/go-nexentastor v2.7.1+incompatible h1:q+DxyUwdFqKj/cJvM21YS0yfQciV0y+dWtAV6twj4FY=
+github.com/Nexenta/go-nexentastor v2.7.1+incompatible/go.mod h1:AeOU2WLKqHJqeeTfz2xCxx0jGuNKbhbrb6/SLOy53vo=
 github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

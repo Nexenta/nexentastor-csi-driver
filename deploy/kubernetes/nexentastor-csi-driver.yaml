@@ -247,7 +247,7 @@ spec:
                 limits:
                   memory: "32Mi"
                   cpu: "10m"
-          image: nexenta/nexentastor-csi-driver:master
+          image: nexenta/nexentastor-csi-driver:v1.4.6
           imagePullPolicy: IfNotPresent
           args:
             - --nodeid=$(KUBE_NODE_NAME)
@@ -366,7 +366,7 @@ spec:
             capabilities:
               add: ['SYS_ADMIN']
             allowPrivilegeEscalation: true
-          image: nexenta/nexentastor-csi-driver:master
+          image: nexenta/nexentastor-csi-driver:v1.4.6
           imagePullPolicy: IfNotPresent
           args:
             - --nodeid=$(KUBE_NODE_NAME)

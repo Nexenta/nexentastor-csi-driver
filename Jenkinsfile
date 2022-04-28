@@ -44,10 +44,10 @@ pipeline {
         }
         stage('Tests [local registry]') {
             when {
-	        anyOf {
-		    branch 'master';
-		    branch pattern: '^\d\.\d\.\d', comparator: 'REGEXP'
-		}
+                anyOf {
+                    branch 'master'
+                    branch pattern: '\\d\\.\\d\\.\\d', comparator: 'REGEXP'
+                }
             }
             steps {
                 sh "TEST_K8S_IP=${params.TEST_K8S_IP} TESTRAIL_URL=${TESTRAIL_URL} TESTRAIL_USR=${TESTRAIL_USR} TESTRAIL_PSWD=${TESTRAIL_PSW} make test-e2e-k8s-local-image-container"
@@ -55,10 +55,10 @@ pipeline {
         }
         stage('Push [hub.docker.com]') {
             when {
-	        anyOf {
-		    branch 'master';
-		    branch pattern: '^\d\.\d\.\d', comparator: 'REGEXP'
-		}
+                anyOf {
+                    branch 'master'
+                    branch pattern: '\\d\\.\\d\\.\\d', comparator: 'REGEXP'
+                }
             }
             environment {
                 DOCKER = credentials('docker-hub-credentials')
@@ -72,10 +72,10 @@ pipeline {
         }
         stage('Tests [k8s hub.docker.com]') {
             when {
-	        anyOf {
-		    branch 'master';
-		    branch pattern: '^\d\.\d\.\d', comparator: 'REGEXP'
-		}
+                anyOf {
+                    branch 'master'
+                    branch pattern: '\\d\\.\\d\\.\\d', comparator: 'REGEXP'
+                }
             }
             steps {
                 sh "TEST_K8S_IP=${params.TEST_K8S_IP} TESTRAIL_URL=${TESTRAIL_URL} TESTRAIL_USR=${TESTRAIL_USR} TESTRAIL_PSWD=${TESTRAIL_PSW} make test-e2e-k8s-remote-image-container"

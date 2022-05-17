@@ -219,6 +219,8 @@ spec:
             - --strict-topology
             - --immediate-topology=false
             - --feature-gates=Topology=true
+            - --timeout=300s
+            - --worker-threads=2
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy

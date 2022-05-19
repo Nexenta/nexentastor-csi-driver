@@ -1,0 +1,13 @@
+nexentastor_map:
+  nstor-sanity-box1:
+    restIp: https://10.3.199.190:8443
+    username: admin
+    password: Nexenta@1
+    defaultDataset: qa/nfs_share
+    defaultDataIp: 10.3.199.192
+    defaultMountFsType: nfs
+    defaultMountOptions: nolock,vers=4 # only vers=4 works in container
+    v13Compatibility: true
+    # zone: local
+
+debug: true

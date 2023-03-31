@@ -1,5 +1,8 @@
+ARG BASE_IMAGE
+ARG BUILD_IMAGE
+
 # build container
-FROM golang:1.20.2-alpine3.17 as builder
+FROM $BUILD_IMAGE as builder
 WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 COPY . ./
 ARG VERSION
@@ -9,9 +12,8 @@ RUN go version
 RUN make build &&\
     cp ./bin/nexentastor-csi-driver /
 
-
 # driver container
-FROM alpine:3.17
+FROM $BASE_IMAGE
 LABEL name="nexentastor-csi-driver"
 LABEL maintainer="Nexenta Systems, Inc."
 LABEL description="NexentaStor CSI Driver"

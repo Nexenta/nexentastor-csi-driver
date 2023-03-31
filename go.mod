@@ -1,6 +1,6 @@
 module github.com/Nexenta/nexentastor-csi-driver
 
-go 1.13
+go 1.20
 
 require (
 	github.com/Nexenta/go-nexentastor v2.7.1+incompatible
@@ -8,19 +8,25 @@ require (
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/educlos/testrail v0.0.0-20190627213040-ca1b25409ae2
 	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/kubernetes-csi/csi-lib-utils v0.7.0
 	github.com/sirupsen/logrus v1.6.0
 	golang.org/x/net v0.8.0
-	golang.org/x/sys v0.6.0
-	golang.org/x/text v0.8.0
+	google.golang.org/grpc v1.27.1
+	gopkg.in/yaml.v2 v2.2.8
+	k8s.io/mount-utils v0.0.0
+)
+
+require (
+	github.com/go-logr/logr v0.4.0 // indirect
+	github.com/google/go-cmp v0.5.2 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a // indirect
-	google.golang.org/grpc v1.27.1
 	google.golang.org/protobuf v1.25.0 // indirect
-	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/klog/v2 v2.8.0 // indirect
-	k8s.io/mount-utils v0.0.0
+	k8s.io/utils v0.0.0-20201110183641-67b214c5f920 // indirect
 )
 
 replace (

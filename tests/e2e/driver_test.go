@@ -174,9 +174,9 @@ func TestDriver_deploy(t *testing.T) {
 	}
 
 	k8sSnapshotter, err := k8s.NewDeployment(k8s.DeploymentArgs{
-			RemoteClient: rc,
-			ConfigFile:   "../../deploy/kubernetes/snapshots/snapshotter.yaml",
-			Log:          l,
+		RemoteClient: rc,
+		ConfigFile:   "../../deploy/kubernetes/snapshots/snapshotter.yaml",
+		Log:          l,
 	})
 	defer k8sSnapshotter.CleanUp()
 	defer k8sSnapshotter.Delete(nil)

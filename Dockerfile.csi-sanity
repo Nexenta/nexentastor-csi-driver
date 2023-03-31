@@ -1,9 +1,13 @@
+ARG BASE_IMAGE
+ARG BUILD_IMAGE
+
 # csi-sanity build container
-FROM golang:1.13 as builder-csi-sanity
+FROM $BUILD_IMAGE as builder-csi-sanity
 WORKDIR /go/src/github.com/kubernetes-csi/
 # csi-sanity versions: https://github.com/kubernetes-csi/csi-test/releases
 ARG CSI_SANITY_VERSION_TAG
 ENV CSI_SANITY_VERSION_TAG=$CSI_SANITY_VERSION_TAG
+RUN apk add --no-cache make git
 RUN git clone https://github.com/kubernetes-csi/csi-test.git &&\
     cd csi-test &&\
     git checkout -b ${CSI_SANITY_VERSION_TAG} ${CSI_SANITY_VERSION_TAG} &&\
@@ -13,15 +17,16 @@ RUN git clone https://github.com/kubernetes-csi/csi-test.git &&\
 
 
 # driver build container
-FROM golang:1.13 as builder-driver
+FROM $BUILD_IMAGE as builder-driver
 WORKDIR /go/src/github.com/Nexenta/nexentastor-csi-driver/
 COPY . ./
+RUN apk add --no-cache make git
 RUN make build &&\
     cp ./bin/nexentastor-csi-driver /nexentastor-csi-driver
 
 
 # run driver and csi-sanity tests
-FROM alpine:3.10
+FROM $BASE_IMAGE
 WORKDIR /
 # driver UNIX socket
 ENV SOCK="unix:///csi.sock"
@@ -42,9 +47,9 @@ RUN echo '/nexentastor-csi-driver --config-dir=/config --endpoint=${SOCK} --node
 RUN mkdir /lib64 &&\
     ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 # versions
-RUN /csi-sanity -csi.version &&\
+RUN /csi-sanity -version &&\
     /nexentastor-csi-driver --version
 # other csi-sanity options: --ginkgo.v -ginkgo.noColor
 #TODO remove "--ginkgo.skip" option after fixing volume paginatin by token:
-ENTRYPOINT ["/bin/sh", "-c", "/run-driver && /csi-sanity --csi.endpoint=${SOCK} --csi.createpathcmdtimeout=180 --csi.removepathcmdtimeout=180 --ginkgo.skip 'pagination should detect volumes added between pages and accept tokens when the last volume from a page is deleted'"]
+ENTRYPOINT ["/bin/sh", "-c", "/run-driver && /csi-sanity --csi.endpoint=${SOCK} --csi.createpathcmdtimeout=180s --csi.removepathcmdtimeout=180s --ginkgo.skip 'pagination should detect volumes added between pages and accept tokens when the last volume from a page is deleted'"]
 #ENTRYPOINT ["/bin/sh", "-c", "/run-driver && /csi-sanity --csi.endpoint=${SOCK} --csi.createpathcmdtimeout=180 --csi.removepathcmdtimeout=180]

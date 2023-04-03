@@ -19,7 +19,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-    "k8s.io/mount-utils"
+	"k8s.io/mount-utils"
 
 	"github.com/Nexenta/go-nexentastor/pkg/ns"
 	"github.com/Nexenta/nexentastor-csi-driver/pkg/arrays"
@@ -33,6 +33,7 @@ var regexpMountOptionTimeo = regexp.MustCompile("^timeo=.*$")
 var regexpMountOptionUsername = regexp.MustCompile("^username=.+$")
 var regexpMountOptionPassword = regexp.MustCompile("^password=.+$")
 var regexpMountOptionNolock = regexp.MustCompile("^nolock.+$")
+
 const DefaultMountPointPermissions = 0777
 
 // NodeServer - k8s csi driver node server
@@ -88,21 +89,20 @@ func (s *NodeServer) resolveNS(configName, datasetPath string) (nsProvider ns.Pr
 
 // GetMountPointPermissions - check if mountPoint persmissions were set in config or use default
 func (s *NodeServer) GetMountPointPermissions(volumeContext map[string]string) (os.FileMode, error) {
-    l := s.log.WithField("func", "GetMountPointPermissions()")
-    l.Infof("volumeContext: '%+v'", volumeContext)
-    mountPointPermissions := volumeContext["mountPointPermissions"]
-    if mountPointPermissions == "" {
-        l.Infof("mountPointPermissions is not set, using default: '%+v'", strconv.FormatInt(
-            int64(DefaultMountPointPermissions), 8))
-        return os.FileMode(DefaultMountPointPermissions), nil
-    }
-    octalPerm, err := strconv.ParseInt(mountPointPermissions, 8, 16)
-    if err != nil {
-        return 0, err
-    }
-    return os.FileMode(octalPerm), nil
+	l := s.log.WithField("func", "GetMountPointPermissions()")
+	l.Infof("volumeContext: '%+v'", volumeContext)
+	mountPointPermissions := volumeContext["mountPointPermissions"]
+	if mountPointPermissions == "" {
+		l.Infof("mountPointPermissions is not set, using default: '%+v'", strconv.FormatInt(
+			int64(DefaultMountPointPermissions), 8))
+		return os.FileMode(DefaultMountPointPermissions), nil
+	}
+	octalPerm, err := strconv.ParseInt(mountPointPermissions, 8, 16)
+	if err != nil {
+		return 0, err
+	}
+	return os.FileMode(octalPerm), nil
 }
-
 
 // NodeGetInfo - get node info
 func (s *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
@@ -289,7 +289,7 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		err = os.Chmod(targetPath, permissions)
 		if err != nil {
 			if !strings.Contains(err.Error(), "read-only") {
-			    return nil, err
+				return nil, err
 			}
 		}
 	}
@@ -407,7 +407,7 @@ func (s *NodeServer) mountCIFS(
 
 // only "nfs" is supported for now
 func (s *NodeServer) doMount(
-		mountSource, targetPath, fsType string, mountOptions []string) error {
+	mountSource, targetPath, fsType string, mountOptions []string) error {
 	l := s.log.WithField("func", "doMount()")
 	mounter := mount.New("")
 
@@ -541,7 +541,7 @@ func (s *NodeServer) GetV13CompatibleConfigName() (string, error) {
 }
 
 // NodeGetVolumeStats - volume stats (available capacity)
-//TODO https://github.com/container-storage-interface/spec/blob/master/spec.md#nodegetvolumestats
+// TODO https://github.com/container-storage-interface/spec/blob/master/spec.md#nodegetvolumestats
 func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (
 	*csi.NodeGetVolumeStatsResponse,
 	error,
@@ -607,7 +607,7 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 }
 
 // NodeStageVolume - stage volume
-//TODO use this to mount NFS, then do bind mount?
+// TODO use this to mount NFS, then do bind mount?
 func (s *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (
 	*csi.NodeStageVolumeResponse,
 	error,
@@ -617,7 +617,7 @@ func (s *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 }
 
 // NodeUnstageVolume - unstage volume
-//TODO use this to umount NFS?
+// TODO use this to umount NFS?
 func (s *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (
 	*csi.NodeUnstageVolumeResponse,
 	error,

@@ -8,6 +8,10 @@
 DRIVER_NAME = nexentastor-csi-driver
 IMAGE_NAME ?= ${DRIVER_NAME}
 
+BASE_IMAGE ?= alpine:3.17
+BUILD_IMAGE ?= golang:1.20.2-alpine3.17
+CSI_SANITY_VERSION_TAG ?= v4.0.0
+
 DOCKER_FILE = Dockerfile
 DOCKER_FILE_TESTS = Dockerfile.tests
 DOCKER_FILE_TEST_CSI_SANITY = Dockerfile.csi-sanity
@@ -28,6 +32,9 @@ LDFLAGS ?= \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Version=${VERSION} \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.Commit=${COMMIT} \
 	-X github.com/Nexenta/nexentastor-csi-driver/pkg/driver.DateTime=${DATETIME}
+
+DOCKER_ARGS = --build-arg BUILD_IMAGE=${BUILD_IMAGE} \
+              --build-arg BASE_IMAGE=${BASE_IMAGE}
 
 .PHONY: all
 all:
@@ -66,19 +73,19 @@ build: vet fmt
 .PHONY: container-build
 container-build:
 ifeq (${VERSION}, master)
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} ${DOCKER_ARGS} .
 else
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} ${DOCKER_ARGS} .
 endif
 
 .PHONY: container-push-local
 container-push-local:
 ifeq (${VERSION}, master)
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} ${DOCKER_ARGS} .
 	docker tag  ${IMAGE_NAME}:${VERSION} ${REGISTRY_LOCAL}/${IMAGE_NAME}:${VERSION}
 	docker push ${REGISTRY_LOCAL}/${IMAGE_NAME}:${VERSION}
 else
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} ${DOCKER_ARGS} .
 	docker tag  ${IMAGE_NAME}:v${VERSION} ${REGISTRY_LOCAL}/${IMAGE_NAME}:v${VERSION}
 	docker push ${REGISTRY_LOCAL}/${IMAGE_NAME}:v${VERSION}
 endif
@@ -86,11 +93,11 @@ endif
 .PHONY: container-push-remote
 container-push-remote:
 ifeq (${VERSION}, master)
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:${VERSION} --build-arg VERSION=${VERSION} ${DOCKER_ARGS} .
 	docker tag  ${IMAGE_NAME}:${VERSION} ${REGISTRY}/${IMAGE_NAME}:${VERSION}
 	docker push ${REGISTRY}/${IMAGE_NAME}:${VERSION}
 else
-	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} .
+	docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME}:v${VERSION} --build-arg VERSION=v${VERSION} ${DOCKER_ARGS} .
 	docker tag  ${IMAGE_NAME}:v${VERSION} ${REGISTRY}/${IMAGE_NAME}:v${VERSION}
 	docker push ${REGISTRY}/${IMAGE_NAME}:v${VERSION}
 endif
@@ -104,7 +111,7 @@ test-unit:
 	go test ./tests/unit/config -v -count 1
 .PHONY: test-unit-container
 test-unit-container:
-	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} ${DOCKER_ARGS} .
 	docker run -i --rm -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test test-unit
 
 # run e2e k8s tests using image from local docker registry
@@ -126,7 +133,7 @@ test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
 	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} \
 	--build-arg TESTRAIL_URL=${TESTRAIL_URL} \
 	--build-arg TESTRAIL_USR=${TESTRAIL_USR} \
-	--build-arg TESTRAIL_PSWD=${TESTRAIL_PSWD} .
+	--build-arg TESTRAIL_PSWD=${TESTRAIL_PSWD} ${DOCKER_ARGS} .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
 		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
 		${IMAGE_NAME}-test test-e2e-k8s-local-image
@@ -148,7 +155,7 @@ test-e2e-k8s-remote-image-container: check-env-TEST_K8S_IP
 	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} \
 	--build-arg TESTRAIL_URL=${TESTRAIL_URL} \
 	--build-arg TESTRAIL_USR=${TESTRAIL_USR} \
-	--build-arg TESTRAIL_PSWD=${TESTRAIL_PSWD} .
+	--build-arg TESTRAIL_PSWD=${TESTRAIL_PSWD} ${DOCKER_ARGS} .
 	docker run -i --rm -v ${HOME}/.ssh:/root/.ssh:ro \
 		-e NOCOLORS=${NOCOLORS} -e TEST_K8S_IP=${TEST_K8S_IP} \
 		${IMAGE_NAME}-test test-e2e-k8s-remote-image
@@ -161,9 +168,9 @@ test-e2e-k8s-remote-image-container: check-env-TEST_K8S_IP
 .PHONY: test-csi-sanity-container
 test-csi-sanity-container:
 	docker build \
-		--build-arg CSI_SANITY_VERSION_TAG=v2.1.0 \
+		--build-arg CSI_SANITY_VERSION_TAG=${CSI_SANITY_VERSION_TAG} \
 		-f ${DOCKER_FILE_TEST_CSI_SANITY} \
-		-t ${IMAGE_NAME}-test-csi-sanity .
+		-t ${IMAGE_NAME}-test-csi-sanity ${DOCKER_ARGS} .
 	docker run --privileged=true -i -e NOCOLORS=${NOCOLORS} ${IMAGE_NAME}-test-csi-sanity
 	docker image prune -f
 	docker images | grep nexentastor-csi-driver-test-csi-sanity | awk '{print $$1}' | xargs docker rmi -f
@@ -221,7 +228,7 @@ release:
 .PHONY: generate-changelog
 generate-changelog:
 	@echo "Release tag: ${VERSION}\n"
-	docker build -f ${DOCKER_FILE_PRE_RELEASE} -t ${DOCKER_IMAGE_PRE_RELEASE} --build-arg VERSION=${VERSION} .
+	docker build -f ${DOCKER_FILE_PRE_RELEASE} -t ${DOCKER_IMAGE_PRE_RELEASE} --build-arg VERSION=${VERSION} ${DOCKER_ARGS} .
 	-docker rm -f ${DOCKER_CONTAINER_PRE_RELEASE}
 	docker create --name ${DOCKER_CONTAINER_PRE_RELEASE} ${DOCKER_IMAGE_PRE_RELEASE}
 	docker cp \

@@ -258,7 +258,7 @@ func (s *ControllerServer) resolveNSWithZone(params ResolveNSParams) (response R
 }
 
 // ListVolumes - list volumes, shows only volumes created in defaultDataset
-//TODO return only shared fs?
+// TODO return only shared fs?
 func (s *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 	*csi.ListVolumesResponse,
 	error,
@@ -469,9 +469,9 @@ func (s *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			VolumeId:      fmt.Sprintf("%s:%s", resolveResp.configName, volumePath),
 			CapacityBytes: capacityBytes,
 			VolumeContext: map[string]string{
-				"dataIp":       reqParams["dataIp"],
-				"mountOptions": reqParams["mountOptions"],
-				"mountFsType":  reqParams["mountFsType"],
+				"dataIp":                reqParams["dataIp"],
+				"mountOptions":          reqParams["mountOptions"],
+				"mountFsType":           reqParams["mountFsType"],
 				"mountPointPermissions": mountPointPermissions,
 			},
 		},

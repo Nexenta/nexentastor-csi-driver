@@ -10,7 +10,7 @@ nexentastor_map:
   nstor-box2:
     restIp: https://10.3.199.190:8443,https://10.3.199.191:8443
     username: admin
-    password: Nexenta@1
+    password: Nexenta@123A
     defaultDataset: qa/nfs_share
     defaultDataIp: 10.3.199.192
     zone: zone-2

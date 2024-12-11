@@ -84,13 +84,13 @@ pipeline {
     }
     post {
         success {
-            office365ConnectorSend webhookUrl: "https://tintrivmstore.webhook.office.com/webhookb2/712fb1a6-6ff1-4fba-ad91-7ea7a01a3839@7aa633be-c8f9-43fe-aff7-41aa956c6e9e/JenkinsCI/c7567f6ab90e432cbc44876e80a0fb24/dcb3f841-f28e-4e68-adf6-edc9d1175286"
+            slackSend color: "#317a3b", message: "${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>) - build status is success"
         }
-	failure {
-            office365ConnectorSend webhookUrl: "https://tintrivmstore.webhook.office.com/webhookb2/712fb1a6-6ff1-4fba-ad91-7ea7a01a3839@7aa633be-c8f9-43fe-aff7-41aa956c6e9e/JenkinsCI/c7567f6ab90e432cbc44876e80a0fb24/dcb3f841-f28e-4e68-adf6-edc9d1175286"
+		failure {
+            slackSend color: "#e02514", message: "${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>) - build status is failed"
         }
-	aborted {
-            office365ConnectorSend webhookUrl: "https://tintrivmstore.webhook.office.com/webhookb2/712fb1a6-6ff1-4fba-ad91-7ea7a01a3839@7aa633be-c8f9-43fe-aff7-41aa956c6e9e/JenkinsCI/c7567f6ab90e432cbc44876e80a0fb24/dcb3f841-f28e-4e68-adf6-edc9d1175286"
-	}
+		aborted {
+            slackSend color: "#7a7a7a", message: "${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>) - build status is aborted"
+		}
     }
 }

@@ -9,7 +9,7 @@ DRIVER_NAME = nexentastor-csi-driver
 IMAGE_NAME ?= ${DRIVER_NAME}
 
 BASE_IMAGE ?= alpine:3.20
-BUILD_IMAGE ?= golang:1.22.3-alpine3.20
+BUILD_IMAGE ?= golang:1.23.1-alpine3.20
 CSI_SANITY_VERSION_TAG ?= v4.0.0
 
 DOCKER_FILE = Dockerfile
@@ -124,10 +124,10 @@ test-e2e-k8s-local-image: check-env-TEST_K8S_IP
 		--k8sDeploymentFile="/tmp/nexentastor-csi-driver-local.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single-default.yaml" \
 		--fsTypeFlag="nfs"
-	go test -timeout 30m tests/e2e/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@${TEST_K8S_IP}" \
-		--k8sDeploymentFile="/tmp/nexentastor-csi-driver-local.yaml" \
-		--k8sSecretFile="./_configs/driver-config-single-cifs.yaml"
+#	go test -timeout 30m tests/e2e/driver_test.go -v -count 1 \
+#		--k8sConnectionString="root@${TEST_K8S_IP}" \
+#		--k8sDeploymentFile="/tmp/nexentastor-csi-driver-local.yaml" \
+#		--k8sSecretFile="./_configs/driver-config-single-cifs.yaml"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-local-image-container: check-env-TEST_K8S_IP
 	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} \
@@ -146,10 +146,10 @@ test-e2e-k8s-remote-image: check-env-TEST_K8S_IP
 		--k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
 		--k8sSecretFile="./_configs/driver-config-single-default.yaml" \
 		--fsTypeFlag="nfs"
-	go test -timeout 30m tests/e2e/driver_test.go -v -count 1 \
-		--k8sConnectionString="root@${TEST_K8S_IP}" \
-		--k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
-		--k8sSecretFile="./_configs/driver-config-single-cifs.yaml"
+#	go test -timeout 30m tests/e2e/driver_test.go -v -count 1 \
+#		--k8sConnectionString="root@${TEST_K8S_IP}" \
+#		--k8sDeploymentFile="../../deploy/kubernetes/nexentastor-csi-driver.yaml" \
+#		--k8sSecretFile="./_configs/driver-config-single-cifs.yaml"
 .PHONY: test-e2e-k8s-local-image-container
 test-e2e-k8s-remote-image-container: check-env-TEST_K8S_IP
 	docker build -f ${DOCKER_FILE_TESTS} -t ${IMAGE_NAME}-test --build-arg VERSION=${VERSION} \

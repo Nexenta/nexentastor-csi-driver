@@ -96,6 +96,13 @@ func (s *ControllerServer) refreshConfig(secret string) error {
 	return nil
 }
 
+func (s *ControllerServer) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (
+	*csi.ControllerGetVolumeResponse,
+	error,
+) {
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
 func (s *ControllerServer) resolveNS(params ResolveNSParams) (response ResolveNSResponse, err error) {
 	l := s.log.WithField("func", "resolveNS()")
 	l.Infof("Resolving NS with params: %+v", params)
